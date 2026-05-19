@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from "react";
 import { marked } from "marked";
 import type { Entry, Attachment } from "@/types/entry";
 import { updateEntry, deleteEntry } from "@/lib/db";
+import { useT } from "@/lib/i18n";
+import { useSettings, locale } from "@/lib/settings-context";
 
 marked.use({ breaks: true, gfm: true });
 
@@ -162,13 +164,16 @@ interface Props {
 }
 
 export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat }: Props) {
+  const t = useT();
+  const { settings } = useSettings();
+  const loc = locale(settings);
   const [editing, setEditing] = useState(false);
   const [content, setContent] = useState(entry.content);
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>(entry.tags);
   const [saving, setSaving] = useState(false);
 
-  const time = new Date(entry.createdAt).toLocaleTimeString("de-DE", {
+  const time = new Date(entry.createdAt).toLocaleTimeString(loc, {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -256,8 +261,8 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
           onKeyDown={handleKeyDown}
           autoFocus
           rows={Math.max(3, content.split("\n").length + 1)}
-          className="journal-input w-full resize-none bg-transparent font-sans text-base leading-relaxed outline-none"
-          style={{ color: "var(--fg)", caretColor: "var(--accent)" }}
+          className="journal-input w-full resize-none bg-transparent text-base leading-relaxed outline-none"
+          style={{ color: "var(--fg)", caretColor: "var(--accent)", fontFamily: "var(--font-body)" }}
         />
 
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
@@ -278,7 +283,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
             onChange={(e) => setTagInput(e.target.value)}
             onKeyDown={handleTagKeyDown}
             onBlur={() => tagInput.trim() && addTag(tagInput)}
-            placeholder="Tag..."
+            placeholder={t.tagPlaceholder}
             className="journal-input min-w-[60px] flex-1 bg-transparent font-sans text-[11px] outline-none"
             style={{ color: "var(--fg-muted)" }}
           />
@@ -290,7 +295,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
             className="rounded-lg px-3 py-1.5 font-sans text-xs transition-opacity hover:opacity-60"
             style={{ color: "var(--fg-muted)" }}
           >
-            Abbrechen
+            {t.cancel}
           </button>
           <button
             onClick={handleSave}
@@ -302,7 +307,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
               opacity: saving ? 0.6 : 1,
             }}
           >
-            {saving ? "…" : "Speichern"}
+            {saving ? "…" : t.save}
           </button>
         </div>
       </div>
@@ -320,7 +325,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
           onClick={handleEditStart}
           className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-[var(--accent-soft)]"
           style={{ color: "var(--fg-muted)" }}
-          aria-label="Bearbeiten"
+          aria-label={t.edit}
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -333,13 +338,13 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
               className="rounded-lg px-2 py-1 font-sans text-[11px] font-medium transition-opacity hover:opacity-80"
               style={{ background: "var(--due-overdue-bg)", color: "var(--due-overdue)" }}
             >
-              Löschen
+              {t.delete}
             </button>
             <button
               onClick={() => setPendingDelete(false)}
               className="flex h-7 w-7 items-center justify-center rounded-lg transition-opacity hover:opacity-60"
               style={{ color: "var(--fg-muted)" }}
-              aria-label="Abbrechen"
+              aria-label={t.cancel}
             >
               ✕
             </button>
@@ -349,7 +354,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
             onClick={() => setPendingDelete(true)}
             className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-[oklch(55%_0.18_25/0.1)]"
             style={{ color: "var(--fg-muted)" }}
-            aria-label="Löschen"
+            aria-label={t.delete}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
@@ -360,7 +365,8 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
 
       {entry.content ? (
         <div
-          className={`md leading-relaxed ${flat ? "font-sans text-[17px] pr-8" : "font-sans text-base pr-16 sm:pr-8"}`}
+          className={`md leading-relaxed ${flat ? "text-[17px] pr-8" : "text-base pr-16 sm:pr-8"}`}
+          style={{ fontFamily: "var(--font-body)" }}
           dangerouslySetInnerHTML={{ __html: mdHtml }}
         />
       ) : null}

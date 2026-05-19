@@ -5,6 +5,10 @@
   --font-serif: var(--font-lora), Georgia, "Times New Roman", serif;
 }
 
+:root {
+  --font-body: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
 /* ── Theme tokens ────────────────────────────────────────────────────────────── */
 /* Class-based on <html>: .theme-light / .theme-dark / .theme-sepia             */
 /* System (no class) follows prefers-color-scheme via media query                */
@@ -264,8 +268,11 @@ body {
 .md code   { font-family: ui-monospace, monospace; font-size: 0.8em; background: var(--border); padding: 0.12em 0.38em; border-radius: 5px; }
 .md pre    { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; overflow-x: auto; margin-bottom: 0.6rem; }
 .md pre code { background: none; padding: 0; }
-.md ul, .md ol { padding-left: 1.4rem; margin-bottom: 0.55rem; color: var(--fg); }
+.md ul, .md ol { padding-left: 1.25rem; margin-bottom: 0.55rem; color: var(--fg); list-style-position: inside; }
+.md ul { list-style-type: disc; }
+.md ol { list-style-type: decimal; }
 .md li { margin-bottom: 0.18rem; }
+.md li::marker { color: var(--fg); }
 .md blockquote { border-left: 3px solid var(--accent); padding-left: 0.8rem; margin-bottom: 0.55rem; }
 .md blockquote p { color: var(--fg-muted); font-style: italic; }
 .md a  { color: var(--accent); text-decoration: underline; }

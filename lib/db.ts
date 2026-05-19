@@ -67,8 +67,8 @@ export async function getDB(): Promise<PouchDB.Database<AnyDoc>> {
   PouchDB.plugin(PouchDBFind);
 
   _db = new PouchDB<AnyDoc>("gleaned");
-  // pouchdb-find calls the deprecated db.type() on the prototype — override on the instance
-  (_db as unknown as Record<string, unknown>).type = () => "idb";
+  // pouchdb-find calls deprecated db.type(); defineProperty on the instance shadows the prototype getter
+  Object.defineProperty(_db, "type", { value: () => "idb", writable: true, configurable: true });
   await Promise.all([
     _db.createIndex({ index: { fields: ["type", "date", "createdAt"] } }),
     _db.createIndex({ index: { fields: ["type", "createdAt"] } }),
@@ -101,7 +101,7 @@ export async function getStreakData(): Promise<{ streak: number; todayCount: num
 
 export async function getAllTags(): Promise<Map<string, number>> {
   const db = await getDB();
-  // Need full docs to decrypt tags — fields projection would drop _enc
+  // Need full docs to decrypt tags — fields projection would drop enc
   const result = await db.find({ selector: { type: "entry" } });
   const decrypted = await Promise.all((result.docs as Entry[]).map(decryptEntry));
   const counts = new Map<string, number>();
@@ -133,7 +133,7 @@ export async function deleteTag(tag: string): Promise<void> {
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
         const latest = (await db.get(doc._id)) as unknown as Entry;
-        const base: Omit<Entry, "_rev" | "encrypted" | "_enc"> = {
+        const base: Omit<Entry, "_rev" | "encrypted" | "enc"> = {
           _id: latest._id, type: "entry",
           content: doc.content, tags: newTags,
           date: latest.date, createdAt: latest.createdAt,
@@ -158,7 +158,7 @@ interface EncPayload {
 }
 
 async function encryptEntry(
-  doc: Omit<Entry, "_rev" | "encrypted" | "_enc">,
+  doc: Omit<Entry, "_rev" | "encrypted" | "enc">,
 ): Promise<Omit<Entry, "_rev">> {
   const key = await loadKey();
   if (!key) return doc;
@@ -167,16 +167,16 @@ async function encryptEntry(
     tags: doc.tags,
     ...(doc.attachments?.length ? { attachments: doc.attachments } : {}),
   };
-  const _enc = await encryptText(key, JSON.stringify(payload));
-  return { _id: doc._id, type: "entry", date: doc.date, createdAt: doc.createdAt, content: "", tags: [], encrypted: true, _enc };
+  const enc = await encryptText(key, JSON.stringify(payload));
+  return { _id: doc._id, type: "entry", date: doc.date, createdAt: doc.createdAt, content: "", tags: [], encrypted: true, enc };
 }
 
 async function decryptEntry(entry: Entry): Promise<Entry> {
-  if (!entry.encrypted || !entry._enc) return entry;
+  if (!entry.encrypted || !entry.enc) return entry;
   const key = await loadKey();
   if (!key) return entry;
   try {
-    const payload = JSON.parse(await decryptText(key, entry._enc)) as EncPayload;
+    const payload = JSON.parse(await decryptText(key, entry.enc)) as EncPayload;
     return { ...entry, content: payload.content, tags: payload.tags, attachments: payload.attachments };
   } catch {
     return entry;
@@ -188,7 +188,7 @@ async function decryptEntry(entry: Entry): Promise<Entry> {
 export async function saveEntry(content: string, tags: string[], attachments?: Attachment[]): Promise<Entry> {
   const db = await getDB();
   const now = new Date();
-  const base: Omit<Entry, "_rev" | "encrypted" | "_enc"> = {
+  const base: Omit<Entry, "_rev" | "encrypted" | "enc"> = {
     _id: `entry_${now.getTime()}_${Math.random().toString(36).slice(2, 7)}`,
     type: "entry",
     content,
@@ -237,7 +237,7 @@ export async function updateEntry(entry: Entry, content: string, tags: string[])
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const latest = attempt === 0 ? entry : (await db.get(entry._id)) as unknown as Entry;
-      const base: Omit<Entry, "_rev" | "encrypted" | "_enc"> = {
+      const base: Omit<Entry, "_rev" | "encrypted" | "enc"> = {
         _id: latest._id, type: "entry",
         content, tags, date: latest.date, createdAt: latest.createdAt,
         ...(latest.attachments?.length ? { attachments: latest.attachments } : {}),
@@ -373,6 +373,7 @@ export interface Settings {
   language?: "de" | "en";
   weekStart?: "monday" | "sunday";
   theme?: "system" | "light" | "dark" | "sepia";
+  bodyFont?: "sans" | "serif" | "playfair" | "handwriting";
   couchdbUrl?: string;
   couchdbUsername?: string;
   couchdbPassword?: string;
@@ -431,7 +432,7 @@ export async function resolveConflict(
     // User chose an alternative — decrypt it and overwrite the winner
     const keepRaw = (await db.get(id, { rev: keepRev })) as Entry;
     const keep = await decryptEntry(keepRaw);
-    const base: Omit<Entry, "_rev" | "encrypted" | "_enc"> = {
+    const base: Omit<Entry, "_rev" | "encrypted" | "enc"> = {
       _id: id, type: "entry",
       content: keep.content, tags: keep.tags,
       date: keep.date, createdAt: keep.createdAt,

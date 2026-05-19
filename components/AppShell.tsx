@@ -5,6 +5,7 @@ import { isAuthenticated } from "@/lib/auth";
 import { SettingsProvider } from "@/lib/settings-context";
 import { useSyncStatus } from "@/lib/use-sync-status";
 import { useConflictCount } from "@/lib/use-conflict-count";
+import { useT } from "@/lib/i18n";
 import JournalView from "./JournalView";
 import CalendarView from "./CalendarView";
 import TodoView from "./TodoView";
@@ -89,6 +90,7 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
   const [showConflicts, setShowConflicts] = useState(false);
   const conflictCount = useConflictCount();
   const { canInstall, install } = useInstallPrompt();
+  const t = useT();
 
   return (
     <div className="flex min-h-screen flex-col" style={{ background: "var(--bg)" }}>
@@ -104,7 +106,7 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
           {conflictCount > 0 && (
             <button
               onClick={() => setShowConflicts(true)}
-              title={`${conflictCount} Sync-Konflikt${conflictCount !== 1 ? "e" : ""}`}
+              title={t.syncConflicts(conflictCount)}
               className="flex items-center gap-1.5 rounded-full px-2.5 py-1 font-sans text-xs font-medium transition-opacity hover:opacity-80"
               style={{
                 background: "color-mix(in oklch, oklch(72% 0.18 55), transparent 82%)",
@@ -129,12 +131,11 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
               onClick={install}
               className="flex items-center gap-1.5 rounded-full px-2.5 py-1 font-sans text-xs font-medium transition-opacity hover:opacity-80"
               style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
-              title="App installieren"
             >
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
               </svg>
-              Installieren
+              {t.install}
             </button>
           )}
           <SyncDot />

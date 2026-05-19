@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { hasPassword, setupPassword, login } from "@/lib/auth";
+import { useT } from "@/lib/i18n";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -187,19 +188,24 @@ function useMouse() {
 interface Props { onAuth: () => void; }
 
 export default function LockScreen({ onAuth }: Props) {
-  const [mode, setMode] = useState<"loading" | "setup" | "login">("loading");
+  const [mode, setMode] = useState<"loading" | "choose" | "setup" | "login">("loading");
+  const [hasLocalAccount, setHasLocalAccount] = useState(false);
   const [password, setPassword] = useState("");
   const [confirm,  setConfirm]  = useState("");
   const [error,    setError]    = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [focused,  setFocused]  = useState<"pw" | "confirm" | null>(null);
 
+  const t = useT();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useWheatField(canvasRef);
   const mouse = useMouse();
 
   useEffect(() => {
-    hasPassword().then((has) => setMode(has ? "login" : "setup"));
+    hasPassword().then((has) => {
+      setHasLocalAccount(has);
+      setMode(has ? "login" : "choose");
+    });
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -207,8 +213,8 @@ export default function LockScreen({ onAuth }: Props) {
     setError("");
     if (!password.trim()) return;
     if (mode === "setup") {
-      if (password !== confirm) { setError("Passwörter stimmen nicht überein."); return; }
-      if (password.length < 4)  { setError("Mindestens 4 Zeichen."); return; }
+      if (password !== confirm) { setError(t.passwordMismatch); return; }
+      if (password.length < 4)  { setError(t.passwordTooShort); return; }
       setSubmitting(true);
       await setupPassword(password);
       onAuth();
@@ -216,7 +222,12 @@ export default function LockScreen({ onAuth }: Props) {
       setSubmitting(true);
       const ok = await login(password);
       if (ok) { onAuth(); }
-      else { setError("Falsches Passwort."); setPassword(""); setSubmitting(false); }
+      else {
+        const msg = hasLocalAccount ? t.wrongPassword : t.noLocalAccount;
+        setError(msg);
+        setPassword("");
+        setSubmitting(false);
+      }
     }
   }
 
@@ -337,6 +348,43 @@ export default function LockScreen({ onAuth }: Props) {
               style={{ borderColor: "var(--border)", borderTopColor: "var(--accent)" }}
             />
           </div>
+        ) : mode === "choose" ? (
+          <div
+            className="mt-8 flex flex-col gap-5"
+            style={{
+              transform: px(3),
+              transition: "transform 0.22s ease-out",
+              animation: "def-fade 0.7s ease 0.58s both",
+            }}
+          >
+            <p className="font-serif text-sm leading-relaxed" style={{ color: "var(--fg-muted)", opacity: 0.7 }}>
+              {t.firstTimePrompt}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setMode("setup"); setError(""); setPassword(""); setConfirm(""); }}
+                className="flex-1 rounded-full py-2.5 font-sans text-sm font-medium tracking-wide transition-all"
+                style={{
+                  background: "var(--fg)",
+                  color: "var(--bg)",
+                  border: "1.5px solid var(--fg)",
+                }}
+              >
+                {t.register}
+              </button>
+              <button
+                onClick={() => { setMode("login"); setError(""); setPassword(""); }}
+                className="flex-1 rounded-full py-2.5 font-sans text-sm font-medium tracking-wide transition-all"
+                style={{
+                  background: "transparent",
+                  color: "var(--fg-muted)",
+                  border: "1.5px solid var(--border-focus)",
+                }}
+              >
+                {t.signin}
+              </button>
+            </div>
+          </div>
         ) : (
         <form
           onSubmit={handleSubmit}
@@ -349,7 +397,7 @@ export default function LockScreen({ onAuth }: Props) {
         >
           {mode === "setup" && (
             <p className="font-serif text-sm leading-relaxed" style={{ color: "var(--fg-muted)", opacity: 0.7 }}>
-              Alles was du schreibst wird verschlüsselt — nur du kannst es lesen.
+              {t.encryptionNotice}
             </p>
           )}
           <div>
@@ -357,7 +405,7 @@ export default function LockScreen({ onAuth }: Props) {
               className="mb-1.5 block font-sans text-[10px] uppercase tracking-[0.18em]"
               style={{ color: "var(--fg-muted)" }}
             >
-              {mode === "setup" ? "Passwort wählen" : "Passwort"}
+              {mode === "setup" ? t.choosePassword : t.password}
             </label>
             <div style={{
               borderBottom: `1.5px solid ${focused === "pw" ? "var(--accent)" : "var(--border-focus)"}`,
@@ -382,7 +430,7 @@ export default function LockScreen({ onAuth }: Props) {
                 className="mb-1.5 block font-sans text-[10px] uppercase tracking-[0.18em]"
                 style={{ color: "var(--fg-muted)" }}
               >
-                Bestätigen
+                {t.confirm}
               </label>
               <div style={{
                 borderBottom: `1.5px solid ${focused === "confirm" ? "var(--accent)" : "var(--border-focus)"}`,
@@ -409,7 +457,7 @@ export default function LockScreen({ onAuth }: Props) {
 
           <div className="flex items-center justify-between pt-1">
             <span className="font-serif text-sm italic" style={{ color: "var(--fg-muted)", opacity: 0.4 }}>
-              {mode === "setup" ? "mindestens 4 Zeichen" : ""}
+              {mode === "setup" ? t.minChars : ""}
             </span>
             <button
               type="submit"
@@ -422,9 +470,20 @@ export default function LockScreen({ onAuth }: Props) {
                 opacity: submitting ? 0.6 : 1,
               }}
             >
-              {submitting ? "…" : mode === "setup" ? "Loslegen" : "Entsperren"}
+              {submitting ? "…" : mode === "setup" ? t.getStarted : t.unlock}
             </button>
           </div>
+
+          {!hasLocalAccount && (
+            <button
+              type="button"
+              onClick={() => { setMode("choose"); setError(""); setPassword(""); setConfirm(""); }}
+              className="font-sans text-xs transition-opacity hover:opacity-60"
+              style={{ color: "var(--fg-muted)", textAlign: "left" }}
+            >
+              {t.back}
+            </button>
+          )}
         </form>
         )}
       </div>

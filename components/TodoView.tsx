@@ -10,6 +10,8 @@ import {
   deleteTodo,
 } from "@/lib/db";
 import type { Todo } from "@/types/todo";
+import { useT, type Translations } from "@/lib/i18n";
+import { useSettings, locale } from "@/lib/settings-context";
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -25,20 +27,20 @@ function tomorrow(): string {
 
 type DueStatus = "overdue" | "today" | "soon" | "future";
 
-function getDueInfo(dueDate: string): { label: string; status: DueStatus } {
+function getDueInfo(dueDate: string, tr: Translations, loc: string): { label: string; status: DueStatus } {
   const t = today();
   const tom = tomorrow();
   if (dueDate < t) {
     const diff = Math.round(
       (new Date(t).getTime() - new Date(dueDate).getTime()) / 86_400_000
     );
-    return { label: diff === 1 ? "Gestern" : `${diff}d überfällig`, status: "overdue" };
+    return { label: diff === 1 ? tr.yesterday : tr.overdue(diff), status: "overdue" };
   }
-  if (dueDate === t) return { label: "Heute", status: "today" };
-  if (dueDate === tom) return { label: "Morgen", status: "soon" };
+  if (dueDate === t) return { label: tr.today, status: "today" };
+  if (dueDate === tom) return { label: tr.tomorrow, status: "soon" };
   const d = new Date(dueDate + "T00:00:00");
   return {
-    label: d.toLocaleDateString("de-DE", { day: "numeric", month: "short" }),
+    label: d.toLocaleDateString(loc, { day: "numeric", month: "short" }),
     status: "future",
   };
 }
@@ -69,6 +71,9 @@ function sortOpen(todos: Todo[]): Todo[] {
 // ─── Main view ────────────────────────────────────────────────────────────────
 
 export default function TodoView() {
+  const t = useT();
+  const { settings } = useSettings();
+  const loc = locale(settings);
   const [todos, setTodos] = useState<Todo[]>([]);
   const [input, setInput] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -148,7 +153,7 @@ export default function TodoView() {
       {/* Header */}
       <div className="mb-4 flex items-baseline justify-between">
         <h2 className="font-serif text-2xl font-normal" style={{ color: "var(--fg)" }}>
-          Noch zu lernen
+          {t.toLearn}
         </h2>
         {total > 0 && (
           <span className="font-sans text-xs tabular-nums" style={{ color: "var(--fg-muted)" }}>
@@ -179,7 +184,7 @@ export default function TodoView() {
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Was willst du noch lernen?"
+            placeholder={t.whatToLearn}
             autoFocus
             className="journal-input flex-1 rounded-2xl px-4 py-3 font-sans text-sm outline-none"
             style={{
@@ -195,7 +200,7 @@ export default function TodoView() {
             type="button"
             onClick={() => setShowDate((v) => !v)}
             data-active={showDate ? "true" : undefined}
-            title="Fälligkeit setzen"
+            title={t.setDueDate}
             className="btn-3d flex flex-shrink-0 items-center justify-center rounded-2xl px-3.5 py-3"
             style={{
               color: dueDate ? "var(--accent)" : "var(--fg-muted)",
@@ -249,10 +254,10 @@ export default function TodoView() {
                 style={{ color: dueDate ? "var(--fg)" : "var(--fg-placeholder)", pointerEvents: "none" }}
               >
                 {dueDate
-                  ? new Date(dueDate + "T00:00:00").toLocaleDateString("de-DE", {
+                  ? new Date(dueDate + "T00:00:00").toLocaleDateString(loc, {
                       weekday: "short", day: "numeric", month: "long", year: "numeric",
                     })
-                  : "Datum wählen…"}
+                  : t.pickDate}
               </span>
               <input
                 type="date"
@@ -271,7 +276,7 @@ export default function TodoView() {
                 className="flex-shrink-0 font-sans text-xs transition-opacity hover:opacity-60"
                 style={{ color: "var(--fg-muted)" }}
               >
-                Entfernen
+                {t.remove}
               </button>
             )}
           </div>
@@ -288,7 +293,7 @@ export default function TodoView() {
         </div>
       ) : total === 0 ? (
         <p className="py-16 text-center font-serif italic" style={{ color: "var(--fg-muted)" }}>
-          Füge dein erstes Lernziel hinzu.
+          {t.addFirstGoal}
         </p>
       ) : (
         <>
@@ -314,7 +319,7 @@ export default function TodoView() {
                   className="font-sans text-[10px] font-medium uppercase tracking-[0.16em]"
                   style={{ color: "var(--fg-muted)" }}
                 >
-                  Erledigt · {done.length}
+                  {t.done} · {done.length}
                 </span>
                 <div className="h-px flex-1" style={{ background: "var(--border)" }} />
               </div>
@@ -359,6 +364,9 @@ function TodoItem({
   onDelete: (id: string) => void;
   dimmed?: boolean;
 }) {
+  const tr = useT();
+  const { settings } = useSettings();
+  const loc = locale(settings);
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(todo.text);
   const [popping, setPopping] = useState(false);
@@ -385,7 +393,7 @@ function TodoItem({
     onToggle(todo);
   }
 
-  const dueInfo = todo.dueDate && !todo.done ? getDueInfo(todo.dueDate) : null;
+  const dueInfo = todo.dueDate && !todo.done ? getDueInfo(todo.dueDate, tr, loc) : null;
   const dueColors = dueInfo ? STATUS_COLOR[dueInfo.status] : null;
 
   return (
@@ -412,7 +420,7 @@ function TodoItem({
           background: todo.done ? "var(--accent)" : "transparent",
           color: "var(--bg)",
         }}
-        aria-label={todo.done ? "Als offen markieren" : "Als erledigt markieren"}
+        aria-label={todo.done ? tr.markOpen : tr.markDone}
       >
         <svg
           width="10" height="10" viewBox="0 0 12 12"
@@ -478,7 +486,7 @@ function TodoItem({
             onChange={(e) => onUpdateDueDate(todo, e.target.value || undefined)}
             className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
             tabIndex={-1}
-            aria-label="Fälligkeit ändern"
+            aria-label={tr.setDueDate}
           />
         </div>
       )}
@@ -491,13 +499,13 @@ function TodoItem({
             className="rounded-lg px-2 py-0.5 font-sans text-[11px] font-medium transition-opacity hover:opacity-80"
             style={{ background: "var(--due-overdue-bg)", color: "var(--due-overdue)" }}
           >
-            Löschen
+            {tr.delete}
           </button>
           <button
             onClick={() => setPendingDelete(false)}
             className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-sm transition-opacity hover:opacity-60"
             style={{ color: "var(--fg-muted)" }}
-            aria-label="Abbrechen"
+            aria-label={tr.cancel}
           >
             ✕
           </button>

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Lora, DM_Sans } from "next/font/google";
+import { Lora, DM_Sans, Playfair_Display, Caveat } from "next/font/google";
 import "./globals.css";
 
 const lora = Lora({
@@ -13,6 +13,21 @@ const dmSans = DM_Sans({
   variable: "--font-dm-sans",
   subsets: ["latin"],
   weight: ["300", "400", "500"],
+  display: "swap",
+});
+
+const playfair = Playfair_Display({
+  variable: "--font-playfair",
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  weight: ["400", "500", "600"],
+  display: "swap",
+});
+
+const caveat = Caveat({
+  variable: "--font-caveat",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
   display: "swap",
 });
 
@@ -34,7 +49,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="de" className={`${lora.variable} ${dmSans.variable}`} suppressHydrationWarning>
+    <html lang="de" className={`${lora.variable} ${dmSans.variable} ${playfair.variable} ${caveat.variable}`} suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#F3EDE3" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#15100C" media="(prefers-color-scheme: dark)" />
@@ -43,7 +58,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon-apple.png" />
         {/* Apply theme class before React hydrates to prevent flash */}
         <script dangerouslySetInnerHTML={{ __html:
-          `try{var t=localStorage.getItem("gleaned-theme")||"system";if(t!=="system")document.documentElement.classList.add("theme-"+t)}catch(e){}`
+          `try{var t=localStorage.getItem("gleaned-theme")||"system";if(t!=="system")document.documentElement.classList.add("theme-"+t);var f=localStorage.getItem("gleaned-font")||"sans";var fm={"sans":"var(--font-dm-sans),ui-sans-serif,system-ui,sans-serif","serif":"var(--font-lora),Georgia,serif","playfair":"var(--font-playfair),Georgia,serif","handwriting":"var(--font-caveat),cursive"};document.documentElement.style.setProperty("--font-body",fm[f]||fm.sans);var l=localStorage.getItem("gleaned-lang")||"de";document.documentElement.lang=l}catch(e){}`
         }} />
         <script
           dangerouslySetInnerHTML={{

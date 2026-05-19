@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { saveEntry, getAllTags } from "@/lib/db";
 import type { Entry, Attachment } from "@/types/entry";
+import { useT } from "@/lib/i18n";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
@@ -38,6 +39,7 @@ interface Props {
 }
 
 export default function EntryForm({ onSaved }: Props) {
+  const t = useT();
   const [content, setContent] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>([]);
@@ -162,12 +164,13 @@ export default function EntryForm({ onSaved }: Props) {
           onClick={handleLineClick}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          placeholder="Was hast du heute gelernt?"
+          placeholder={t.entryPlaceholder}
           autoFocus
-          className="journal-input w-full resize-none bg-transparent font-sans text-base leading-relaxed outline-none"
+          className="journal-input w-full resize-none bg-transparent text-base leading-relaxed outline-none"
           style={{
             color: "var(--fg)",
             caretColor: "var(--accent)",
+            fontFamily: "var(--font-body)",
             minHeight: "clamp(10rem, 40vh, 28rem)",
             padding: "0",
             backgroundImage:
@@ -229,7 +232,7 @@ export default function EntryForm({ onSaved }: Props) {
           onClick={() => fileInputRef.current?.click()}
           className="btn-3d flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl font-sans text-xl font-light leading-none"
           style={{ color: "var(--accent)" }}
-          title="Datei anhängen"
+          title={t.attachFile}
         >
           +
         </button>
@@ -262,7 +265,7 @@ export default function EntryForm({ onSaved }: Props) {
             onChange={(e) => setTagInput(e.target.value)}
             onKeyDown={handleTagKeyDown}
             onBlur={() => setTimeout(() => tagInput.trim() && addTag(tagInput), 150)}
-            placeholder={tags.length === 0 ? "Tags..." : ""}
+            placeholder={tags.length === 0 ? t.tagsPlaceholder : ""}
             className="journal-input w-full bg-transparent font-sans text-xs outline-none"
             style={{ color: "var(--fg-muted)" }}
           />
@@ -309,7 +312,7 @@ export default function EntryForm({ onSaved }: Props) {
               cursor: hasContent ? "pointer" : "default",
             }}
           >
-            {saving ? "…" : "Speichern"}
+            {saving ? "…" : t.save}
           </button>
         </div>
       </div>

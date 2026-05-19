@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { getConflicts, resolveConflict, type ConflictDoc } from "@/lib/db";
 import type { Entry } from "@/types/entry";
 import { useSettings, locale } from "@/lib/settings-context";
+import { useT } from "@/lib/i18n";
 
 function formatTs(iso: string, loc: string) {
   return new Date(iso).toLocaleString(loc, {
@@ -21,14 +22,16 @@ function VersionCard({
   onKeep,
   busy,
   loc,
-  de,
+  noContent,
+  keepThis,
 }: {
   entry: Entry;
   label: string;
   onKeep: () => void;
   busy: boolean;
   loc: string;
-  de: boolean;
+  noContent: string;
+  keepThis: string;
 }) {
   return (
     <div
@@ -51,7 +54,7 @@ function VersionCard({
         className="max-h-36 overflow-y-auto whitespace-pre-wrap font-sans text-sm leading-relaxed"
         style={{ color: entry.content ? "var(--fg)" : "var(--fg-muted)" }}
       >
-        {entry.content || (de ? "Kein Inhalt" : "No content")}
+        {entry.content || noContent}
       </div>
 
       {entry.tags && entry.tags.length > 0 && (
@@ -79,7 +82,7 @@ function VersionCard({
           cursor: busy ? "default" : "pointer",
         }}
       >
-        {busy ? "…" : (de ? "Diese behalten" : "Keep this")}
+        {busy ? "…" : keepThis}
       </button>
     </div>
   );
@@ -91,8 +94,8 @@ interface Props {
 
 export default function ConflictModal({ onClose }: Props) {
   const { settings } = useSettings();
+  const t = useT();
   const loc = locale(settings);
-  const de = settings.language === "de";
 
   const [items, setItems] = useState<ConflictDoc[]>([]);
   const [loading, setLoading] = useState(true);
@@ -151,7 +154,7 @@ export default function ConflictModal({ onClose }: Props) {
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
             <h2 className="font-serif text-xl font-normal" style={{ color: "var(--fg)" }}>
-              {de ? "Sync-Konflikt" : "Sync conflict"}
+              {t.syncConflict}
             </h2>
             {items.length > 1 && (
               <p className="mt-0.5 font-sans text-xs" style={{ color: "var(--fg-muted)" }}>
@@ -163,16 +166,14 @@ export default function ConflictModal({ onClose }: Props) {
             onClick={onClose}
             className="btn-3d flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full font-sans text-base leading-none"
             style={{ color: "var(--fg-muted)" }}
-            aria-label="Schließen"
+            aria-label={t.close}
           >
             ×
           </button>
         </div>
 
         <p className="mb-4 font-sans text-sm" style={{ color: "var(--fg-muted)" }}>
-          {de
-            ? "Dieser Eintrag wurde auf zwei Geräten offline bearbeitet. Wähle die Version, die gespeichert werden soll."
-            : "This entry was edited on two devices while offline. Choose the version to keep."}
+          {t.conflictDesc}
         </p>
 
         {loading ? (
@@ -184,7 +185,7 @@ export default function ConflictModal({ onClose }: Props) {
           </div>
         ) : !conflict ? (
           <p className="py-6 text-center font-sans text-sm" style={{ color: "var(--fg-muted)" }}>
-            {de ? "Keine Konflikte mehr." : "No more conflicts."}
+            {t.noConflicts}
           </p>
         ) : (
           <>
@@ -197,7 +198,8 @@ export default function ConflictModal({ onClose }: Props) {
                   onKeep={() => handleKeep(entry)}
                   busy={busy}
                   loc={loc}
-                  de={de}
+                  noContent={t.noContent}
+                  keepThis={t.keepThis}
                 />
               ))}
             </div>

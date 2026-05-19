@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { getEntriesByDate, getEntriesByTag, getStreakData } from "@/lib/db";
 import type { Entry } from "@/types/entry";
 import { useSettings, locale } from "@/lib/settings-context";
+import { useT } from "@/lib/i18n";
 import EntryForm from "./EntryForm";
 import EntryCard from "./EntryCard";
 
@@ -67,6 +68,7 @@ function StreakBadge({ streak, lang }: { streak: number; lang: "de" | "en" }) {
 
 export default function JournalView() {
   const { settings } = useSettings();
+  const t = useT();
   const loc = locale(settings);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,7 +78,6 @@ export default function JournalView() {
 
   const today = todayDate();
   const { weekday, full } = formatDate(today, loc);
-  const de = settings.language === "de";
 
   useEffect(() => {
     getStreakData().then(({ streak }) => setStreak(streak));
@@ -109,9 +110,7 @@ export default function JournalView() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  const emptyLabel = filterTag
-    ? (de ? `Keine Einträge für #${filterTag}` : `No entries for #${filterTag}`)
-    : (de ? "Was bleibt heute hängen?" : "What's sticking with you today?");
+  const emptyLabel = filterTag ? t.noEntriesTag(filterTag) : t.whatsSticking;
 
   return (
     <div className="md:flex md:min-h-full">
@@ -135,7 +134,7 @@ export default function JournalView() {
                 className="flex items-center gap-1 rounded-full px-2.5 py-1 font-sans text-xs transition-opacity hover:opacity-70"
                 style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
               >
-                × {de ? "zurück" : "back"}
+                × {t.filterBack}
               </button>
             </div>
           ) : (
@@ -171,13 +170,11 @@ export default function JournalView() {
               className="font-serif text-2xl font-normal"
               style={{ color: "var(--fg)", opacity: entries.length === 0 ? 0.3 : 1 }}
             >
-              {filterTag
-                ? `#${filterTag}`
-                : de ? "Was heute hängen bleibt" : "What stuck today"}
+              {filterTag ? `#${filterTag}` : t.whatStuckToday}
             </p>
             {entries.length > 0 && (
               <p className="mt-1 font-sans text-xs" style={{ color: "var(--fg-muted)" }}>
-                {entries.length} {de ? (entries.length === 1 ? "Eintrag" : "Einträge") : (entries.length === 1 ? "entry" : "entries")}
+                {entries.length} {entries.length === 1 ? t.entry : t.entries}
               </p>
             )}
           </div>
@@ -191,7 +188,7 @@ export default function JournalView() {
               className="font-sans text-[10px] font-medium tracking-[0.18em] uppercase"
               style={{ color: "var(--fg-muted)" }}
             >
-              {filterTag ? `#${filterTag}` : (de ? "Heute" : "Today")} · {entries.length}
+              {filterTag ? `#${filterTag}` : t.today} · {entries.length}
             </span>
             <div className="h-px flex-1" style={{ background: "var(--border)" }} />
           </div>
@@ -257,7 +254,7 @@ export default function JournalView() {
             className="mt-12 text-center font-serif text-xl italic md:mt-2 md:text-left"
             style={{ color: "var(--fg-muted)", opacity: 0.5 }}
           >
-            {de ? "Noch nichts für heute." : "Nothing yet today."}
+            {t.nothingYetToday}
           </p>
         )}
 

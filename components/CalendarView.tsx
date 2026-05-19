@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { getEntryCountsByDate, getEntriesByDate } from "@/lib/db";
 import type { Entry } from "@/types/entry";
 import { useSettings, locale } from "@/lib/settings-context";
+import { useT } from "@/lib/i18n";
 import EntryCard from "./EntryCard";
 
 function daysInMonth(year: number, month: number) {
@@ -18,6 +19,7 @@ function firstDayOfMonth(year: number, month: number, weekStart: "monday" | "sun
 
 export default function CalendarView() {
   const { settings } = useSettings();
+  const t = useT();
   const loc = locale(settings);
   const todayDate = new Date();
   const [year, setYear] = useState(todayDate.getFullYear());
@@ -95,7 +97,7 @@ export default function CalendarView() {
           onClick={prev}
           className="btn-3d flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl"
           style={{ color: "var(--fg-muted)" }}
-          aria-label="Vorheriger Monat"
+          aria-label={t.prevMonth}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6" />
@@ -113,7 +115,7 @@ export default function CalendarView() {
           onClick={next}
           className="btn-3d flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl"
           style={{ color: "var(--fg-muted)" }}
-          aria-label="Nächster Monat"
+          aria-label={t.nextMonth}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="9 18 15 12 9 6" />
@@ -160,7 +162,7 @@ export default function CalendarView() {
               onMouseEnter={() => setHovered(dateStr)}
               onMouseLeave={() => setHovered(null)}
               className="btn-3d-subtle relative flex h-full w-full flex-col items-center justify-center gap-0.5 rounded-xl font-sans text-sm"
-              title={count > 0 ? `${count} Eintr${count === 1 ? "ag" : "äge"}` : undefined}
+              title={count > 0 ? t.entryCount(count) : undefined}
               style={{
                 background: level > 0 ? HEAT_BG[level] : undefined,
                 color: isSelected ? "var(--accent)" : isToday ? "var(--accent)" : "var(--fg)",
@@ -207,7 +209,7 @@ export default function CalendarView() {
       {/* Heatmap legend */}
       <div className="mb-5 flex items-center justify-end gap-1.5">
         <span className="font-sans text-[10px]" style={{ color: "var(--fg-muted)" }}>
-          {settings.language === "de" ? "weniger" : "less"}
+          {t.less}
         </span>
         {([0, 1, 2, 3, 4] as const).map((lvl) => (
           <span
@@ -222,7 +224,7 @@ export default function CalendarView() {
           />
         ))}
         <span className="font-sans text-[10px]" style={{ color: "var(--fg-muted)" }}>
-          {settings.language === "de" ? "mehr" : "more"}
+          {t.more}
         </span>
       </div>
 
@@ -252,7 +254,7 @@ export default function CalendarView() {
               className="py-4 text-center font-serif italic"
               style={{ color: "var(--fg-muted)" }}
             >
-              Keine Einträge an diesem Tag.
+              {t.noEntriesOnDay}
             </p>
           ) : (
             <div className="flex flex-col gap-2">
