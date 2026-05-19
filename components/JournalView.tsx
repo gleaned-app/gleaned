@@ -20,10 +20,7 @@ function formatDate(dateStr: string, loc: string) {
 }
 
 // ─── Streak badge ─────────────────────────────────────────────────────────────
-// 4 heat levels based on consecutive days. Colors shift amber → orange → red-orange.
-// Level 4 (30+ days) pulses via CSS animation.
 
-// Show from day 1. Thresholds: 1 / 4 / 10 / 30+
 function streakLevel(n: number): 0 | 1 | 2 | 3 | 4 {
   if (n < 1)  return 0;
   if (n < 4)  return 1;
@@ -32,7 +29,6 @@ function streakLevel(n: number): 0 | 1 | 2 | 3 | 4 {
   return 4;
 }
 
-// Colors via CSS vars — each theme defines --streak-{1-4} for correct contrast
 const HEAT: Record<1 | 2 | 3 | 4, { shadow: string; pulse: boolean }> = {
   1: { shadow: "none",                                                                                           pulse: false },
   2: { shadow: "0 0 10px color-mix(in oklch, var(--streak-2), transparent 65%)",                               pulse: false },
@@ -80,6 +76,7 @@ export default function JournalView() {
 
   const today = todayDate();
   const { weekday, full } = formatDate(today, loc);
+  const de = settings.language === "de";
 
   useEffect(() => {
     getStreakData().then(({ streak }) => setStreak(streak));
@@ -107,76 +104,133 @@ export default function JournalView() {
     setEntries((prev) => prev.map((e) => (e._id === updated._id ? updated : e)));
   }
 
+  function handleTagClick(tag: string) {
+    setFilterTag(tag);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  const emptyLabel = filterTag
+    ? (de ? `Keine Einträge für #${filterTag}` : `No entries for #${filterTag}`)
+    : (de ? "Was bleibt heute hängen?" : "What's sticking with you today?");
+
   return (
-    <div className="mx-auto max-w-[620px] px-5 pt-4 pb-4">
-      <header className="mb-8 fade-up">
-        {filterTag ? (
-          <div className="flex items-center gap-3">
-            <h1 className="font-serif text-[2rem] font-normal leading-none tracking-tight" style={{ color: "var(--fg)" }}>
-              #{filterTag}
-            </h1>
-            <button
-              onClick={() => setFilterTag(null)}
-              className="flex items-center gap-1 rounded-full px-2.5 py-1 font-sans text-xs transition-opacity hover:opacity-70"
-              style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
-            >
-              × zurück
-            </button>
-          </div>
-        ) : (
-          <>
-            <h1 className="font-serif text-[2.6rem] font-normal leading-none tracking-tight" style={{ color: "var(--fg)" }}>
-              {weekday}
-            </h1>
-            <div className="mt-2 flex items-center gap-3">
-              <p className="font-sans text-sm" style={{ color: "var(--fg-muted)" }}>
-                {full}
-              </p>
-              <StreakBadge streak={streak} lang={settings.language} />
+    <div className="md:flex md:min-h-full">
+
+      {/* ── Left panel: form ──────────────────────────────────────── */}
+      <aside
+        className="px-5 pt-4 pb-4 md:w-[360px] md:flex-shrink-0 md:sticky md:top-0 md:self-start md:max-h-screen md:overflow-y-auto md:border-r md:px-8 md:py-8"
+        style={{ borderColor: "var(--border)" }}
+      >
+        <header className="mb-8 fade-up">
+          {filterTag ? (
+            <div className="flex items-center gap-3">
+              <h1
+                className="font-serif text-[2rem] font-normal leading-none tracking-tight"
+                style={{ color: "var(--fg)" }}
+              >
+                #{filterTag}
+              </h1>
+              <button
+                onClick={() => setFilterTag(null)}
+                className="flex items-center gap-1 rounded-full px-2.5 py-1 font-sans text-xs transition-opacity hover:opacity-70"
+                style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+              >
+                × {de ? "zurück" : "back"}
+              </button>
             </div>
-          </>
-        )}
-      </header>
+          ) : (
+            <>
+              <h1
+                className="font-serif text-[2.6rem] font-normal leading-none tracking-tight"
+                style={{ color: "var(--fg)" }}
+              >
+                {weekday}
+              </h1>
+              <div className="mt-2 flex items-center gap-3">
+                <p className="font-sans text-sm" style={{ color: "var(--fg-muted)" }}>
+                  {full}
+                </p>
+                <StreakBadge streak={streak} lang={settings.language} />
+              </div>
+            </>
+          )}
+        </header>
 
-      <div className="fade-up" style={{ animationDelay: "55ms" }}>
-        <EntryForm onSaved={handleSaved} />
-      </div>
+        <div className="fade-up" style={{ animationDelay: "55ms" }}>
+          <EntryForm onSaved={handleSaved} />
+        </div>
+      </aside>
 
-      {!loading && entries.length > 0 && (
-        <>
-          <div className="my-7 flex items-center gap-4">
+      {/* ── Right panel: entries ──────────────────────────────────── */}
+      <div className="flex-1 px-5 pb-4 md:px-10 md:py-8">
+
+        {/* Divider — mobile only */}
+        {!loading && entries.length > 0 && (
+          <div className="my-7 flex items-center gap-4 md:hidden">
             <div className="h-px flex-1" style={{ background: "var(--border)" }} />
-            <span className="font-sans text-[10px] font-medium tracking-[0.18em] uppercase" style={{ color: "var(--fg-muted)" }}>
-              {filterTag ? `#${filterTag}` : "Heute"} · {entries.length}
+            <span
+              className="font-sans text-[10px] font-medium tracking-[0.18em] uppercase"
+              style={{ color: "var(--fg-muted)" }}
+            >
+              {filterTag ? `#${filterTag}` : (de ? "Heute" : "Today")} · {entries.length}
             </span>
             <div className="h-px flex-1" style={{ background: "var(--border)" }} />
           </div>
-          <div className="flex flex-col gap-2">
-            {entries.map((entry) => (
-              <div key={entry._id} className={newIds.has(entry._id) ? "entry-appear" : ""}>
-                <EntryCard
-                  entry={entry}
-                  onDelete={handleDelete}
-                  onUpdate={handleUpdate}
-                  onTagClick={(tag) => { setFilterTag(tag); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                />
-              </div>
-            ))}
+        )}
+
+        {!loading && entries.length > 0 && (
+          <div className="flex flex-col gap-2 md:gap-5">
+            {entries.map((entry) => {
+              const timeLabel = filterTag
+                ? new Date(entry.date + "T00:00:00").toLocaleDateString(loc, {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : new Date(entry.createdAt).toLocaleTimeString(loc, {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
+
+              return (
+                <div key={entry._id} className={newIds.has(entry._id) ? "entry-appear" : ""}>
+                  <p
+                    className="mb-1.5 hidden font-sans text-xs font-medium tracking-wide md:block"
+                    style={{ color: "var(--fg-muted)" }}
+                  >
+                    {timeLabel}
+                  </p>
+                  <EntryCard
+                    entry={entry}
+                    onDelete={handleDelete}
+                    onUpdate={handleUpdate}
+                    onTagClick={handleTagClick}
+                  />
+                </div>
+              );
+            })}
           </div>
-        </>
-      )}
+        )}
 
-      {!loading && entries.length === 0 && (
-        <p className="mt-12 text-center font-serif text-xl italic" style={{ color: "var(--fg-muted)" }}>
-          Was bleibt heute hängen?
-        </p>
-      )}
+        {!loading && entries.length === 0 && (
+          <p
+            className="mt-12 text-center font-serif text-xl italic md:mt-6 md:text-left"
+            style={{ color: "var(--fg-muted)" }}
+          >
+            {emptyLabel}
+          </p>
+        )}
 
-      {loading && (
-        <div className="mt-12 flex justify-center">
-          <div className="h-4 w-4 animate-spin rounded-full border-2" style={{ borderColor: "var(--border)", borderTopColor: "var(--accent)" }} />
-        </div>
-      )}
+        {loading && (
+          <div className="mt-12 flex justify-center md:mt-8">
+            <div
+              className="h-4 w-4 animate-spin rounded-full border-2"
+              style={{ borderColor: "var(--border)", borderTopColor: "var(--accent)" }}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
