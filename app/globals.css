@@ -37,11 +37,16 @@
   --btn-shadow:      oklch(30% 0.03 60 / 0.13);
   --btn-active-face: oklch(90% 0.022 73);
   --btn-inset:       oklch(74% 0.03 68 / 0.35);
+  --code-kw:         oklch(50% 0.2   290);
+  --code-str:        oklch(48% 0.17  145);
+  --code-num:        oklch(55% 0.18   48);
+  --code-fn:         oklch(46% 0.15  220);
+  --code-type:       oklch(52% 0.15   34);
+  --code-meta:       oklch(52% 0.18   25);
 }
 
-/* DARK vars — reused by explicit class and system media query */
-html.theme-dark,
-html.theme-dark :root {
+/* DARK — explicit class */
+html.theme-dark {
   --bg:              oklch(13% 0.016 55);
   --bg-card:         oklch(17% 0.018 56);
   --bg-nav:          oklch(14.5% 0.016 55);
@@ -68,6 +73,12 @@ html.theme-dark :root {
   --btn-shadow:      oklch(0% 0 0 / 0.45);
   --btn-active-face: oklch(15% 0.016 55);
   --btn-inset:       oklch(0% 0 0 / 0.5);
+  --code-kw:         oklch(72% 0.2   290);
+  --code-str:        oklch(68% 0.17  145);
+  --code-num:        oklch(74% 0.18   48);
+  --code-fn:         oklch(68% 0.15  220);
+  --code-type:       oklch(72% 0.15   34);
+  --code-meta:       oklch(70% 0.18   25);
 }
 
 /* SEPIA — warm aged paper */
@@ -98,6 +109,12 @@ html.theme-sepia {
   --btn-shadow:      oklch(30% 0.05 65 / 0.15);
   --btn-active-face: oklch(86% 0.048 81);
   --btn-inset:       oklch(70% 0.05 76 / 0.38);
+  --code-kw:         oklch(44% 0.18   42);
+  --code-str:        oklch(44% 0.15  135);
+  --code-num:        oklch(50% 0.16   58);
+  --code-fn:         oklch(42% 0.13  210);
+  --code-type:       oklch(48% 0.14   30);
+  --code-meta:       oklch(46% 0.16   25);
 }
 
 /* SYSTEM — follow OS when no explicit theme class is set */
@@ -129,6 +146,12 @@ html.theme-sepia {
     --btn-shadow:      oklch(0% 0 0 / 0.45);
     --btn-active-face: oklch(15% 0.016 55);
     --btn-inset:       oklch(0% 0 0 / 0.5);
+    --code-kw:         oklch(72% 0.2   290);
+    --code-str:        oklch(68% 0.17  145);
+    --code-num:        oklch(74% 0.18   48);
+    --code-fn:         oklch(68% 0.15  220);
+    --code-type:       oklch(72% 0.15   34);
+    --code-meta:       oklch(70% 0.18   25);
   }
 }
 
@@ -232,43 +255,6 @@ body {
 .hljs-deletion, .hljs-meta       { color: var(--code-meta, oklch(55% 0.18 25)); }
 .hljs-emphasis                   { font-style: italic; }
 .hljs-strong                     { font-weight: bold; }
-
-/* Light/sepia token colours */
-:root {
-  --code-kw:   oklch(50% 0.2  290);
-  --code-str:  oklch(48% 0.17 145);
-  --code-num:  oklch(55% 0.18  48);
-  --code-fn:   oklch(46% 0.15 220);
-  --code-type: oklch(52% 0.15  34);
-  --code-meta: oklch(52% 0.18  25);
-}
-html.theme-sepia {
-  --code-kw:   oklch(44% 0.18  42);
-  --code-str:  oklch(44% 0.15 135);
-  --code-num:  oklch(50% 0.16  58);
-  --code-fn:   oklch(42% 0.13 210);
-  --code-type: oklch(48% 0.14  30);
-  --code-meta: oklch(46% 0.16  25);
-}
-/* Dark token colours */
-html.theme-dark {
-  --code-kw:   oklch(72% 0.2  290);
-  --code-str:  oklch(68% 0.17 145);
-  --code-num:  oklch(74% 0.18  48);
-  --code-fn:   oklch(68% 0.15 220);
-  --code-type: oklch(72% 0.15  34);
-  --code-meta: oklch(70% 0.18  25);
-}
-@media (prefers-color-scheme: dark) {
-  html:not(.theme-light):not(.theme-sepia) {
-    --code-kw:   oklch(72% 0.2  290);
-    --code-str:  oklch(68% 0.17 145);
-    --code-num:  oklch(74% 0.18  48);
-    --code-fn:   oklch(68% 0.15 220);
-    --code-type: oklch(72% 0.15  34);
-    --code-meta: oklch(70% 0.18  25);
-  }
-}
 
 /* ── Animations ──────────────────────────────────────────────────────────────── */
 @keyframes entry-in {
