@@ -5,36 +5,31 @@
   --font-serif: var(--font-lora), Georgia, "Times New Roman", serif;
 }
 
-/* ── OKLCH palette ──────────────────────────────────────────────────────────── */
-:root {
+/* ── Theme token mixin ───────────────────────────────────────────────────────── */
+/* Applied to :root (light default), explicit selectors, and system media query  */
+
+/* LIGHT */
+:root,
+html[data-theme="light"] {
   --bg:              oklch(92% 0.022 75);
   --bg-card:         oklch(97.5% 0.012 80);
   --bg-nav:          oklch(94% 0.018 75);
-
   --fg:              oklch(16% 0.03 55);
   --fg-muted:        oklch(16% 0.03 55 / 0.42);
   --fg-placeholder:  oklch(16% 0.03 55 / 0.26);
-
   --border:          oklch(16% 0.03 55 / 0.09);
   --border-focus:    oklch(16% 0.03 55 / 0.2);
-
   --accent:          oklch(52% 0.13 55);
   --accent-light:    oklch(60% 0.13 55);
   --accent-soft:     oklch(52% 0.13 55 / 0.1);
-
-  --shadow-card:     0 1px 2px oklch(30% 0.03 60 / 0.05),
-                     0 3px 10px oklch(30% 0.03 60 / 0.04);
-  --shadow-form:     0 2px 14px oklch(30% 0.03 60 / 0.1),
-                     0 0 0 1px oklch(16% 0.03 55 / 0.07);
-
+  --shadow-card:     0 1px 2px oklch(30% 0.03 60 / 0.05), 0 3px 10px oklch(30% 0.03 60 / 0.04);
+  --shadow-form:     0 2px 14px oklch(30% 0.03 60 / 0.1), 0 0 0 1px oklch(16% 0.03 55 / 0.07);
   --due-overdue:     oklch(55% 0.19 25);
   --due-overdue-bg:  oklch(55% 0.19 25 / 0.10);
   --due-today:       oklch(58% 0.17 58);
   --due-today-bg:    oklch(58% 0.17 58 / 0.11);
   --due-soon:        var(--accent);
   --due-soon-bg:     var(--accent-soft);
-
-  /* 3D nav button */
   --btn-face:        oklch(95% 0.018 76);
   --btn-top:         oklch(99% 0.008 82);
   --btn-bottom:      oklch(76% 0.03 68);
@@ -44,35 +39,89 @@
   --btn-inset:       oklch(74% 0.03 68 / 0.35);
 }
 
+/* DARK */
+html[data-theme="dark"] {
+  --bg:              oklch(13% 0.016 55);
+  --bg-card:         oklch(17% 0.018 56);
+  --bg-nav:          oklch(14.5% 0.016 55);
+  --fg:              oklch(91% 0.022 76);
+  --fg-muted:        oklch(91% 0.022 76 / 0.42);
+  --fg-placeholder:  oklch(91% 0.022 76 / 0.25);
+  --border:          oklch(91% 0.022 76 / 0.07);
+  --border-focus:    oklch(91% 0.022 76 / 0.18);
+  --accent:          oklch(68% 0.13 58);
+  --accent-light:    oklch(75% 0.13 60);
+  --accent-soft:     oklch(68% 0.13 58 / 0.12);
+  --shadow-card:     0 1px 2px oklch(0% 0 0 / 0.25), 0 3px 10px oklch(0% 0 0 / 0.18);
+  --shadow-form:     0 2px 14px oklch(0% 0 0 / 0.3), 0 0 0 1px oklch(91% 0.022 76 / 0.05);
+  --due-overdue:     oklch(68% 0.19 25);
+  --due-overdue-bg:  oklch(68% 0.19 25 / 0.12);
+  --due-today:       oklch(72% 0.16 60);
+  --due-today-bg:    oklch(72% 0.16 60 / 0.12);
+  --due-soon:        var(--accent);
+  --due-soon-bg:     var(--accent-soft);
+  --btn-face:        oklch(19% 0.018 57);
+  --btn-top:         oklch(25% 0.02 60);
+  --btn-bottom:      oklch(8% 0.012 52);
+  --btn-border:      oklch(24% 0.02 57);
+  --btn-shadow:      oklch(0% 0 0 / 0.45);
+  --btn-active-face: oklch(15% 0.016 55);
+  --btn-inset:       oklch(0% 0 0 / 0.5);
+}
+
+/* SEPIA — warm aged paper */
+html[data-theme="sepia"] {
+  --bg:              oklch(88% 0.05 82);
+  --bg-card:         oklch(93% 0.035 84);
+  --bg-nav:          oklch(90% 0.044 82);
+  --fg:              oklch(22% 0.04 60);
+  --fg-muted:        oklch(22% 0.04 60 / 0.45);
+  --fg-placeholder:  oklch(22% 0.04 60 / 0.28);
+  --border:          oklch(22% 0.04 60 / 0.1);
+  --border-focus:    oklch(22% 0.04 60 / 0.22);
+  --accent:          oklch(48% 0.14 42);
+  --accent-light:    oklch(56% 0.14 44);
+  --accent-soft:     oklch(48% 0.14 42 / 0.12);
+  --shadow-card:     0 1px 2px oklch(28% 0.05 65 / 0.07), 0 3px 10px oklch(28% 0.05 65 / 0.05);
+  --shadow-form:     0 2px 14px oklch(28% 0.05 65 / 0.12), 0 0 0 1px oklch(22% 0.04 60 / 0.08);
+  --due-overdue:     oklch(50% 0.19 25);
+  --due-overdue-bg:  oklch(50% 0.19 25 / 0.10);
+  --due-today:       oklch(54% 0.16 55);
+  --due-today-bg:    oklch(54% 0.16 55 / 0.11);
+  --due-soon:        var(--accent);
+  --due-soon-bg:     var(--accent-soft);
+  --btn-face:        oklch(91% 0.042 83);
+  --btn-top:         oklch(96% 0.022 86);
+  --btn-bottom:      oklch(72% 0.055 76);
+  --btn-border:      oklch(78% 0.048 78);
+  --btn-shadow:      oklch(30% 0.05 65 / 0.15);
+  --btn-active-face: oklch(86% 0.048 81);
+  --btn-inset:       oklch(70% 0.05 76 / 0.38);
+}
+
+/* SYSTEM — follow OS preference (default when no data-theme is set) */
 @media (prefers-color-scheme: dark) {
-  :root {
+  html:not([data-theme]),
+  html[data-theme="system"] {
     --bg:              oklch(13% 0.016 55);
     --bg-card:         oklch(17% 0.018 56);
     --bg-nav:          oklch(14.5% 0.016 55);
-
     --fg:              oklch(91% 0.022 76);
     --fg-muted:        oklch(91% 0.022 76 / 0.42);
     --fg-placeholder:  oklch(91% 0.022 76 / 0.25);
-
     --border:          oklch(91% 0.022 76 / 0.07);
     --border-focus:    oklch(91% 0.022 76 / 0.18);
-
     --accent:          oklch(68% 0.13 58);
     --accent-light:    oklch(75% 0.13 60);
     --accent-soft:     oklch(68% 0.13 58 / 0.12);
-
-    --shadow-card:     0 1px 2px oklch(0% 0 0 / 0.25),
-                       0 3px 10px oklch(0% 0 0 / 0.18);
-    --shadow-form:     0 2px 14px oklch(0% 0 0 / 0.3),
-                       0 0 0 1px oklch(91% 0.022 76 / 0.05);
-
+    --shadow-card:     0 1px 2px oklch(0% 0 0 / 0.25), 0 3px 10px oklch(0% 0 0 / 0.18);
+    --shadow-form:     0 2px 14px oklch(0% 0 0 / 0.3), 0 0 0 1px oklch(91% 0.022 76 / 0.05);
     --due-overdue:     oklch(68% 0.19 25);
     --due-overdue-bg:  oklch(68% 0.19 25 / 0.12);
     --due-today:       oklch(72% 0.16 60);
     --due-today-bg:    oklch(72% 0.16 60 / 0.12);
     --due-soon:        var(--accent);
     --due-soon-bg:     var(--accent-soft);
-
     --btn-face:        oklch(19% 0.018 57);
     --btn-top:         oklch(25% 0.02 60);
     --btn-bottom:      oklch(8% 0.012 52);

@@ -33,6 +33,9 @@ export default function RootLayout({
         <meta name="theme-color" content="#F3EDE3" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#15100C" media="(prefers-color-scheme: dark)" />
         <link rel="apple-touch-icon" href="/icon.svg" />
+        <script dangerouslySetInnerHTML={{ __html:
+          `try{var t=localStorage.getItem("gleaned-theme")||"system";document.documentElement.setAttribute("data-theme",t)}catch(e){}`
+        }} />
         <script
           dangerouslySetInnerHTML={{
             __html: `if("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js")`,

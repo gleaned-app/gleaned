@@ -3,18 +3,27 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { getSettings, saveSettings } from "./db";
 
+export type Theme = "system" | "light" | "dark" | "sepia";
+
 export interface AppSettings {
   language: "de" | "en";
   weekStart: "monday" | "sunday";
+  theme: Theme;
 }
 
 export const DEFAULTS: AppSettings = {
   language: "de",
   weekStart: "monday",
+  theme: "system",
 };
 
 export function locale(settings: AppSettings): string {
   return settings.language === "de" ? "de-DE" : "en-GB";
+}
+
+function applyTheme(theme: Theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  try { localStorage.setItem("gleaned-theme", theme); } catch {}
 }
 
 type Ctx = {
@@ -33,16 +42,20 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     getSettings().then((s) => {
       if (!s) return;
-      setSettings({
+      const next: AppSettings = {
         language: s.language ?? DEFAULTS.language,
         weekStart: s.weekStart ?? DEFAULTS.weekStart,
-      });
+        theme: s.theme ?? DEFAULTS.theme,
+      };
+      setSettings(next);
+      applyTheme(next.theme);
     });
   }, []);
 
   async function update(patch: Partial<AppSettings>) {
     const next = { ...settings, ...patch };
     setSettings(next);
+    if (patch.theme) applyTheme(patch.theme);
     await saveSettings(next);
   }
 

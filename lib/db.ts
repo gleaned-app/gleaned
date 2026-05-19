@@ -199,6 +199,7 @@ export interface Settings {
   passwordHash?: string;
   language?: "de" | "en";
   weekStart?: "monday" | "sunday";
+  theme?: "system" | "light" | "dark" | "sepia";
 }
 
 export async function getSettings(): Promise<Settings | null> {
