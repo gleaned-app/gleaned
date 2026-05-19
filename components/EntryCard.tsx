@@ -237,23 +237,23 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick }: Pro
   const cardStyle = {
     background: "var(--bg-card)",
     boxShadow: "var(--shadow-card)",
-    borderLeft: "2px solid var(--accent)",
+    borderLeft: "3px solid var(--accent)",
   };
 
   if (editing) {
     return (
-      <div className="rounded-xl px-4 py-3.5" style={cardStyle}>
+      <div className="rounded-xl px-5 py-4" style={cardStyle}>
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
           onKeyDown={handleKeyDown}
           autoFocus
           rows={Math.max(3, content.split("\n").length + 1)}
-          className="journal-input w-full resize-none bg-transparent font-sans text-sm leading-relaxed outline-none"
+          className="journal-input w-full resize-none bg-transparent font-sans text-base leading-relaxed outline-none"
           style={{ color: "var(--fg)", caretColor: "var(--accent)" }}
         />
 
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
           {tags.map((tag) => (
             <button
               key={tag}
@@ -304,7 +304,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick }: Pro
 
   return (
     <div
-      className="group relative rounded-xl px-4 py-3.5"
+      className="group relative rounded-xl px-5 py-4"
       style={cardStyle}
     >
       {/* Action buttons — always on mobile, hover on desktop */}
@@ -353,7 +353,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick }: Pro
 
       {entry.content ? (
         <div
-          className="md font-sans text-sm pr-16 sm:pr-4"
+          className="md font-sans text-base leading-relaxed pr-16 sm:pr-8"
           dangerouslySetInnerHTML={{ __html: mdHtml }}
         />
       ) : null}
@@ -366,7 +366,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick }: Pro
         </div>
       )}
 
-      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+      <div className="mt-3.5 flex flex-wrap items-center gap-1.5">
         {entry.tags.map((tag) => (
           <button
             key={tag}

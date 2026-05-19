@@ -118,7 +118,7 @@ export default function JournalView() {
 
       {/* ── Left panel: form ──────────────────────────────────────── */}
       <aside
-        className="px-5 pt-4 pb-4 md:w-[360px] md:flex-shrink-0 md:sticky md:top-0 md:self-start md:max-h-screen md:overflow-y-auto md:border-r md:px-8 md:py-8"
+        className="px-5 pt-4 pb-4 md:w-[420px] md:flex-shrink-0 md:sticky md:top-0 md:self-start md:max-h-screen md:overflow-y-auto md:border-r md:px-10 md:py-10"
         style={{ borderColor: "var(--border)" }}
       >
         <header className="mb-8 fade-up">
@@ -162,7 +162,7 @@ export default function JournalView() {
       </aside>
 
       {/* ── Right panel: entries ──────────────────────────────────── */}
-      <div className="flex-1 px-5 pb-4 md:px-10 md:py-8">
+      <div className="flex-1 px-5 pb-4 md:px-12 md:py-10">
 
         {/* Divider — mobile only */}
         {!loading && entries.length > 0 && (
@@ -179,13 +179,13 @@ export default function JournalView() {
         )}
 
         {!loading && entries.length > 0 && (
-          <div className="flex flex-col gap-2 md:gap-5">
+          <div className="flex flex-col gap-2 md:max-w-[640px] md:gap-10">
             {entries.map((entry) => {
               const timeLabel = filterTag
                 ? new Date(entry.date + "T00:00:00").toLocaleDateString(loc, {
-                    weekday: "short",
+                    weekday: "long",
                     day: "numeric",
-                    month: "short",
+                    month: "long",
                     year: "numeric",
                   })
                 : new Date(entry.createdAt).toLocaleTimeString(loc, {
@@ -195,12 +195,19 @@ export default function JournalView() {
 
               return (
                 <div key={entry._id} className={newIds.has(entry._id) ? "entry-appear" : ""}>
-                  <p
-                    className="mb-1.5 hidden font-sans text-xs font-medium tracking-wide md:block"
-                    style={{ color: "var(--fg-muted)" }}
-                  >
-                    {timeLabel}
-                  </p>
+                  {/* Time label — desktop only */}
+                  <div className="mb-2.5 hidden items-center gap-2 md:flex">
+                    <span
+                      className="h-1.5 w-1.5 flex-shrink-0 rounded-full"
+                      style={{ background: "var(--accent)" }}
+                    />
+                    <span
+                      className="font-sans text-[11px] font-semibold uppercase tracking-[0.12em]"
+                      style={{ color: "var(--fg-muted)" }}
+                    >
+                      {timeLabel}
+                    </span>
+                  </div>
                   <EntryCard
                     entry={entry}
                     onDelete={handleDelete}
@@ -215,15 +222,15 @@ export default function JournalView() {
 
         {!loading && entries.length === 0 && (
           <p
-            className="mt-12 text-center font-serif text-xl italic md:mt-6 md:text-left"
-            style={{ color: "var(--fg-muted)" }}
+            className="mt-12 text-center font-serif text-2xl italic md:mt-0 md:pt-2 md:text-left"
+            style={{ color: "var(--fg-muted)", opacity: 0.6 }}
           >
             {emptyLabel}
           </p>
         )}
 
         {loading && (
-          <div className="mt-12 flex justify-center md:mt-8">
+          <div className="mt-12 flex justify-center md:mt-4">
             <div
               className="h-4 w-4 animate-spin rounded-full border-2"
               style={{ borderColor: "var(--border)", borderTopColor: "var(--accent)" }}
