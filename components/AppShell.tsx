@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { isAuthenticated } from "@/lib/auth";
 import { SettingsProvider } from "@/lib/settings-context";
 import { useSyncStatus } from "@/lib/use-sync-status";
@@ -42,15 +42,7 @@ function SyncDot() {
 type View = "journal" | "calendar" | "todos";
 
 export default function AppShell() {
-  const [authed, setAuthed] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    setAuthed(isAuthenticated());
-  }, []);
-
-  if (authed === null) {
-    return <div className="min-h-screen" style={{ background: "var(--bg)" }} />;
-  }
+  const [authed, setAuthed] = useState(() => isAuthenticated());
 
   if (!authed) {
     return (
