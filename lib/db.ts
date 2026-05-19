@@ -64,6 +64,26 @@ export async function getDB(): Promise<PouchDB.Database<AnyDoc>> {
 
 // ─── Tags ────────────────────────────────────────────────────────────────────
 
+export async function getStreakData(): Promise<{ streak: number; todayCount: number }> {
+  const db = await getDB();
+  const today = new Date().toISOString().split("T")[0];
+  const result = await db.find({ selector: { type: "entry" }, fields: ["date"] });
+  const dates = new Set(result.docs.map((d) => (d as Entry).date));
+  const todayCount = result.docs.filter((d) => (d as Entry).date === today).length;
+
+  let streak = 0;
+  const cursor = new Date();
+  if (!dates.has(today)) cursor.setDate(cursor.getDate() - 1);
+  while (true) {
+    const ds = cursor.toISOString().split("T")[0];
+    if (!dates.has(ds)) break;
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  return { streak, todayCount };
+}
+
 export async function getAllTags(): Promise<Map<string, number>> {
   const db = await getDB();
   const result = await db.find({ selector: { type: "entry" }, fields: ["tags"] });
