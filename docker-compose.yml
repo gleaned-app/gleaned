@@ -3,9 +3,7 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "3000:3000"
-    environment:
-      NEXT_PUBLIC_COUCHDB_URL: http://${COUCHDB_USER:-admin}:${COUCHDB_PASSWORD:-changeme}@couchdb:5984/gleaned
+      - "3000:80"
     depends_on:
       couchdb:
         condition: service_healthy
