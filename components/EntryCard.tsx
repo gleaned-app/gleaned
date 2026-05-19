@@ -158,9 +158,10 @@ interface Props {
   onDelete?: (id: string) => void;
   onUpdate?: (entry: Entry) => void;
   onTagClick?: (tag: string) => void;
+  flat?: boolean;
 }
 
-export default function EntryCard({ entry, onDelete, onUpdate, onTagClick }: Props) {
+export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat }: Props) {
   const [editing, setEditing] = useState(false);
   const [content, setContent] = useState(entry.content);
   const [tagInput, setTagInput] = useState("");
@@ -234,15 +235,21 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick }: Pro
     [entry.content]
   );
 
-  const cardStyle = {
-    background: "var(--bg-card)",
-    boxShadow: "var(--shadow-card)",
-    borderLeft: "3px solid var(--accent)",
-  };
+  const cardStyle = flat
+    ? { borderTop: "1px solid var(--border)" }
+    : {
+        background: "var(--bg-card)",
+        boxShadow: "var(--shadow-card)",
+        borderLeft: "3px solid var(--accent)",
+      };
+
+  const cardClass = flat
+    ? "pt-4 pb-2"
+    : "rounded-xl px-5 py-4";
 
   if (editing) {
     return (
-      <div className="rounded-xl px-5 py-4" style={cardStyle}>
+      <div className={cardClass} style={cardStyle}>
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
@@ -304,7 +311,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick }: Pro
 
   return (
     <div
-      className="group relative rounded-xl px-5 py-4"
+      className={`group relative ${cardClass}`}
       style={cardStyle}
     >
       {/* Action buttons — always on mobile, hover on desktop */}
@@ -353,7 +360,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick }: Pro
 
       {entry.content ? (
         <div
-          className="md font-sans text-base leading-relaxed pr-16 sm:pr-8"
+          className={`md font-sans text-base leading-relaxed ${flat ? "pr-8" : "pr-16 sm:pr-8"}`}
           dangerouslySetInnerHTML={{ __html: mdHtml }}
         />
       ) : null}
@@ -382,9 +389,11 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick }: Pro
             #{tag}
           </button>
         ))}
-        <span className="ml-auto font-sans text-[11px]" style={{ color: "var(--fg-muted)" }}>
-          {time}
-        </span>
+        {!flat && (
+          <span className="ml-auto font-sans text-[11px]" style={{ color: "var(--fg-muted)" }}>
+            {time}
+          </span>
+        )}
       </div>
     </div>
   );

@@ -195,25 +195,38 @@ export default function JournalView() {
 
               return (
                 <div key={entry._id} className={newIds.has(entry._id) ? "entry-appear" : ""}>
-                  {/* Time label — desktop only */}
-                  <div className="mb-2.5 hidden items-center gap-2 md:flex">
-                    <span
-                      className="h-1.5 w-1.5 flex-shrink-0 rounded-full"
-                      style={{ background: "var(--accent)" }}
+                  {/* Mobile: normal card */}
+                  <div className="md:hidden">
+                    <EntryCard
+                      entry={entry}
+                      onDelete={handleDelete}
+                      onUpdate={handleUpdate}
+                      onTagClick={handleTagClick}
                     />
-                    <span
-                      className="font-sans text-[11px] font-semibold uppercase tracking-[0.12em]"
-                      style={{ color: "var(--fg-muted)" }}
-                    >
-                      {timeLabel}
-                    </span>
                   </div>
-                  <EntryCard
-                    entry={entry}
-                    onDelete={handleDelete}
-                    onUpdate={handleUpdate}
-                    onTagClick={handleTagClick}
-                  />
+
+                  {/* Desktop: flat, no card bg, time label above */}
+                  <div className="hidden md:block">
+                    <div className="mb-2 flex items-center gap-2">
+                      <span
+                        className="h-1.5 w-1.5 flex-shrink-0 rounded-full"
+                        style={{ background: "var(--accent)" }}
+                      />
+                      <span
+                        className="font-sans text-[11px] font-semibold uppercase tracking-[0.12em]"
+                        style={{ color: "var(--fg-muted)" }}
+                      >
+                        {timeLabel}
+                      </span>
+                    </div>
+                    <EntryCard
+                      entry={entry}
+                      onDelete={handleDelete}
+                      onUpdate={handleUpdate}
+                      onTagClick={handleTagClick}
+                      flat
+                    />
+                  </div>
                 </div>
               );
             })}
