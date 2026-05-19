@@ -1,5 +1,6 @@
-import type { Entry } from "@/types/entry";
+import type { Entry, Attachment } from "@/types/entry";
 import type { Todo } from "@/types/todo";
+import { loadKey, encryptText, decryptText } from "./crypto";
 
 type AnyDoc = Entry | Todo;
 
@@ -98,9 +99,11 @@ export async function getStreakData(): Promise<{ streak: number; todayCount: num
 
 export async function getAllTags(): Promise<Map<string, number>> {
   const db = await getDB();
-  const result = await db.find({ selector: { type: "entry" }, fields: ["tags"] });
+  // Need full docs to decrypt tags — fields projection would drop _enc
+  const result = await db.find({ selector: { type: "entry" } });
+  const decrypted = await Promise.all((result.docs as Entry[]).map(decryptEntry));
   const counts = new Map<string, number>();
-  for (const doc of result.docs as Entry[]) {
+  for (const doc of decrypted) {
     for (const tag of doc.tags ?? []) {
       counts.set(tag, (counts.get(tag) ?? 0) + 1);
     }
@@ -114,31 +117,76 @@ export async function getEntriesByTag(tag: string): Promise<Entry[]> {
     selector: { type: "entry" },
     sort: [{ type: "asc" }, { createdAt: "asc" }],
   });
-  return (result.docs as Entry[]).filter((e) => e.tags?.includes(tag));
+  const decrypted = await Promise.all((result.docs as Entry[]).map(decryptEntry));
+  return decrypted.filter((e) => e.tags?.includes(tag));
 }
 
 export async function deleteTag(tag: string): Promise<void> {
   const db = await getDB();
   const result = await db.find({ selector: { type: "entry" } });
-  for (const doc of result.docs as Entry[]) {
+  for (const raw of result.docs as Entry[]) {
+    const doc = await decryptEntry(raw);
     if (!doc.tags?.includes(tag)) continue;
-    const updated = { ...doc, tags: doc.tags.filter((t) => t !== tag) };
+    const newTags = doc.tags.filter((t) => t !== tag);
     for (let attempt = 0; attempt < 5; attempt++) {
-      try { await db.put(updated); break; } catch (err) {
-        if ((err as { status?: number }).status !== 409) throw err;
+      try {
         const latest = (await db.get(doc._id)) as unknown as Entry;
-        updated._rev = latest._rev;
+        const base: Omit<Entry, "_rev" | "encrypted" | "_enc"> = {
+          _id: latest._id, type: "entry",
+          content: doc.content, tags: newTags,
+          date: latest.date, createdAt: latest.createdAt,
+          ...(doc.attachments?.length ? { attachments: doc.attachments } : {}),
+        };
+        const enc = await encryptEntry(base);
+        await db.put({ ...enc, _rev: latest._rev } as unknown as AnyDoc);
+        break;
+      } catch (err) {
+        if ((err as { status?: number }).status !== 409) throw err;
       }
     }
   }
 }
 
+// ─── Entry encryption helpers ────────────────────────────────────────────────
+
+interface EncPayload {
+  content: string;
+  tags: string[];
+  attachments?: Attachment[];
+}
+
+async function encryptEntry(
+  doc: Omit<Entry, "_rev" | "encrypted" | "_enc">,
+): Promise<Omit<Entry, "_rev">> {
+  const key = await loadKey();
+  if (!key) return doc;
+  const payload: EncPayload = {
+    content: doc.content,
+    tags: doc.tags,
+    ...(doc.attachments?.length ? { attachments: doc.attachments } : {}),
+  };
+  const _enc = await encryptText(key, JSON.stringify(payload));
+  return { _id: doc._id, type: "entry", date: doc.date, createdAt: doc.createdAt, content: "", tags: [], encrypted: true, _enc };
+}
+
+async function decryptEntry(entry: Entry): Promise<Entry> {
+  if (!entry.encrypted || !entry._enc) return entry;
+  const key = await loadKey();
+  if (!key) return entry;
+  try {
+    const payload = JSON.parse(await decryptText(key, entry._enc)) as EncPayload;
+    return { ...entry, content: payload.content, tags: payload.tags, attachments: payload.attachments };
+  } catch {
+    return entry;
+  }
+}
+
 // ─── Entries ────────────────────────────────────────────────────────────────
 
-export async function saveEntry(content: string, tags: string[], attachments?: import("@/types/entry").Attachment[]): Promise<Entry> {
+export async function saveEntry(content: string, tags: string[], attachments?: Attachment[]): Promise<Entry> {
   const db = await getDB();
   const now = new Date();
-  const doc: Omit<Entry, "_rev"> = {
+  const base: Omit<Entry, "_rev" | "encrypted" | "_enc"> = {
     _id: `entry_${now.getTime()}_${Math.random().toString(36).slice(2, 7)}`,
     type: "entry",
     content,
@@ -147,8 +195,10 @@ export async function saveEntry(content: string, tags: string[], attachments?: i
     createdAt: now.toISOString(),
     ...(attachments?.length ? { attachments } : {}),
   };
-  await db.put(doc);
-  return doc as Entry;
+  const doc = await encryptEntry(base);
+  await db.put(doc as unknown as AnyDoc);
+  // Return with plaintext content for immediate display
+  return { ...doc, content, tags, ...(attachments?.length ? { attachments } : {}) } as Entry;
 }
 
 export async function getEntriesByDate(date: string): Promise<Entry[]> {
@@ -157,7 +207,7 @@ export async function getEntriesByDate(date: string): Promise<Entry[]> {
     selector: { type: "entry", date },
     sort: [{ type: "asc" }, { date: "asc" }, { createdAt: "asc" }],
   });
-  return result.docs as Entry[];
+  return Promise.all((result.docs as Entry[]).map(decryptEntry));
 }
 
 export async function getEntryCountsByDate(): Promise<Map<string, number>> {
@@ -185,9 +235,14 @@ export async function updateEntry(entry: Entry, content: string, tags: string[])
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const latest = attempt === 0 ? entry : (await db.get(entry._id)) as unknown as Entry;
-      const updated = { ...latest, content, tags };
-      const res = await db.put(updated);
-      return { ...updated, _rev: res.rev };
+      const base: Omit<Entry, "_rev" | "encrypted" | "_enc"> = {
+        _id: latest._id, type: "entry",
+        content, tags, date: latest.date, createdAt: latest.createdAt,
+        ...(latest.attachments?.length ? { attachments: latest.attachments } : {}),
+      };
+      const enc = await encryptEntry(base);
+      const res = await db.put({ ...enc, _rev: latest._rev } as unknown as AnyDoc);
+      return { ...enc, _rev: res.rev, content, tags } as Entry;
     } catch (err) {
       if ((err as { status?: number }).status !== 409) throw err;
     }
@@ -311,6 +366,8 @@ export interface Settings {
   _rev?: string;
   type: "settings";
   passwordHash?: string;
+  encryptionSalt?: string;
+  encryptionVerification?: string;
   language?: "de" | "en";
   weekStart?: "monday" | "sunday";
   theme?: "system" | "light" | "dark" | "sepia";
@@ -343,17 +400,19 @@ export async function getConflicts(): Promise<ConflictDoc[]> {
 
   return Promise.all(
     conflicted.map(async (row) => {
-      const winner = row.doc as unknown as WithConflicts;
+      const winnerRaw = row.doc as unknown as WithConflicts;
+      const winner = await decryptEntry(winnerRaw as Entry) as WithConflicts;
       const alternatives = (
         await Promise.allSettled(
-          (winner._conflicts ?? []).map((rev) =>
-            db.get(winner._id, { rev }) as Promise<Entry>
+          (winnerRaw._conflicts ?? []).map((rev) =>
+            db.get(winnerRaw._id, { rev }) as Promise<Entry>
           )
         )
       )
         .filter((r): r is PromiseFulfilledResult<Entry> => r.status === "fulfilled")
         .map((r) => r.value);
-      return { winner, alternatives };
+      const decryptedAlts = await Promise.all(alternatives.map(decryptEntry));
+      return { winner: winner as Entry, alternatives: decryptedAlts };
     })
   );
 }
@@ -367,18 +426,17 @@ export async function resolveConflict(
   const current = (await db.get(id)) as Entry;
 
   if (current._rev !== keepRev) {
-    // User chose an alternative — overwrite the winner with its content
-    const keep = (await db.get(id, { rev: keepRev })) as Entry;
-    await db.put({
-      _id: id,
-      _rev: current._rev,
-      type: "entry",
-      content: keep.content,
-      tags: keep.tags,
-      date: keep.date,
-      createdAt: keep.createdAt,
+    // User chose an alternative — decrypt it and overwrite the winner
+    const keepRaw = (await db.get(id, { rev: keepRev })) as Entry;
+    const keep = await decryptEntry(keepRaw);
+    const base: Omit<Entry, "_rev" | "encrypted" | "_enc"> = {
+      _id: id, type: "entry",
+      content: keep.content, tags: keep.tags,
+      date: keep.date, createdAt: keep.createdAt,
       ...(keep.attachments ? { attachments: keep.attachments } : {}),
-    } as unknown as AnyDoc);
+    };
+    const enc = await encryptEntry(base);
+    await db.put({ ...enc, _rev: current._rev } as unknown as AnyDoc);
   }
 
   await Promise.allSettled(discardRevs.map((rev) => db.remove(id, rev)));

@@ -220,15 +220,6 @@ export default function LockScreen({ onAuth }: Props) {
     }
   }
 
-  if (mode === "loading") {
-    return (
-      <div className="flex min-h-screen items-center justify-center" style={{ background: "var(--bg)" }}>
-        <div className="h-5 w-5 animate-spin rounded-full border-2"
-          style={{ borderColor: "var(--border)", borderTopColor: "var(--accent)" }} />
-      </div>
-    );
-  }
-
   // Parallax transform helpers — word closest, form furthest
   const px = (strength: number) =>
     `translate(${mouse.x * -strength}px, ${mouse.y * (strength * 0.65)}px)`;
@@ -339,6 +330,14 @@ export default function LockScreen({ onAuth }: Props) {
         </div>
 
         {/* Layer 3 — Form (furthest, barely moves) */}
+        {mode === "loading" ? (
+          <div className="mt-12 flex justify-center">
+            <div
+              className="h-5 w-5 animate-spin rounded-full border-2"
+              style={{ borderColor: "var(--border)", borderTopColor: "var(--accent)" }}
+            />
+          </div>
+        ) : (
         <form
           onSubmit={handleSubmit}
           className="mt-8 flex flex-col gap-5"
@@ -422,6 +421,7 @@ export default function LockScreen({ onAuth }: Props) {
             </button>
           </div>
         </form>
+        )}
       </div>
     </div>
   );

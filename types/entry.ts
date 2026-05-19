@@ -14,4 +14,7 @@ export interface Entry {
   date: string;
   createdAt: string;
   attachments?: Attachment[];
+  // encryption — present when entry was saved with a password set
+  encrypted?: boolean;
+  _enc?: string;
 }
