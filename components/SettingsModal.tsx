@@ -1,7 +1,7 @@
 "use client";
 
 import { useSettings } from "@/lib/settings-context";
-import type { AppSettings } from "@/lib/settings-context";
+import type { AppSettings, Theme } from "@/lib/settings-context";
 
 interface Props {
   onClose: () => void;
@@ -51,8 +51,20 @@ export default function SettingsModal({ onClose }: Props) {
   const { settings, update } = useSettings();
 
   const t = settings.language === "de"
-    ? { lang: "Sprache", week: "Wochenanfang", mon: "Montag", sun: "Sonntag", title: "Einstellungen" }
-    : { lang: "Language", week: "Week starts on", mon: "Monday", sun: "Sunday", title: "Settings" };
+    ? { lang: "Sprache", week: "Wochenanfang", mon: "Montag", sun: "Sonntag", title: "Einstellungen", appearance: "Aussehen" }
+    : { lang: "Language", week: "Week starts on", mon: "Monday", sun: "Sunday", title: "Settings", appearance: "Appearance" };
+
+  const THEMES: { value: Theme; label: string; bg: string; fg: string; border: string }[] = [
+    { value: "system", label: settings.language === "de" ? "System" : "System",
+      bg: "linear-gradient(135deg, oklch(92% 0.022 75) 50%, oklch(13% 0.016 55) 50%)",
+      fg: "oklch(16% 0.03 55)", border: "oklch(16% 0.03 55 / 0.15)" },
+    { value: "light",  label: settings.language === "de" ? "Hell"   : "Light",
+      bg: "oklch(92% 0.022 75)", fg: "oklch(16% 0.03 55)", border: "oklch(16% 0.03 55 / 0.15)" },
+    { value: "dark",   label: settings.language === "de" ? "Dunkel" : "Dark",
+      bg: "oklch(13% 0.016 55)", fg: "oklch(91% 0.022 76)", border: "oklch(91% 0.022 76 / 0.15)" },
+    { value: "sepia",  label: "Sepia",
+      bg: "oklch(88% 0.05 82)",  fg: "oklch(22% 0.04 60)",  border: "oklch(22% 0.04 60 / 0.15)" },
+  ];
 
   return (
     <>
@@ -93,6 +105,42 @@ export default function SettingsModal({ onClose }: Props) {
         </div>
 
         <div className="flex flex-col gap-6">
+          {/* Theme picker */}
+          <Row label={t.appearance}>
+            <div className="grid grid-cols-4 gap-2">
+              {THEMES.map((th) => {
+                const active = settings.theme === th.value;
+                return (
+                  <button
+                    key={th.value}
+                    onClick={() => update({ theme: th.value })}
+                    className="flex flex-col items-center gap-1.5"
+                    aria-label={th.label}
+                  >
+                    <span
+                      className="flex h-10 w-full items-center justify-center rounded-xl border-2 transition-all duration-150"
+                      style={{
+                        background: th.bg,
+                        borderColor: active ? "var(--accent)" : th.border,
+                        boxShadow: active ? "0 0 0 2px var(--accent-soft)" : undefined,
+                        transform: active ? "scale(1.05)" : "scale(1)",
+                      }}
+                    >
+                      {active && (
+                        <svg width="14" height="14" viewBox="0 0 12 12" fill="none" stroke={th.fg} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="2 6 5 9 10 3" />
+                        </svg>
+                      )}
+                    </span>
+                    <span className="font-sans text-[10px]" style={{ color: active ? "var(--accent)" : "var(--fg-muted)" }}>
+                      {th.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </Row>
+
           <Row label={t.lang}>
             <SegmentedControl<AppSettings["language"]>
               value={settings.language}
