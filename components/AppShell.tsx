@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { isAuthenticated } from "@/lib/auth";
+import { isAuthenticated, logout } from "@/lib/auth";
 import { SettingsProvider } from "@/lib/settings-context";
 import { useSyncStatus } from "@/lib/use-sync-status";
 import { useConflictCount } from "@/lib/use-conflict-count";
@@ -91,6 +91,18 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
   const conflictCount = useConflictCount();
   const { canInstall, install } = useInstallPrompt();
   const t = useT();
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "l") {
+        e.preventDefault();
+        logout();
+        onLock();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onLock]);
 
   return (
     <div className="flex min-h-screen flex-col" style={{ background: "var(--bg)" }}>
