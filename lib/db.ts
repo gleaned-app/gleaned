@@ -62,6 +62,45 @@ export async function getDB(): Promise<PouchDB.Database<AnyDoc>> {
   return _db;
 }
 
+// ─── Tags ────────────────────────────────────────────────────────────────────
+
+export async function getAllTags(): Promise<Map<string, number>> {
+  const db = await getDB();
+  const result = await db.find({ selector: { type: "entry" }, fields: ["tags"] });
+  const counts = new Map<string, number>();
+  for (const doc of result.docs as Entry[]) {
+    for (const tag of doc.tags ?? []) {
+      counts.set(tag, (counts.get(tag) ?? 0) + 1);
+    }
+  }
+  return counts;
+}
+
+export async function getEntriesByTag(tag: string): Promise<Entry[]> {
+  const db = await getDB();
+  const result = await db.find({
+    selector: { type: "entry" },
+    sort: [{ type: "asc" }, { createdAt: "asc" }],
+  });
+  return (result.docs as Entry[]).filter((e) => e.tags?.includes(tag));
+}
+
+export async function deleteTag(tag: string): Promise<void> {
+  const db = await getDB();
+  const result = await db.find({ selector: { type: "entry" } });
+  for (const doc of result.docs as Entry[]) {
+    if (!doc.tags?.includes(tag)) continue;
+    const updated = { ...doc, tags: doc.tags.filter((t) => t !== tag) };
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try { await db.put(updated); break; } catch (err) {
+        if ((err as { status?: number }).status !== 409) throw err;
+        const latest = (await db.get(doc._id)) as unknown as Entry;
+        updated._rev = latest._rev;
+      }
+    }
+  }
+}
+
 // ─── Entries ────────────────────────────────────────────────────────────────
 
 export async function saveEntry(content: string, tags: string[], attachments?: import("@/types/entry").Attachment[]): Promise<Entry> {
