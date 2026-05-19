@@ -10,6 +10,8 @@ export interface AppSettings {
   weekStart: "monday" | "sunday";
   theme: Theme;
   couchdbUrl: string;
+  couchdbUsername: string;
+  couchdbPassword: string;
 }
 
 const ENV_URL = process.env.NEXT_PUBLIC_COUCHDB_URL ?? "";
@@ -19,6 +21,8 @@ export const DEFAULTS: AppSettings = {
   weekStart: "monday",
   theme: "system",
   couchdbUrl: ENV_URL,
+  couchdbUsername: "",
+  couchdbPassword: "",
 };
 
 export function locale(settings: AppSettings): string {
@@ -52,10 +56,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         weekStart: s?.weekStart ?? DEFAULTS.weekStart,
         theme: s?.theme ?? DEFAULTS.theme,
         couchdbUrl: s?.couchdbUrl ?? ENV_URL,
+        couchdbUsername: s?.couchdbUsername ?? "",
+        couchdbPassword: s?.couchdbPassword ?? "",
       };
       setSettings(next);
       applyTheme(next.theme);
-      if (next.couchdbUrl) startSync(next.couchdbUrl);
+      if (next.couchdbUrl) startSync(next.couchdbUrl, next.couchdbUsername, next.couchdbPassword);
     });
   }, []);
 
@@ -63,8 +69,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const next = { ...settings, ...patch };
     setSettings(next);
     if (patch.theme) applyTheme(patch.theme);
-    if ("couchdbUrl" in patch) {
-      if (patch.couchdbUrl) startSync(patch.couchdbUrl);
+    const syncChanged = "couchdbUrl" in patch || "couchdbUsername" in patch || "couchdbPassword" in patch;
+    if (syncChanged) {
+      if (next.couchdbUrl) startSync(next.couchdbUrl, next.couchdbUsername, next.couchdbPassword);
       else stopSync();
     }
     await saveSettings(next);

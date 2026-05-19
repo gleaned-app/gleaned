@@ -24,6 +24,7 @@ export default function CalendarView() {
   const [month, setMonth] = useState(todayDate.getMonth());
   const [entryCounts, setEntryCounts] = useState<Map<string, number>>(new Map());
   const [selected, setSelected] = useState<string | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
   const [dayEntries, setDayEntries] = useState<Entry[]>([]);
   const [loadingEntries, setLoadingEntries] = useState(false);
 
@@ -150,34 +151,53 @@ export default function CalendarView() {
             year === todayDate.getFullYear();
           const isSelected = selected === dateStr;
 
+          const isHovered = hovered === dateStr;
+
           return (
             <button
               key={day}
               onClick={() => setSelected(isSelected ? null : dateStr)}
+              onMouseEnter={() => setHovered(dateStr)}
+              onMouseLeave={() => setHovered(null)}
               className="btn-3d-subtle relative flex h-full w-full flex-col items-center justify-center gap-0.5 rounded-xl font-sans text-sm"
               title={count > 0 ? `${count} Eintr${count === 1 ? "ag" : "äge"}` : undefined}
               style={{
-                background: isSelected
-                  ? "var(--accent)"
-                  : level > 0
-                  ? HEAT_BG[level]
-                  : undefined,
-                color: isSelected ? "var(--bg)" : isToday ? "var(--accent)" : "var(--fg)",
+                background: level > 0 ? HEAT_BG[level] : undefined,
+                color: isSelected ? "var(--accent)" : isToday ? "var(--accent)" : "var(--fg)",
                 fontWeight: isToday || isSelected ? "600" : "400",
-                outline: isToday && !isSelected ? "2px solid var(--accent-soft)" : undefined,
+                outline: isSelected
+                  ? "2px solid var(--accent)"
+                  : isToday
+                  ? "2px solid var(--accent-soft)"
+                  : isHovered
+                  ? "2px solid var(--border-focus)"
+                  : undefined,
                 outlineOffset: "-2px",
                 boxShadow: isSelected ? "none" : undefined,
                 transform: isSelected ? "translateY(1px)" : undefined,
               }}
             >
               {day}
-              {count >= 2 && !isSelected && (
+              {count >= 2 && (
                 <span
                   className="font-sans leading-none"
                   style={{ fontSize: "8px", color: "var(--accent)", opacity: 0.7 }}
                 >
                   {count}
                 </span>
+              )}
+              {isToday && (
+                <span
+                  className="absolute rounded-full"
+                  style={{
+                    bottom: "4px",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    width: "4px",
+                    height: "4px",
+                    background: "var(--accent)",
+                  }}
+                />
               )}
             </button>
           );

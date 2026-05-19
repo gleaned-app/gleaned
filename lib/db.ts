@@ -29,13 +29,25 @@ export function stopSync() {
   setSyncStatus("idle");
 }
 
-export async function startSync(url: string) {
+export async function startSync(url: string, username?: string, password?: string) {
   stopSync();
-  if (!url.trim()) return;
+  const trimmed = url.trim();
+  if (!trimmed) return;
+
+  let syncUrl = trimmed;
+  if (username?.trim()) {
+    try {
+      const parsed = new URL(trimmed);
+      parsed.username = encodeURIComponent(username.trim());
+      parsed.password = encodeURIComponent(password?.trim() ?? "");
+      syncUrl = parsed.toString();
+    } catch { /* invalid URL — use as-is */ }
+  }
+
   const db = await getDB();
   setSyncStatus("syncing");
   _syncHandler = db
-    .sync(url.trim(), { live: true, retry: true })
+    .sync(syncUrl, { live: true, retry: true })
     .on("active",  () => setSyncStatus("syncing"))
     .on("paused",  (err) => setSyncStatus(err ? "error" : "synced"))
     .on("error",   () => setSyncStatus("error"))
@@ -303,6 +315,73 @@ export interface Settings {
   weekStart?: "monday" | "sunday";
   theme?: "system" | "light" | "dark" | "sepia";
   couchdbUrl?: string;
+  couchdbUsername?: string;
+  couchdbPassword?: string;
+}
+
+// ─── Conflicts ───────────────────────────────────────────────────────────────
+
+export interface ConflictDoc {
+  winner: Entry;
+  alternatives: Entry[];
+}
+
+export async function getConflicts(): Promise<ConflictDoc[]> {
+  const db = await getDB();
+  const result = await db.allDocs({
+    include_docs: true,
+    conflicts: true,
+    startkey: "entry_",
+    endkey: "entry_￿",
+  });
+
+  type WithConflicts = Entry & { _conflicts?: string[] };
+  const conflicted = result.rows.filter((r) => {
+    const doc = r.doc as unknown as WithConflicts | undefined;
+    return doc && (doc._conflicts?.length ?? 0) > 0;
+  });
+
+  return Promise.all(
+    conflicted.map(async (row) => {
+      const winner = row.doc as unknown as WithConflicts;
+      const alternatives = (
+        await Promise.allSettled(
+          (winner._conflicts ?? []).map((rev) =>
+            db.get(winner._id, { rev }) as Promise<Entry>
+          )
+        )
+      )
+        .filter((r): r is PromiseFulfilledResult<Entry> => r.status === "fulfilled")
+        .map((r) => r.value);
+      return { winner, alternatives };
+    })
+  );
+}
+
+export async function resolveConflict(
+  id: string,
+  keepRev: string,
+  discardRevs: string[]
+): Promise<void> {
+  const db = await getDB();
+  const current = (await db.get(id)) as Entry;
+
+  if (current._rev !== keepRev) {
+    // User chose an alternative — overwrite the winner with its content
+    const keep = (await db.get(id, { rev: keepRev })) as Entry;
+    await db.put({
+      _id: id,
+      _rev: current._rev,
+      type: "entry",
+      content: keep.content,
+      tags: keep.tags,
+      date: keep.date,
+      createdAt: keep.createdAt,
+      ...(keep.attachments ? { attachments: keep.attachments } : {}),
+    } as unknown as AnyDoc);
+  }
+
+  await Promise.allSettled(discardRevs.map((rev) => db.remove(id, rev)));
 }
 
 export async function getSettings(): Promise<Settings | null> {

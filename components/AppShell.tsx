@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { isAuthenticated } from "@/lib/auth";
 import { SettingsProvider } from "@/lib/settings-context";
 import { useSyncStatus } from "@/lib/use-sync-status";
+import { useConflictCount } from "@/lib/use-conflict-count";
 import JournalView from "./JournalView";
 import CalendarView from "./CalendarView";
 import TodoView from "./TodoView";
@@ -11,6 +12,7 @@ import BottomNav from "./BottomNav";
 import LockScreen from "./LockScreen";
 import ProfileButton from "./ProfileButton";
 import SettingsModal from "./SettingsModal";
+import ConflictModal from "./ConflictModal";
 
 function SyncDot() {
   const status = useSyncStatus();
@@ -72,6 +74,8 @@ export default function AppShell() {
 function AppContentWithLock({ onLock }: { onLock: () => void }) {
   const [view, setView] = useState<View>("journal");
   const [showSettings, setShowSettings] = useState(false);
+  const [showConflicts, setShowConflicts] = useState(false);
+  const conflictCount = useConflictCount();
 
   return (
     <div className="flex min-h-screen flex-col" style={{ background: "var(--bg)" }}>
@@ -84,6 +88,29 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
           gleaned
         </button>
         <div className="flex items-center gap-2.5">
+          {conflictCount > 0 && (
+            <button
+              onClick={() => setShowConflicts(true)}
+              title={`${conflictCount} Sync-Konflikt${conflictCount !== 1 ? "e" : ""}`}
+              className="flex items-center gap-1.5 rounded-full px-2.5 py-1 font-sans text-xs font-medium transition-opacity hover:opacity-80"
+              style={{
+                background: "color-mix(in oklch, oklch(72% 0.18 55), transparent 82%)",
+                color: "oklch(62% 0.18 55)",
+              }}
+            >
+              <span
+                style={{
+                  display: "inline-block",
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  background: "oklch(72% 0.18 55)",
+                  flexShrink: 0,
+                }}
+              />
+              {conflictCount}
+            </button>
+          )}
           <SyncDot />
           <ProfileButton onLock={onLock} onSettings={() => setShowSettings(true)} />
         </div>
@@ -98,6 +125,7 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
       <BottomNav current={view} onChange={setView} />
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {showConflicts && <ConflictModal onClose={() => setShowConflicts(false)} />}
     </div>
   );
 }

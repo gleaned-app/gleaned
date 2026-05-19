@@ -52,6 +52,8 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 export default function SettingsModal({ onClose }: Props) {
   const { settings, update } = useSettings();
   const [couchdbInput, setCouchdbInput] = useState(settings.couchdbUrl);
+  const [couchdbUser, setCouchdbUser] = useState(settings.couchdbUsername);
+  const [couchdbPass, setCouchdbPass] = useState(settings.couchdbPassword);
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [tagMap, setTagMap] = useState<Map<string, number>>(new Map());
   const [showTags, setShowTags] = useState(false);
@@ -206,24 +208,50 @@ export default function SettingsModal({ onClose }: Props) {
           </Row>
 
           <Row label="Sync (CouchDB)">
-            <input
-              value={couchdbInput}
-              onChange={(e) => setCouchdbInput(e.target.value)}
-              onBlur={() => {
-                const trimmed = couchdbInput.trim();
-                if (trimmed !== settings.couchdbUrl) update({ couchdbUrl: trimmed });
-              }}
-              placeholder="http://admin:pass@localhost:5984/gleaned"
-              className="journal-input w-full rounded-xl px-3 py-2.5 font-sans text-xs outline-none"
-              style={{
-                background: "var(--bg)",
-                border: "1px solid var(--border)",
-                color: "var(--fg)",
-              }}
-              spellCheck={false}
-              autoCapitalize="none"
-              autoCorrect="off"
-            />
+            <div className="flex flex-col gap-2">
+              <input
+                value={couchdbInput}
+                onChange={(e) => setCouchdbInput(e.target.value)}
+                onBlur={() => {
+                  const trimmed = couchdbInput.trim();
+                  if (trimmed !== settings.couchdbUrl) update({ couchdbUrl: trimmed });
+                }}
+                placeholder={de ? "http://localhost:5984/gleaned" : "http://localhost:5984/gleaned"}
+                className="journal-input w-full rounded-xl px-3 py-2.5 font-sans text-xs outline-none"
+                style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--fg)" }}
+                spellCheck={false}
+                autoCapitalize="none"
+                autoCorrect="off"
+              />
+              <div className="flex gap-2">
+                <input
+                  value={couchdbUser}
+                  onChange={(e) => setCouchdbUser(e.target.value)}
+                  onBlur={() => {
+                    if (couchdbUser !== settings.couchdbUsername) update({ couchdbUsername: couchdbUser });
+                  }}
+                  placeholder={de ? "Benutzer" : "Username"}
+                  className="journal-input min-w-0 flex-1 rounded-xl px-3 py-2.5 font-sans text-xs outline-none"
+                  style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--fg)" }}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                />
+                <input
+                  type="password"
+                  value={couchdbPass}
+                  onChange={(e) => setCouchdbPass(e.target.value)}
+                  onBlur={() => {
+                    if (couchdbPass !== settings.couchdbPassword) update({ couchdbPassword: couchdbPass });
+                  }}
+                  placeholder={de ? "Passwort" : "Password"}
+                  className="journal-input min-w-0 flex-1 rounded-xl px-3 py-2.5 font-sans text-xs outline-none"
+                  style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--fg)" }}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                />
+              </div>
+            </div>
           </Row>
 
           <Row label={de ? "Tags" : "Tags"}>
