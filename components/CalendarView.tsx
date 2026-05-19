@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getDatesWithEntries, getEntriesByDate } from "@/lib/db";
+import { getEntryCountsByDate, getEntriesByDate } from "@/lib/db";
 import type { Entry } from "@/types/entry";
 import { useSettings, locale } from "@/lib/settings-context";
 import EntryCard from "./EntryCard";
@@ -22,7 +22,7 @@ export default function CalendarView() {
   const todayDate = new Date();
   const [year, setYear] = useState(todayDate.getFullYear());
   const [month, setMonth] = useState(todayDate.getMonth());
-  const [datesWithEntries, setDatesWithEntries] = useState<Set<string>>(new Set());
+  const [entryCounts, setEntryCounts] = useState<Map<string, number>>(new Map());
   const [selected, setSelected] = useState<string | null>(null);
   const [dayEntries, setDayEntries] = useState<Entry[]>([]);
   const [loadingEntries, setLoadingEntries] = useState(false);
@@ -33,7 +33,7 @@ export default function CalendarView() {
       : (settings.language === "de" ? ["Mo","Di","Mi","Do","Fr","Sa","So"] : ["Mo","Tu","We","Th","Fr","Sa","Su"]);
 
   useEffect(() => {
-    getDatesWithEntries().then(setDatesWithEntries);
+    getEntryCountsByDate().then(setEntryCounts);
   }, []);
 
   useEffect(() => {
@@ -61,6 +61,24 @@ export default function CalendarView() {
   const cells: (number | null)[] = [
     ...Array(firstDay).fill(null),
     ...Array.from({ length: totalDays }, (_, i) => i + 1),
+  ];
+
+  // GitHub-style intensity: 0 = none, 1–4 = increasing entry count
+  function heatLevel(count: number): 0 | 1 | 2 | 3 | 4 {
+    if (count === 0) return 0;
+    if (count === 1) return 1;
+    if (count === 2) return 2;
+    if (count <= 4)  return 3;
+    return 4;
+  }
+
+  // Each level mixes accent with transparent — inherits theme automatically
+  const HEAT_BG = [
+    undefined,
+    "color-mix(in oklch, var(--accent), transparent 84%)",
+    "color-mix(in oklch, var(--accent), transparent 68%)",
+    "color-mix(in oklch, var(--accent), transparent 48%)",
+    "color-mix(in oklch, var(--accent), transparent 24%)",
   ];
 
   const monthLabel = new Date(year, month, 1).toLocaleDateString(loc, {
@@ -124,7 +142,8 @@ export default function CalendarView() {
           if (day === null) return <div key={`empty-${i}`} />;
 
           const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-          const hasEntry = datesWithEntries.has(dateStr);
+          const count = entryCounts.get(dateStr) ?? 0;
+          const level = heatLevel(count);
           const isToday =
             day === todayDate.getDate() &&
             month === todayDate.getMonth() &&
@@ -134,35 +153,57 @@ export default function CalendarView() {
           return (
             <button
               key={day}
-              data-active={isSelected || undefined}
               onClick={() => setSelected(isSelected ? null : dateStr)}
-              className="btn-3d-subtle relative flex h-full w-full items-center justify-center rounded-xl font-sans text-sm"
+              className="btn-3d-subtle relative flex h-full w-full flex-col items-center justify-center gap-0.5 rounded-xl font-sans text-sm"
+              title={count > 0 ? `${count} Eintr${count === 1 ? "ag" : "äge"}` : undefined}
               style={{
-                color: isSelected
+                background: isSelected
                   ? "var(--accent)"
-                  : isToday
-                  ? "var(--accent)"
-                  : "var(--fg)",
-                fontWeight: isToday || isSelected ? "600" : "400",
-                outline: isToday && !isSelected
-                  ? "2px solid var(--accent-soft)"
+                  : level > 0
+                  ? HEAT_BG[level]
                   : undefined,
+                color: isSelected ? "var(--bg)" : isToday ? "var(--accent)" : "var(--fg)",
+                fontWeight: isToday || isSelected ? "600" : "400",
+                outline: isToday && !isSelected ? "2px solid var(--accent-soft)" : undefined,
                 outlineOffset: "-2px",
+                boxShadow: isSelected ? "none" : undefined,
+                transform: isSelected ? "translateY(1px)" : undefined,
               }}
             >
               {day}
-              {hasEntry && (
+              {count >= 2 && !isSelected && (
                 <span
-                  className="absolute bottom-[5px] left-1/2 h-[5px] w-[5px] -translate-x-1/2 rounded-full"
-                  style={{
-                    background: isSelected ? "var(--accent)" : "var(--accent-light)",
-                    opacity: isSelected ? 1 : 0.7,
-                  }}
-                />
+                  className="font-sans leading-none"
+                  style={{ fontSize: "8px", color: "var(--accent)", opacity: 0.7 }}
+                >
+                  {count}
+                </span>
               )}
             </button>
           );
         })}
+      </div>
+
+      {/* Heatmap legend */}
+      <div className="mb-5 flex items-center justify-end gap-1.5">
+        <span className="font-sans text-[10px]" style={{ color: "var(--fg-muted)" }}>
+          {settings.language === "de" ? "weniger" : "less"}
+        </span>
+        {([0, 1, 2, 3, 4] as const).map((lvl) => (
+          <span
+            key={lvl}
+            className="h-3 w-3 rounded-sm"
+            style={{
+              background: lvl === 0
+                ? "var(--border)"
+                : HEAT_BG[lvl],
+              border: "1px solid var(--border)",
+            }}
+          />
+        ))}
+        <span className="font-sans text-[10px]" style={{ color: "var(--fg-muted)" }}>
+          {settings.language === "de" ? "mehr" : "more"}
+        </span>
       </div>
 
       {/* Selected day entries */}
