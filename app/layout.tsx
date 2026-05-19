@@ -33,6 +33,8 @@ export default function RootLayout({
       <head>
         <meta name="theme-color" content="#F3EDE3" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#15100C" media="(prefers-color-scheme: dark)" />
+        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+        <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
         <link rel="apple-touch-icon" href="/icon-apple.png" />
         {/* Apply theme class before React hydrates to prevent flash */}
         <script dangerouslySetInnerHTML={{ __html:
