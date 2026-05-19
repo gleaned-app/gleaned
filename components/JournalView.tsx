@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getEntriesByDate } from "@/lib/db";
+import { getEntriesByDate, getEntriesByTag } from "@/lib/db";
 import type { Entry } from "@/types/entry";
 import { useSettings, locale } from "@/lib/settings-context";
 import EntryForm from "./EntryForm";
@@ -25,13 +25,16 @@ export default function JournalView() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
+  const [filterTag, setFilterTag] = useState<string | null>(null);
 
   const today = todayDate();
   const { weekday, full } = formatDate(today, loc);
 
   useEffect(() => {
-    getEntriesByDate(today).then(setEntries).finally(() => setLoading(false));
-  }, [today]);
+    setLoading(true);
+    const fetch = filterTag ? getEntriesByTag(filterTag) : getEntriesByDate(today);
+    fetch.then(setEntries).finally(() => setLoading(false));
+  }, [today, filterTag]);
 
   function handleSaved(entry: Entry) {
     setEntries((prev) => [...prev, entry]);
@@ -52,12 +55,29 @@ export default function JournalView() {
   return (
     <div className="mx-auto max-w-[620px] px-5 pt-4 pb-4">
       <header className="mb-8 fade-up">
-        <h1 className="font-serif text-[2.6rem] font-normal leading-none tracking-tight" style={{ color: "var(--fg)" }}>
-          {weekday}
-        </h1>
-        <p className="mt-1.5 font-sans text-sm" style={{ color: "var(--fg-muted)" }}>
-          {full}
-        </p>
+        {filterTag ? (
+          <div className="flex items-center gap-3">
+            <h1 className="font-serif text-[2rem] font-normal leading-none tracking-tight" style={{ color: "var(--fg)" }}>
+              #{filterTag}
+            </h1>
+            <button
+              onClick={() => setFilterTag(null)}
+              className="flex items-center gap-1 rounded-full px-2.5 py-1 font-sans text-xs transition-opacity hover:opacity-70"
+              style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+            >
+              × zurück
+            </button>
+          </div>
+        ) : (
+          <>
+            <h1 className="font-serif text-[2.6rem] font-normal leading-none tracking-tight" style={{ color: "var(--fg)" }}>
+              {weekday}
+            </h1>
+            <p className="mt-1.5 font-sans text-sm" style={{ color: "var(--fg-muted)" }}>
+              {full}
+            </p>
+          </>
+        )}
       </header>
 
       <div className="fade-up" style={{ animationDelay: "55ms" }}>
@@ -69,14 +89,19 @@ export default function JournalView() {
           <div className="my-7 flex items-center gap-4">
             <div className="h-px flex-1" style={{ background: "var(--border)" }} />
             <span className="font-sans text-[10px] font-medium tracking-[0.18em] uppercase" style={{ color: "var(--fg-muted)" }}>
-              Heute · {entries.length}
+              {filterTag ? `#${filterTag}` : "Heute"} · {entries.length}
             </span>
             <div className="h-px flex-1" style={{ background: "var(--border)" }} />
           </div>
           <div className="flex flex-col gap-2">
             {entries.map((entry) => (
               <div key={entry._id} className={newIds.has(entry._id) ? "entry-appear" : ""}>
-                <EntryCard entry={entry} onDelete={handleDelete} onUpdate={handleUpdate} />
+                <EntryCard
+                  entry={entry}
+                  onDelete={handleDelete}
+                  onUpdate={handleUpdate}
+                  onTagClick={(tag) => { setFilterTag(tag); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                />
               </div>
             ))}
           </div>
