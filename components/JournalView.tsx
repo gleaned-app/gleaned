@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getEntriesByDate, getEntriesByTag } from "@/lib/db";
+import { getEntriesByDate, getEntriesByTag, getStreakData } from "@/lib/db";
 import type { Entry } from "@/types/entry";
 import { useSettings, locale } from "@/lib/settings-context";
 import EntryForm from "./EntryForm";
@@ -26,9 +26,14 @@ export default function JournalView() {
   const [loading, setLoading] = useState(true);
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
   const [filterTag, setFilterTag] = useState<string | null>(null);
+  const [streak, setStreak] = useState(0);
 
   const today = todayDate();
   const { weekday, full } = formatDate(today, loc);
+
+  useEffect(() => {
+    getStreakData().then(({ streak }) => setStreak(streak));
+  }, [entries]);
 
   useEffect(() => {
     setLoading(true);
@@ -73,9 +78,20 @@ export default function JournalView() {
             <h1 className="font-serif text-[2.6rem] font-normal leading-none tracking-tight" style={{ color: "var(--fg)" }}>
               {weekday}
             </h1>
-            <p className="mt-1.5 font-sans text-sm" style={{ color: "var(--fg-muted)" }}>
-              {full}
-            </p>
+            <div className="mt-1.5 flex items-center gap-3">
+              <p className="font-sans text-sm" style={{ color: "var(--fg-muted)" }}>
+                {full}
+              </p>
+              {streak >= 2 && (
+                <span
+                  className="flex items-center gap-1 rounded-full px-2.5 py-0.5 font-sans text-xs font-medium"
+                  style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+                >
+                  <span style={{ fontSize: "10px" }}>◆</span>
+                  {streak} {settings.language === "de" ? "Tage" : "days"}
+                </span>
+              )}
+            </div>
           </>
         )}
       </header>
