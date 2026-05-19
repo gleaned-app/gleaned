@@ -1,0 +1,520 @@
+"use client";
+
+import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  getTodos,
+  saveTodo,
+  updateTodoDoc,
+  updateTodoText,
+  updateTodoDueDate,
+  deleteTodo,
+} from "@/lib/db";
+import type { Todo } from "@/types/todo";
+
+// ─── Date helpers ─────────────────────────────────────────────────────────────
+
+function today(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
+function tomorrow(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().split("T")[0];
+}
+
+type DueStatus = "overdue" | "today" | "soon" | "future";
+
+function getDueInfo(dueDate: string): { label: string; status: DueStatus } {
+  const t = today();
+  const tom = tomorrow();
+  if (dueDate < t) {
+    const diff = Math.round(
+      (new Date(t).getTime() - new Date(dueDate).getTime()) / 86_400_000
+    );
+    return { label: diff === 1 ? "Gestern" : `${diff}d überfällig`, status: "overdue" };
+  }
+  if (dueDate === t) return { label: "Heute", status: "today" };
+  if (dueDate === tom) return { label: "Morgen", status: "soon" };
+  const d = new Date(dueDate + "T00:00:00");
+  return {
+    label: d.toLocaleDateString("de-DE", { day: "numeric", month: "short" }),
+    status: "future",
+  };
+}
+
+const STATUS_COLOR: Record<DueStatus, { fg: string; bg: string }> = {
+  overdue: { fg: "var(--due-overdue)", bg: "var(--due-overdue-bg)" },
+  today:   { fg: "var(--due-today)",   bg: "var(--due-today-bg)"  },
+  soon:    { fg: "var(--due-soon)",    bg: "var(--due-soon-bg)"   },
+  future:  { fg: "var(--fg-muted)",    bg: "var(--border)"        },
+};
+
+function sortOpen(todos: Todo[]): Todo[] {
+  const t = today();
+  const rank = (todo: Todo): number => {
+    if (!todo.dueDate) return 4;
+    if (todo.dueDate < t) return 0;
+    if (todo.dueDate === t) return 1;
+    return 2;
+  };
+  return [...todos].sort((a, b) => {
+    const dr = rank(a) - rank(b);
+    if (dr !== 0) return dr;
+    if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+    return a.createdAt.localeCompare(b.createdAt);
+  });
+}
+
+// ─── Main view ────────────────────────────────────────────────────────────────
+
+export default function TodoView() {
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [input, setInput] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [showDate, setShowDate] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    getTodos().then(setTodos).finally(() => setLoading(false));
+  }, []);
+
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text) return;
+    setInput("");
+    setDueDate("");
+    setShowDate(false);
+    inputRef.current?.focus();
+    const todo = await saveTodo(text, dueDate || undefined);
+    setTodos((prev) => [todo, ...prev]);
+  }
+
+  const handleToggle = useCallback(async (todo: Todo) => {
+    setTodos((prev) =>
+      prev.map((t) => (t._id === todo._id ? { ...t, done: !t.done } : t))
+    );
+    const updated = await updateTodoDoc(todo);
+    setTodos((prev) =>
+      prev.map((t) => (t._id === updated._id ? updated : t))
+    );
+  }, []);
+
+  const handleUpdateText = useCallback(async (todo: Todo, text: string) => {
+    setTodos((prev) =>
+      prev.map((t) => (t._id === todo._id ? { ...t, text } : t))
+    );
+    const updated = await updateTodoText(todo, text);
+    setTodos((prev) =>
+      prev.map((t) => (t._id === updated._id ? updated : t))
+    );
+  }, []);
+
+  const handleUpdateDueDate = useCallback(
+    async (todo: Todo, dueDate: string | undefined) => {
+      setTodos((prev) =>
+        prev.map((t) =>
+          t._id === todo._id ? { ...t, dueDate: dueDate ?? undefined } : t
+        )
+      );
+      const updated = await updateTodoDueDate(todo, dueDate);
+      setTodos((prev) =>
+        prev.map((t) => (t._id === updated._id ? updated : t))
+      );
+    },
+    []
+  );
+
+  const handleDelete = useCallback(async (id: string) => {
+    setTodos((prev) => prev.filter((t) => t._id !== id));
+    try {
+      await deleteTodo(id);
+    } catch {
+      // re-fetch on failure
+      getTodos().then(setTodos);
+    }
+  }, []);
+
+  const open = sortOpen(todos.filter((t) => !t.done));
+  const done = todos.filter((t) => t.done);
+  const total = todos.length;
+  const pct = total > 0 ? done.length / total : 0;
+  const hasOverdue = open.some((t) => t.dueDate && t.dueDate < today());
+
+  return (
+    <div className="mx-auto max-w-[620px] px-5 pt-6 pb-10">
+      {/* Header */}
+      <div className="mb-4 flex items-baseline justify-between">
+        <h2 className="font-serif text-2xl font-normal" style={{ color: "var(--fg)" }}>
+          Noch zu lernen
+        </h2>
+        {total > 0 && (
+          <span className="font-sans text-xs tabular-nums" style={{ color: "var(--fg-muted)" }}>
+            {done.length}&thinsp;/&thinsp;{total}
+          </span>
+        )}
+      </div>
+
+      {/* Progress bar */}
+      <div
+        className="mb-5 h-[3px] w-full overflow-hidden rounded-full"
+        style={{ background: total > 0 ? "var(--border)" : "transparent" }}
+      >
+        <div
+          className="h-full rounded-full"
+          style={{
+            width: `${pct * 100}%`,
+            background: hasOverdue ? "var(--due-overdue)" : "var(--accent)",
+            transition: "width 0.5s cubic-bezier(0.16,1,0.3,1), background 0.4s ease",
+          }}
+        />
+      </div>
+
+      {/* Input form */}
+      <form onSubmit={handleAdd} className="mb-6">
+        <div className="flex gap-2">
+          <input
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Was willst du noch lernen?"
+            autoFocus
+            className="journal-input flex-1 rounded-2xl px-4 py-3 font-sans text-sm outline-none"
+            style={{
+              background: "var(--bg-card)",
+              color: "var(--fg)",
+              boxShadow: input ? "var(--shadow-form)" : "var(--shadow-card)",
+              border: "1px solid var(--border)",
+              transition: "box-shadow 200ms ease",
+            }}
+          />
+          {/* Calendar toggle */}
+          <button
+            type="button"
+            onClick={() => setShowDate((v) => !v)}
+            data-active={showDate ? "true" : undefined}
+            title="Fälligkeit setzen"
+            className="btn-3d flex flex-shrink-0 items-center justify-center rounded-2xl px-3.5 py-3"
+            style={{
+              color: dueDate ? "var(--accent)" : "var(--fg-muted)",
+              transition: "color 150ms ease",
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="3" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+          </button>
+          {/* Add */}
+          <button
+            type="submit"
+            disabled={!input.trim()}
+            className="btn-3d rounded-2xl px-5 py-3 font-sans text-lg leading-none"
+            style={{
+              color: "var(--accent)",
+              opacity: input.trim() ? 1 : 0.38,
+              transition: "opacity 150ms ease",
+            }}
+          >
+            +
+          </button>
+        </div>
+
+        {/* Date picker row */}
+        {showDate && (
+          <div
+            className="mt-2 flex items-center gap-3 rounded-2xl px-4 py-3"
+            style={{
+              background: "var(--bg-card)",
+              border: "1px solid var(--border)",
+              boxShadow: "var(--shadow-card)",
+              animation: "todo-in 0.2s cubic-bezier(0.16,1,0.3,1) both",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--fg-muted)", flexShrink: 0 }}>
+              <rect x="3" y="4" width="18" height="18" rx="3" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+
+            {/* Styled display — native input overlaid transparent on top */}
+            <div className="relative flex-1 cursor-pointer select-none">
+              <span
+                className="block font-sans text-sm"
+                style={{ color: dueDate ? "var(--fg)" : "var(--fg-placeholder)", pointerEvents: "none" }}
+              >
+                {dueDate
+                  ? new Date(dueDate + "T00:00:00").toLocaleDateString("de-DE", {
+                      weekday: "short", day: "numeric", month: "long", year: "numeric",
+                    })
+                  : "Datum wählen…"}
+              </span>
+              <input
+                type="date"
+                value={dueDate}
+                min={today()}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                tabIndex={-1}
+              />
+            </div>
+
+            {dueDate && (
+              <button
+                type="button"
+                onClick={() => setDueDate("")}
+                className="flex-shrink-0 font-sans text-xs transition-opacity hover:opacity-60"
+                style={{ color: "var(--fg-muted)" }}
+              >
+                Entfernen
+              </button>
+            )}
+          </div>
+        )}
+      </form>
+
+      {/* List */}
+      {loading ? (
+        <div className="flex justify-center py-14">
+          <span
+            className="h-5 w-5 animate-spin rounded-full border-2"
+            style={{ borderColor: "var(--border)", borderTopColor: "var(--accent)" }}
+          />
+        </div>
+      ) : total === 0 ? (
+        <p className="py-16 text-center font-serif italic" style={{ color: "var(--fg-muted)" }}>
+          Füge dein erstes Lernziel hinzu.
+        </p>
+      ) : (
+        <>
+          <div className="flex flex-col gap-2">
+            {open.map((todo, i) => (
+              <TodoItem
+                key={todo._id}
+                todo={todo}
+                index={i}
+                onToggle={handleToggle}
+                onUpdateText={handleUpdateText}
+                onUpdateDueDate={handleUpdateDueDate}
+                onDelete={handleDelete}
+              />
+            ))}
+          </div>
+
+          {done.length > 0 && (
+            <>
+              <div className="my-5 flex items-center gap-3">
+                <div className="h-px flex-1" style={{ background: "var(--border)" }} />
+                <span
+                  className="font-sans text-[10px] font-medium uppercase tracking-[0.16em]"
+                  style={{ color: "var(--fg-muted)" }}
+                >
+                  Erledigt · {done.length}
+                </span>
+                <div className="h-px flex-1" style={{ background: "var(--border)" }} />
+              </div>
+              <div className="flex flex-col gap-2">
+                {done.map((todo, i) => (
+                  <TodoItem
+                    key={todo._id}
+                    todo={todo}
+                    index={i}
+                    onToggle={handleToggle}
+                    onUpdateText={handleUpdateText}
+                    onUpdateDueDate={handleUpdateDueDate}
+                    onDelete={handleDelete}
+                    dimmed
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Todo item ────────────────────────────────────────────────────────────────
+
+function TodoItem({
+  todo,
+  index,
+  onToggle,
+  onUpdateText,
+  onUpdateDueDate,
+  onDelete,
+  dimmed = false,
+}: {
+  todo: Todo;
+  index: number;
+  onToggle: (t: Todo) => void;
+  onUpdateText: (t: Todo, text: string) => void;
+  onUpdateDueDate: (t: Todo, dueDate: string | undefined) => void;
+  onDelete: (id: string) => void;
+  dimmed?: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(todo.text);
+  const [popping, setPopping] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(false);
+  const editRef = useRef<HTMLInputElement>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) {
+      setVal(todo.text);
+      requestAnimationFrame(() => editRef.current?.select());
+    }
+  }, [editing, todo.text]);
+
+  function commit() {
+    setEditing(false);
+    const trimmed = val.trim();
+    if (trimmed && trimmed !== todo.text) onUpdateText(todo, trimmed);
+    else setVal(todo.text);
+  }
+
+  function handleToggleClick() {
+    setPopping(true);
+    onToggle(todo);
+  }
+
+  const dueInfo = todo.dueDate && !todo.done ? getDueInfo(todo.dueDate) : null;
+  const dueColors = dueInfo ? STATUS_COLOR[dueInfo.status] : null;
+
+  return (
+    <div
+      className={`todo-appear group flex items-center gap-3 rounded-2xl px-4 py-[13px]`}
+      style={{
+        background: "var(--bg-card)",
+        boxShadow: dueInfo?.status === "overdue"
+          ? `var(--shadow-card), inset 3px 0 0 var(--due-overdue)`
+          : "var(--shadow-card)",
+        border: "1px solid var(--border)",
+        opacity: dimmed ? 0.48 : 1,
+        transition: "opacity 300ms ease, box-shadow 300ms ease",
+        animationDelay: `${Math.min(index * 30, 180)}ms`,
+      }}
+    >
+      {/* Checkbox */}
+      <button
+        onClick={handleToggleClick}
+        onAnimationEnd={() => setPopping(false)}
+        className={`flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200${popping ? " check-pop" : ""}`}
+        style={{
+          borderColor: todo.done ? "var(--accent)" : "var(--border-focus)",
+          background: todo.done ? "var(--accent)" : "transparent",
+          color: "var(--bg)",
+        }}
+        aria-label={todo.done ? "Als offen markieren" : "Als erledigt markieren"}
+      >
+        <svg
+          width="10" height="10" viewBox="0 0 12 12"
+          fill="none" stroke="currentColor" strokeWidth="2.5"
+          strokeLinecap="round" strokeLinejoin="round"
+          style={{ opacity: todo.done ? 1 : 0, transition: "opacity 120ms ease" }}
+        >
+          <polyline points="2 6 5 9 10 3" />
+        </svg>
+      </button>
+
+      {/* Text */}
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        {editing ? (
+          <input
+            ref={editRef}
+            value={val}
+            onChange={(e) => setVal(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); commit(); }
+              if (e.key === "Escape") { setEditing(false); setVal(todo.text); }
+            }}
+            className="bg-transparent font-sans text-sm leading-relaxed outline-none"
+            style={{ color: "var(--fg)" }}
+          />
+        ) : (
+          <span
+            onClick={() => !todo.done && setEditing(true)}
+            className="truncate font-sans text-sm leading-relaxed"
+            style={{
+              color: "var(--fg)",
+              textDecorationLine: todo.done ? "line-through" : "none",
+              textDecorationColor: "var(--fg-muted)",
+              opacity: todo.done ? 0.55 : 1,
+              cursor: todo.done ? "default" : "text",
+              transition: "opacity 200ms ease",
+            }}
+          >
+            {todo.text}
+          </span>
+        )}
+      </div>
+
+      {/* Due date chip — overlay pattern so the chip stays styled */}
+      {dueInfo && dueColors && (
+        <div className="relative flex-shrink-0" title="Datum ändern">
+          <span
+            className="block rounded-full px-2 py-0.5 font-sans text-[11px] font-medium"
+            style={{
+              color: dueColors.fg,
+              background: dueColors.bg,
+              whiteSpace: "nowrap",
+              pointerEvents: "none",
+            }}
+          >
+            {dueInfo.label}
+          </span>
+          <input
+            ref={dateInputRef}
+            type="date"
+            value={todo.dueDate ?? ""}
+            onChange={(e) => onUpdateDueDate(todo, e.target.value || undefined)}
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            tabIndex={-1}
+            aria-label="Fälligkeit ändern"
+          />
+        </div>
+      )}
+
+      {/* Delete / Confirmation */}
+      {pendingDelete ? (
+        <div className="flex flex-shrink-0 items-center gap-1.5">
+          <button
+            onClick={() => onDelete(todo._id)}
+            className="rounded-lg px-2 py-0.5 font-sans text-[11px] font-medium transition-opacity hover:opacity-80"
+            style={{ background: "var(--due-overdue-bg)", color: "var(--due-overdue)" }}
+          >
+            Löschen
+          </button>
+          <button
+            onClick={() => setPendingDelete(false)}
+            className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-sm transition-opacity hover:opacity-60"
+            style={{ color: "var(--fg-muted)" }}
+            aria-label="Abbrechen"
+          >
+            ✕
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setPendingDelete(true)}
+          className="flex-shrink-0 rounded-md p-0.5 opacity-0 transition-opacity group-hover:opacity-25 hover:!opacity-65 active:!opacity-100"
+          style={{ color: "var(--fg)" }}
+          aria-label="Löschen"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+}
