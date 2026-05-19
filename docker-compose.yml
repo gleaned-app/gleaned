@@ -7,6 +7,27 @@ services:
     depends_on:
       couchdb:
         condition: service_healthy
+      pusher:
+        condition: service_healthy
+
+  pusher:
+    build: ./pusher
+    restart: unless-stopped
+    environment:
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@gleaned.local}
+      COUCHDB_URL: http://${COUCHDB_USER:-admin}:${COUCHDB_PASSWORD:-changeme}@couchdb:5984
+      PUSH_HOUR: ${PUSH_HOUR:-20}
+      PUSH_MINUTE: ${PUSH_MINUTE:-0}
+    depends_on:
+      couchdb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   couchdb:
     image: couchdb:3

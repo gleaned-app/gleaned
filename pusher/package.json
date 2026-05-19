@@ -1,0 +1,13 @@
+{
+  "name": "gleaned-pusher",
+  "version": "1.0.0",
+  "description": "Web Push notification service for gleaned",
+  "main": "index.js",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "express": "^4.19.2",
+    "nano": "^10.1.4",
+    "node-cron": "^3.0.3",
+    "web-push": "^3.6.7"
+  }
+}

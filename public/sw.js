@@ -61,3 +61,35 @@ self.addEventListener("fetch", (e) => {
     );
   }
 });
+
+// ── Push notifications ───────────────────────────────────────────────────────
+self.addEventListener("push", (e) => {
+  let data = { title: "gleaned", body: "Was hast du heute gelernt?", url: "/" };
+  try { data = { ...data, ...e.data.json() }; } catch {}
+
+  e.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      data: { url: data.url },
+      vibrate: [100, 50, 100],
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const target = e.notification.data?.url || "/";
+  e.waitUntil(
+    clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((list) => {
+        for (const client of list) {
+          if (new URL(client.url).pathname === target && "focus" in client)
+            return client.focus();
+        }
+        return clients.openWindow(target);
+      })
+  );
+});

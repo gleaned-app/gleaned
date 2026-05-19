@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useSettings } from "@/lib/settings-context";
 import type { AppSettings, Theme } from "@/lib/settings-context";
 import { exportData, importData, getAllTags, deleteTag } from "@/lib/db";
+import { getPushStatus, subscribeToPush, unsubscribeFromPush } from "@/lib/notifications";
 
 interface Props {
   onClose: () => void;
@@ -57,12 +58,33 @@ export default function SettingsModal({ onClose }: Props) {
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [tagMap, setTagMap] = useState<Map<string, number>>(new Map());
   const [showTags, setShowTags] = useState(false);
+  const [pushStatus, setPushStatus] = useState<"unsupported" | "denied" | "subscribed" | "unsubscribed">("unsubscribed");
+  const [pushLoading, setPushLoading] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
   const de = settings.language === "de";
 
   useEffect(() => {
     if (showTags) getAllTags().then(setTagMap);
   }, [showTags]);
+
+  useEffect(() => {
+    getPushStatus().then(setPushStatus);
+  }, []);
+
+  async function handlePushToggle() {
+    setPushLoading(true);
+    try {
+      if (pushStatus === "subscribed") {
+        await unsubscribeFromPush();
+        setPushStatus("unsubscribed");
+      } else {
+        const ok = await subscribeToPush();
+        setPushStatus(ok ? "subscribed" : await getPushStatus());
+      }
+    } finally {
+      setPushLoading(false);
+    }
+  }
 
   async function handleDeleteTag(tag: string) {
     await deleteTag(tag);
@@ -297,6 +319,28 @@ export default function SettingsModal({ onClose }: Props) {
               </p>
             )}
           </Row>
+
+          {pushStatus !== "unsupported" && (
+            <Row label={de ? "Benachrichtigungen" : "Notifications"}>
+              <button
+                onClick={handlePushToggle}
+                disabled={pushLoading || pushStatus === "denied"}
+                className="btn-3d w-full rounded-xl py-2.5 font-sans text-sm font-medium transition-opacity"
+                style={{
+                  color: pushStatus === "subscribed" ? "var(--accent)" : "var(--fg-muted)",
+                  opacity: pushLoading ? 0.6 : 1,
+                }}
+              >
+                {pushLoading
+                  ? "…"
+                  : pushStatus === "subscribed"
+                    ? (de ? "Tägl. Erinnerung aktiv — deaktivieren" : "Daily reminder on — turn off")
+                    : pushStatus === "denied"
+                      ? (de ? "Blockiert — bitte in Browser-Einstellungen erlauben" : "Blocked — allow in browser settings")
+                      : (de ? "Tägl. Erinnerung aktivieren" : "Enable daily reminder")}
+              </button>
+            </Row>
+          )}
 
           <Row label={de ? "Daten" : "Data"}>
             <div className="flex flex-col gap-2">
