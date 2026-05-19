@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { isAuthenticated } from "@/lib/auth";
 import { SettingsProvider } from "@/lib/settings-context";
+import { useSyncStatus } from "@/lib/use-sync-status";
 import JournalView from "./JournalView";
 import CalendarView from "./CalendarView";
 import TodoView from "./TodoView";
@@ -10,6 +11,31 @@ import BottomNav from "./BottomNav";
 import LockScreen from "./LockScreen";
 import ProfileButton from "./ProfileButton";
 import SettingsModal from "./SettingsModal";
+
+function SyncDot() {
+  const status = useSyncStatus();
+  if (status === "idle") return null;
+
+  const color =
+    status === "error"   ? "oklch(55% 0.19 25)"  :
+    status === "syncing" ? "oklch(62% 0.17 145)"  :
+                           "oklch(62% 0.17 145)";
+
+  return (
+    <span
+      title={status}
+      style={{
+        display: "inline-block",
+        width: 7,
+        height: 7,
+        borderRadius: "50%",
+        background: color,
+        flexShrink: 0,
+        animation: status === "syncing" ? "pulse 1.2s ease-in-out infinite" : "none",
+      }}
+    />
+  );
+}
 
 type View = "journal" | "calendar" | "todos";
 
@@ -57,7 +83,10 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
         >
           gleaned
         </button>
-        <ProfileButton onLock={onLock} onSettings={() => setShowSettings(true)} />
+        <div className="flex items-center gap-2.5">
+          <SyncDot />
+          <ProfileButton onLock={onLock} onSettings={() => setShowSettings(true)} />
+        </div>
       </header>
 
       <main className="flex-1 overflow-y-auto" style={{ paddingBottom: "calc(80px + env(safe-area-inset-bottom))" }}>
