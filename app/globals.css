@@ -210,6 +210,66 @@ body {
   background: var(--btn-active-face);
 }
 
+/* ── Syntax highlighting (highlight.js tokens, theme-aware) ─────────────────── */
+.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 1em;
+  background: transparent;
+  color: var(--fg);
+}
+.hljs-comment, .hljs-quote       { color: var(--fg-muted); font-style: italic; }
+.hljs-keyword, .hljs-selector-tag,
+.hljs-addition                   { color: var(--code-kw, oklch(52% 0.18 300)); }
+.hljs-string, .hljs-bullet,
+.hljs-template-variable,
+.hljs-attr                       { color: var(--code-str, oklch(52% 0.16 145)); }
+.hljs-number, .hljs-literal,
+.hljs-link                       { color: var(--code-num, oklch(58% 0.18 48)); }
+.hljs-title, .hljs-section,
+.hljs-built_in                   { color: var(--code-fn, oklch(50% 0.15 220)); }
+.hljs-type, .hljs-class .hljs-title { color: var(--code-type, oklch(54% 0.14 34)); }
+.hljs-deletion, .hljs-meta       { color: var(--code-meta, oklch(55% 0.18 25)); }
+.hljs-emphasis                   { font-style: italic; }
+.hljs-strong                     { font-weight: bold; }
+
+/* Light/sepia token colours */
+:root {
+  --code-kw:   oklch(50% 0.2  290);
+  --code-str:  oklch(48% 0.17 145);
+  --code-num:  oklch(55% 0.18  48);
+  --code-fn:   oklch(46% 0.15 220);
+  --code-type: oklch(52% 0.15  34);
+  --code-meta: oklch(52% 0.18  25);
+}
+html.theme-sepia {
+  --code-kw:   oklch(44% 0.18  42);
+  --code-str:  oklch(44% 0.15 135);
+  --code-num:  oklch(50% 0.16  58);
+  --code-fn:   oklch(42% 0.13 210);
+  --code-type: oklch(48% 0.14  30);
+  --code-meta: oklch(46% 0.16  25);
+}
+/* Dark token colours */
+html.theme-dark {
+  --code-kw:   oklch(72% 0.2  290);
+  --code-str:  oklch(68% 0.17 145);
+  --code-num:  oklch(74% 0.18  48);
+  --code-fn:   oklch(68% 0.15 220);
+  --code-type: oklch(72% 0.15  34);
+  --code-meta: oklch(70% 0.18  25);
+}
+@media (prefers-color-scheme: dark) {
+  html:not(.theme-light):not(.theme-sepia) {
+    --code-kw:   oklch(72% 0.2  290);
+    --code-str:  oklch(68% 0.17 145);
+    --code-num:  oklch(74% 0.18  48);
+    --code-fn:   oklch(68% 0.15 220);
+    --code-type: oklch(72% 0.15  34);
+    --code-meta: oklch(70% 0.18  25);
+  }
+}
+
 /* ── Animations ──────────────────────────────────────────────────────────────── */
 @keyframes entry-in {
   from { opacity: 0; transform: translateY(10px); }
