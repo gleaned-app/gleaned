@@ -33,7 +33,7 @@ export async function getDB(): Promise<PouchDB.Database<AnyDoc>> {
 
 // ─── Entries ────────────────────────────────────────────────────────────────
 
-export async function saveEntry(content: string, tags: string[]): Promise<Entry> {
+export async function saveEntry(content: string, tags: string[], attachments?: import("@/types/entry").Attachment[]): Promise<Entry> {
   const db = await getDB();
   const now = new Date();
   const doc: Omit<Entry, "_rev"> = {
@@ -43,6 +43,7 @@ export async function saveEntry(content: string, tags: string[]): Promise<Entry>
     tags,
     date: now.toISOString().split("T")[0],
     createdAt: now.toISOString(),
+    ...(attachments?.length ? { attachments } : {}),
   };
   await db.put(doc);
   return doc as Entry;
