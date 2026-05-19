@@ -2,6 +2,20 @@
 
 > *to collect gradually and bit by bit; to gather the knowledge left behind by each day.*
 
+---
+
+## Why
+
+You know those end-of-day countdown apps — the ones that tell you how many minutes until you can leave work or school. They exist to help you wait. That's the wrong direction.
+
+gleaned starts from the opposite idea: what if, instead of watching the clock, you tracked what you actually picked up today? Not a productivity system. Not a task manager. Just a quiet place to note what stuck — a Wikipedia rabbit hole, a line of code that finally clicked, something a colleague said that made you think, an idea that arrived on the commute home.
+
+The belief behind it is simple: every day you learn something. Most of it evaporates because nothing caught it. gleaned is the net.
+
+It works for small things too — a single sentence, a word you looked up, a thought you don't want to lose. The bar is intentionally low. The point is the habit of noticing, not the size of the insight.
+
+---
+
 A personal, offline-first learning journal. Everything you write is encrypted and stored locally — your data never leaves your device unless you choose to sync it.
 
 ---
