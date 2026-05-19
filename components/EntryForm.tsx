@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { saveEntry } from "@/lib/db";
+import { useState, useRef, useEffect } from "react";
+import { saveEntry, getAllTags } from "@/lib/db";
 import type { Entry, Attachment } from "@/types/entry";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -44,8 +44,19 @@ export default function EntryForm({ onSaved }: Props) {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [saving, setSaving] = useState(false);
   const [focused, setFocused] = useState(false);
+  const [existingTags, setExistingTags] = useState<string[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    getAllTags().then((m) => setExistingTags([...m.keys()]));
+  }, []);
+
+  const suggestions = tagInput.trim()
+    ? existingTags.filter(
+        (t) => t.startsWith(tagInput.trim().toLowerCase().replace(/^#/, "")) && !tags.includes(t)
+      ).slice(0, 5)
+    : [];
 
   function addTag(value: string) {
     const tag = value.trim().toLowerCase().replace(/^#/, "");
@@ -211,15 +222,40 @@ export default function EntryForm({ onSaved }: Props) {
             <span className="opacity-40 group-hover:opacity-80">×</span>
           </button>
         ))}
-        <input
-          value={tagInput}
-          onChange={(e) => setTagInput(e.target.value)}
-          onKeyDown={handleTagKeyDown}
-          onBlur={() => tagInput.trim() && addTag(tagInput)}
-          placeholder={tags.length === 0 ? "Tags..." : ""}
-          className="journal-input min-w-[60px] flex-1 bg-transparent font-sans text-xs outline-none"
-          style={{ color: "var(--fg-muted)" }}
-        />
+        <div className="relative min-w-[60px] flex-1">
+          <input
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyDown={handleTagKeyDown}
+            onBlur={() => setTimeout(() => tagInput.trim() && addTag(tagInput), 150)}
+            placeholder={tags.length === 0 ? "Tags..." : ""}
+            className="journal-input w-full bg-transparent font-sans text-xs outline-none"
+            style={{ color: "var(--fg-muted)" }}
+          />
+          {suggestions.length > 0 && (
+            <div
+              className="absolute bottom-full left-0 mb-1 z-20 flex flex-col overflow-hidden rounded-xl py-1"
+              style={{
+                background: "var(--bg-card)",
+                boxShadow: "var(--shadow-form)",
+                border: "1px solid var(--border)",
+                minWidth: "120px",
+              }}
+            >
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); addTag(s); }}
+                  className="px-3 py-1.5 text-left font-sans text-xs transition-colors hover:bg-[var(--accent-soft)]"
+                  style={{ color: "var(--accent)" }}
+                >
+                  #{s}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="ml-auto flex items-center gap-3">
           <span
