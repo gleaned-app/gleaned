@@ -19,6 +19,49 @@ function formatDate(dateStr: string, loc: string) {
   };
 }
 
+// ─── Streak badge ─────────────────────────────────────────────────────────────
+// 4 heat levels based on consecutive days. Colors shift amber → orange → red-orange.
+// Level 4 (30+ days) pulses via CSS animation.
+
+function streakLevel(n: number): 0 | 1 | 2 | 3 | 4 {
+  if (n < 2)  return 0;
+  if (n < 7)  return 1;
+  if (n < 14) return 2;
+  if (n < 30) return 3;
+  return 4;
+}
+
+const HEAT: Record<1 | 2 | 3 | 4, { color: string; bg: string; shadow: string; pulse: boolean }> = {
+  1: { color: "oklch(72% 0.14 62)", bg: "oklch(72% 0.14 62 / 0.13)", shadow: "none",                                              pulse: false },
+  2: { color: "oklch(68% 0.20 46)", bg: "oklch(68% 0.20 46 / 0.15)", shadow: "0 0 10px oklch(68% 0.20 46 / 0.30)",               pulse: false },
+  3: { color: "oklch(63% 0.24 34)", bg: "oklch(63% 0.24 34 / 0.17)", shadow: "0 0 14px oklch(63% 0.24 34 / 0.45)",               pulse: false },
+  4: { color: "oklch(60% 0.27 24)", bg: "oklch(60% 0.27 24 / 0.18)", shadow: "0 0 18px oklch(60% 0.27 24 / 0.60)",               pulse: true  },
+};
+
+function FlameIcon() {
+  return (
+    <svg width="11" height="14" viewBox="0 0 24 28" fill="currentColor" aria-hidden>
+      <path d="M12 0C11 4 8 6.5 6 10 4 13.5 4 16.5 4 18a8 8 0 0016 0c0-3-1.5-5.5-3.5-8-.7-1-1.3-2.2-1.5-3.5-.8 2-2 3.5-2 5.5a3 3 0 01-6 0c0-2.5 1.5-4.5 5-8 .5-.5.8-1.3 1-2z"/>
+    </svg>
+  );
+}
+
+function StreakBadge({ streak, lang }: { streak: number; lang: "de" | "en" }) {
+  const level = streakLevel(streak);
+  if (level === 0) return null;
+  const h = HEAT[level];
+  return (
+    <span
+      className={`flex items-center gap-1.5 rounded-full px-3 py-1 font-sans text-sm font-semibold transition-all duration-500${h.pulse ? " streak-pulse" : ""}`}
+      style={{ color: h.color, background: h.bg, boxShadow: h.shadow }}
+      title={lang === "de" ? `${streak} Tage in Folge` : `${streak} day streak`}
+    >
+      <FlameIcon />
+      {streak}
+    </span>
+  );
+}
+
 export default function JournalView() {
   const { settings } = useSettings();
   const loc = locale(settings);
@@ -78,19 +121,11 @@ export default function JournalView() {
             <h1 className="font-serif text-[2.6rem] font-normal leading-none tracking-tight" style={{ color: "var(--fg)" }}>
               {weekday}
             </h1>
-            <div className="mt-1.5 flex items-center gap-3">
+            <div className="mt-2 flex items-center gap-3">
               <p className="font-sans text-sm" style={{ color: "var(--fg-muted)" }}>
                 {full}
               </p>
-              {streak >= 2 && (
-                <span
-                  className="flex items-center gap-1 rounded-full px-2.5 py-0.5 font-sans text-xs font-medium"
-                  style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
-                >
-                  <span style={{ fontSize: "10px" }}>◆</span>
-                  {streak} {settings.language === "de" ? "Tage" : "days"}
-                </span>
-              )}
+              <StreakBadge streak={streak} lang={settings.language} />
             </div>
           </>
         )}
