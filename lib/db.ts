@@ -3,6 +3,47 @@ import type { Todo } from "@/types/todo";
 
 type AnyDoc = Entry | Todo;
 
+// ─── Sync status ─────────────────────────────────────────────────────────────
+
+export type SyncStatus = "idle" | "syncing" | "synced" | "error";
+
+let _syncStatus: SyncStatus = "idle";
+let _syncHandler: PouchDB.Replication.Sync<AnyDoc> | null = null;
+const _syncListeners = new Set<(s: SyncStatus) => void>();
+
+function setSyncStatus(s: SyncStatus) {
+  _syncStatus = s;
+  _syncListeners.forEach((l) => l(s));
+}
+
+export function getSyncStatus(): SyncStatus { return _syncStatus; }
+
+export function subscribeSyncStatus(cb: (s: SyncStatus) => void): () => void {
+  _syncListeners.add(cb);
+  return () => _syncListeners.delete(cb);
+}
+
+export function stopSync() {
+  _syncHandler?.cancel();
+  _syncHandler = null;
+  setSyncStatus("idle");
+}
+
+export async function startSync(url: string) {
+  stopSync();
+  if (!url.trim()) return;
+  const db = await getDB();
+  setSyncStatus("syncing");
+  _syncHandler = db
+    .sync(url.trim(), { live: true, retry: true })
+    .on("active",  () => setSyncStatus("syncing"))
+    .on("paused",  (err) => setSyncStatus(err ? "error" : "synced"))
+    .on("error",   () => setSyncStatus("error"))
+    .on("denied",  () => setSyncStatus("error")) as PouchDB.Replication.Sync<AnyDoc>;
+}
+
+// ─── DB init ─────────────────────────────────────────────────────────────────
+
 let _db: PouchDB.Database<AnyDoc> | null = null;
 
 export async function getDB(): Promise<PouchDB.Database<AnyDoc>> {
@@ -17,16 +58,6 @@ export async function getDB(): Promise<PouchDB.Database<AnyDoc>> {
     _db.createIndex({ index: { fields: ["type", "date", "createdAt"] } }),
     _db.createIndex({ index: { fields: ["type", "createdAt"] } }),
   ]);
-
-  const remoteUrl = process.env.NEXT_PUBLIC_COUCHDB_URL;
-  if (remoteUrl) {
-    _db.sync(remoteUrl, {
-      live: true,
-      retry: true,
-    }).on("error", (err) => {
-      console.error("gleaned: sync error", err);
-    });
-  }
 
   return _db;
 }
@@ -201,6 +232,7 @@ export interface Settings {
   language?: "de" | "en";
   weekStart?: "monday" | "sunday";
   theme?: "system" | "light" | "dark" | "sepia";
+  couchdbUrl?: string;
 }
 
 export async function getSettings(): Promise<Settings | null> {
@@ -231,4 +263,49 @@ export async function saveSettings(data: Partial<Settings>): Promise<void> {
     }
   }
   throw new Error("gleaned: too many conflicts saving settings");
+}
+
+// ─── Export / Import ─────────────────────────────────────────────────────────
+
+export async function exportData(): Promise<string> {
+  const db = await getDB();
+  const result = await db.allDocs({ include_docs: true });
+  const docs = result.rows
+    .filter((r) => r.doc && (r.doc.type === "entry" || r.doc.type === "todo"))
+    .map((r) => {
+      const { _rev, ...doc } = r.doc as AnyDoc & { _rev?: string };
+      void _rev;
+      return doc;
+    });
+  return JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), docs }, null, 2);
+}
+
+export async function importData(json: string): Promise<{ imported: number; skipped: number }> {
+  const db = await getDB();
+  const parsed = JSON.parse(json) as { docs?: unknown[] } | unknown[];
+  const rawDocs: unknown[] = Array.isArray(parsed) ? parsed : ((parsed as { docs?: unknown[] }).docs ?? []);
+
+  let imported = 0;
+  let skipped = 0;
+
+  for (const raw of rawDocs) {
+    const doc = raw as Record<string, unknown>;
+    const id = doc._id as string;
+    if (!id || !doc.type) { skipped++; continue; }
+    try {
+      await db.get(id);
+      skipped++;
+    } catch (e) {
+      if ((e as { status?: number }).status === 404) {
+        const { _rev, ...toInsert } = doc;
+        void _rev;
+        await db.put(toInsert as unknown as AnyDoc);
+        imported++;
+      } else {
+        skipped++;
+      }
+    }
+  }
+
+  return { imported, skipped };
 }
