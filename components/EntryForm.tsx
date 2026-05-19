@@ -52,6 +52,13 @@ export default function EntryForm({ onSaved }: Props) {
     getAllTags().then((m) => setExistingTags([...m.keys()]));
   }, []);
 
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [content]);
+
   const suggestions = tagInput.trim()
     ? existingTags.filter(
         (t) => t.startsWith(tagInput.trim().toLowerCase().replace(/^#/, "")) && !tags.includes(t)
@@ -137,10 +144,16 @@ export default function EntryForm({ onSaved }: Props) {
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           placeholder="Was hast du heute gelernt?"
-          rows={4}
           autoFocus
           className="journal-input w-full resize-none bg-transparent font-sans text-base leading-relaxed outline-none"
-          style={{ color: "var(--fg)", caretColor: "var(--accent)" }}
+          style={{
+            color: "var(--fg)",
+            caretColor: "var(--accent)",
+            minHeight: "7rem",
+            backgroundImage:
+              "repeating-linear-gradient(to bottom, transparent, transparent calc(1.625em - 1px), var(--border) calc(1.625em - 1px), var(--border) 1.625em)",
+            backgroundAttachment: "local",
+          }}
         />
       </div>
 
