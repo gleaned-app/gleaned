@@ -22,7 +22,9 @@ export function locale(settings: AppSettings): string {
 }
 
 function applyTheme(theme: Theme) {
-  document.documentElement.setAttribute("data-theme", theme);
+  const el = document.documentElement;
+  el.classList.remove("theme-light", "theme-dark", "theme-sepia");
+  if (theme !== "system") el.classList.add(`theme-${theme}`);
   try { localStorage.setItem("gleaned-theme", theme); } catch {}
 }
 

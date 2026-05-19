@@ -28,13 +28,14 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="de" className={`${lora.variable} ${dmSans.variable}`}>
+    <html lang="de" className={`${lora.variable} ${dmSans.variable}`} suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#F3EDE3" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#15100C" media="(prefers-color-scheme: dark)" />
         <link rel="apple-touch-icon" href="/icon.svg" />
+        {/* Apply theme class before React hydrates to prevent flash */}
         <script dangerouslySetInnerHTML={{ __html:
-          `try{var t=localStorage.getItem("gleaned-theme")||"system";document.documentElement.setAttribute("data-theme",t)}catch(e){}`
+          `try{var t=localStorage.getItem("gleaned-theme")||"system";if(t!=="system")document.documentElement.classList.add("theme-"+t)}catch(e){}`
         }} />
         <script
           dangerouslySetInnerHTML={{

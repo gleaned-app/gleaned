@@ -5,12 +5,12 @@
   --font-serif: var(--font-lora), Georgia, "Times New Roman", serif;
 }
 
-/* ── Theme token mixin ───────────────────────────────────────────────────────── */
-/* Applied to :root (light default), explicit selectors, and system media query  */
+/* ── Theme tokens ────────────────────────────────────────────────────────────── */
+/* Class-based on <html>: .theme-light / .theme-dark / .theme-sepia             */
+/* System (no class) follows prefers-color-scheme via media query                */
 
-/* LIGHT */
-:root,
-html[data-theme="light"] {
+/* LIGHT — default and explicit */
+:root {
   --bg:              oklch(92% 0.022 75);
   --bg-card:         oklch(97.5% 0.012 80);
   --bg-nav:          oklch(94% 0.018 75);
@@ -39,8 +39,9 @@ html[data-theme="light"] {
   --btn-inset:       oklch(74% 0.03 68 / 0.35);
 }
 
-/* DARK */
-html[data-theme="dark"] {
+/* DARK vars — reused by explicit class and system media query */
+html.theme-dark,
+html.theme-dark :root {
   --bg:              oklch(13% 0.016 55);
   --bg-card:         oklch(17% 0.018 56);
   --bg-nav:          oklch(14.5% 0.016 55);
@@ -70,7 +71,7 @@ html[data-theme="dark"] {
 }
 
 /* SEPIA — warm aged paper */
-html[data-theme="sepia"] {
+html.theme-sepia {
   --bg:              oklch(88% 0.05 82);
   --bg-card:         oklch(93% 0.035 84);
   --bg-nav:          oklch(90% 0.044 82);
@@ -99,10 +100,9 @@ html[data-theme="sepia"] {
   --btn-inset:       oklch(70% 0.05 76 / 0.38);
 }
 
-/* SYSTEM — follow OS preference (default when no data-theme is set) */
+/* SYSTEM — follow OS when no explicit theme class is set */
 @media (prefers-color-scheme: dark) {
-  html:not([data-theme]),
-  html[data-theme="system"] {
+  html:not(.theme-light):not(.theme-dark):not(.theme-sepia) {
     --bg:              oklch(13% 0.016 55);
     --bg-card:         oklch(17% 0.018 56);
     --bg-nav:          oklch(14.5% 0.016 55);
