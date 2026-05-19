@@ -124,6 +124,24 @@ export default function EntryForm({ onSaved }: Props) {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") handleSubmit();
   }
 
+  function handleLineClick(e: React.MouseEvent<HTMLTextAreaElement>) {
+    const el = textareaRef.current;
+    if (!el) return;
+    const lineHeight = parseFloat(getComputedStyle(el).lineHeight);
+    const rect = el.getBoundingClientRect();
+    const relY = e.clientY - rect.top + el.scrollTop;
+    const targetLine = Math.floor(relY / lineHeight);
+    const lines = el.value.split("\n");
+    if (targetLine >= lines.length) {
+      const newVal = el.value + "\n".repeat(targetLine - lines.length + 1);
+      setContent(newVal);
+      requestAnimationFrame(() => {
+        if (!textareaRef.current) return;
+        textareaRef.current.setSelectionRange(newVal.length, newVal.length);
+      });
+    }
+  }
+
   const hasContent = content.trim().length > 0 || attachments.length > 0;
 
   return (
@@ -141,6 +159,7 @@ export default function EntryForm({ onSaved }: Props) {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           onKeyDown={handleKeyDown}
+          onClick={handleLineClick}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           placeholder="Was hast du heute gelernt?"
@@ -149,9 +168,8 @@ export default function EntryForm({ onSaved }: Props) {
           style={{
             color: "var(--fg)",
             caretColor: "var(--accent)",
-            minHeight: "8rem",
+            minHeight: "clamp(10rem, 40vh, 28rem)",
             padding: "0",
-            // Lines perfectly aligned: transparent gap then 1px rule, repeating at line-height
             backgroundImage:
               "repeating-linear-gradient(to bottom, transparent, transparent calc(1.625em - 1px), var(--border) calc(1.625em - 1px), var(--border) 1.625em)",
             backgroundAttachment: "local",
