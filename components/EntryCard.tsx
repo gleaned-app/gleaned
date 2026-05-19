@@ -236,7 +236,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
   );
 
   const cardStyle = flat
-    ? { borderTop: "1px solid var(--border)" }
+    ? { borderLeft: "2px solid var(--accent-soft)", paddingLeft: "1.25rem" }
     : {
         background: "var(--bg-card)",
         boxShadow: "var(--shadow-card)",
@@ -244,7 +244,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
       };
 
   const cardClass = flat
-    ? "pt-4 pb-2"
+    ? "py-1"
     : "rounded-xl px-5 py-4";
 
   if (editing) {
@@ -360,7 +360,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
 
       {entry.content ? (
         <div
-          className={`md font-sans text-base leading-relaxed ${flat ? "pr-8" : "pr-16 sm:pr-8"}`}
+          className={`md leading-relaxed ${flat ? "font-sans text-[17px] pr-8" : "font-sans text-base pr-16 sm:pr-8"}`}
           dangerouslySetInnerHTML={{ __html: mdHtml }}
         />
       ) : null}
@@ -373,7 +373,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
         </div>
       )}
 
-      <div className="mt-3.5 flex flex-wrap items-center gap-1.5">
+      <div className={`flex flex-wrap items-center gap-1.5 ${flat ? "mt-3" : "mt-3.5"}`}>
         {entry.tags.map((tag) => (
           <button
             key={tag}

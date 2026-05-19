@@ -164,6 +164,25 @@ export default function JournalView() {
       {/* ── Right panel: entries ──────────────────────────────────── */}
       <div className="flex-1 px-5 pb-4 md:px-12 md:py-10">
 
+        {/* Desktop header — what you've collected today */}
+        {!loading && (
+          <div className="mb-8 hidden md:block">
+            <p
+              className="font-serif text-2xl font-normal"
+              style={{ color: "var(--fg)", opacity: entries.length === 0 ? 0.3 : 1 }}
+            >
+              {filterTag
+                ? `#${filterTag}`
+                : de ? "Was heute hängen bleibt" : "What stuck today"}
+            </p>
+            {entries.length > 0 && (
+              <p className="mt-1 font-sans text-xs" style={{ color: "var(--fg-muted)" }}>
+                {entries.length} {de ? (entries.length === 1 ? "Eintrag" : "Einträge") : (entries.length === 1 ? "entry" : "entries")}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Divider — mobile only */}
         {!loading && entries.length > 0 && (
           <div className="my-7 flex items-center gap-4 md:hidden">
@@ -235,10 +254,10 @@ export default function JournalView() {
 
         {!loading && entries.length === 0 && (
           <p
-            className="mt-12 text-center font-serif text-2xl italic md:mt-0 md:pt-2 md:text-left"
-            style={{ color: "var(--fg-muted)", opacity: 0.6 }}
+            className="mt-12 text-center font-serif text-xl italic md:mt-2 md:text-left"
+            style={{ color: "var(--fg-muted)", opacity: 0.5 }}
           >
-            {emptyLabel}
+            {de ? "Noch nichts für heute." : "Nothing yet today."}
           </p>
         )}
 
