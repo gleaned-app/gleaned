@@ -67,10 +67,8 @@ export async function getDB(): Promise<PouchDB.Database<AnyDoc>> {
   PouchDB.plugin(PouchDBFind);
 
   _db = new PouchDB<AnyDoc>("gleaned");
-  // pouchdb-find calls the deprecated db.type() internally — shim it to silence the warning
-  if (!(_db as unknown as Record<string, unknown>).type) {
-    (_db as unknown as Record<string, unknown>).type = () => "idb";
-  }
+  // pouchdb-find calls the deprecated db.type() on the prototype — override on the instance
+  (_db as unknown as Record<string, unknown>).type = () => "idb";
   await Promise.all([
     _db.createIndex({ index: { fields: ["type", "date", "createdAt"] } }),
     _db.createIndex({ index: { fields: ["type", "createdAt"] } }),
