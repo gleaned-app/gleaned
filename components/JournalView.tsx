@@ -23,19 +23,21 @@ function formatDate(dateStr: string, loc: string) {
 // 4 heat levels based on consecutive days. Colors shift amber → orange → red-orange.
 // Level 4 (30+ days) pulses via CSS animation.
 
+// Show from day 1. Thresholds: 1 / 4 / 10 / 30+
 function streakLevel(n: number): 0 | 1 | 2 | 3 | 4 {
-  if (n < 2)  return 0;
-  if (n < 7)  return 1;
-  if (n < 14) return 2;
+  if (n < 1)  return 0;
+  if (n < 4)  return 1;
+  if (n < 10) return 2;
   if (n < 30) return 3;
   return 4;
 }
 
-const HEAT: Record<1 | 2 | 3 | 4, { color: string; bg: string; shadow: string; pulse: boolean }> = {
-  1: { color: "oklch(72% 0.14 62)", bg: "oklch(72% 0.14 62 / 0.13)", shadow: "none",                                              pulse: false },
-  2: { color: "oklch(68% 0.20 46)", bg: "oklch(68% 0.20 46 / 0.15)", shadow: "0 0 10px oklch(68% 0.20 46 / 0.30)",               pulse: false },
-  3: { color: "oklch(63% 0.24 34)", bg: "oklch(63% 0.24 34 / 0.17)", shadow: "0 0 14px oklch(63% 0.24 34 / 0.45)",               pulse: false },
-  4: { color: "oklch(60% 0.27 24)", bg: "oklch(60% 0.27 24 / 0.18)", shadow: "0 0 18px oklch(60% 0.27 24 / 0.60)",               pulse: true  },
+// Colors via CSS vars — each theme defines --streak-{1-4} for correct contrast
+const HEAT: Record<1 | 2 | 3 | 4, { shadow: string; pulse: boolean }> = {
+  1: { shadow: "none",                                                                                           pulse: false },
+  2: { shadow: "0 0 10px color-mix(in oklch, var(--streak-2), transparent 65%)",                               pulse: false },
+  3: { shadow: "0 0 14px color-mix(in oklch, var(--streak-3), transparent 50%)",                               pulse: false },
+  4: { shadow: "0 0 18px color-mix(in oklch, var(--streak-4), transparent 35%)",                               pulse: true  },
 };
 
 function FlameIcon() {
@@ -50,10 +52,15 @@ function StreakBadge({ streak, lang }: { streak: number; lang: "de" | "en" }) {
   const level = streakLevel(streak);
   if (level === 0) return null;
   const h = HEAT[level];
+  const cv = `var(--streak-${level})`;
   return (
     <span
       className={`flex items-center gap-1.5 rounded-full px-3 py-1 font-sans text-sm font-semibold transition-all duration-500${h.pulse ? " streak-pulse" : ""}`}
-      style={{ color: h.color, background: h.bg, boxShadow: h.shadow }}
+      style={{
+        color: cv,
+        background: `color-mix(in oklch, ${cv}, transparent 84%)`,
+        boxShadow: h.shadow,
+      }}
       title={lang === "de" ? `${streak} Tage in Folge` : `${streak} day streak`}
     >
       <FlameIcon />

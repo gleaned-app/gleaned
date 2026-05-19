@@ -43,6 +43,11 @@
   --code-fn:         oklch(46% 0.15  220);
   --code-type:       oklch(52% 0.15   34);
   --code-meta:       oklch(52% 0.18   25);
+  /* Streak heat levels — light mode */
+  --streak-1:        oklch(68% 0.15  62);
+  --streak-2:        oklch(65% 0.21  46);
+  --streak-3:        oklch(61% 0.25  34);
+  --streak-4:        oklch(58% 0.28  24);
 }
 
 /* DARK — explicit class */
@@ -79,6 +84,11 @@ html.theme-dark {
   --code-fn:         oklch(68% 0.15  220);
   --code-type:       oklch(72% 0.15   34);
   --code-meta:       oklch(70% 0.18   25);
+  /* Streak heat levels — dark mode (brighter, more vivid on dark bg) */
+  --streak-1:        oklch(78% 0.15  62);
+  --streak-2:        oklch(75% 0.22  46);
+  --streak-3:        oklch(71% 0.27  34);
+  --streak-4:        oklch(68% 0.30  24);
 }
 
 /* SEPIA — warm aged paper */
@@ -115,6 +125,11 @@ html.theme-sepia {
   --code-fn:         oklch(42% 0.13  210);
   --code-type:       oklch(48% 0.14   30);
   --code-meta:       oklch(46% 0.16   25);
+  /* Streak heat levels — sepia (shifted to stand out against warm paper) */
+  --streak-1:        oklch(62% 0.17  48);
+  --streak-2:        oklch(58% 0.23  34);
+  --streak-3:        oklch(54% 0.27  24);
+  --streak-4:        oklch(50% 0.29  16);
 }
 
 /* SYSTEM — follow OS when no explicit theme class is set */
@@ -152,6 +167,10 @@ html.theme-sepia {
     --code-fn:         oklch(68% 0.15  220);
     --code-type:       oklch(72% 0.15   34);
     --code-meta:       oklch(70% 0.18   25);
+    --streak-1:        oklch(78% 0.15  62);
+    --streak-2:        oklch(75% 0.22  46);
+    --streak-3:        oklch(71% 0.27  34);
+    --streak-4:        oklch(68% 0.30  24);
   }
 }
 
@@ -281,10 +300,10 @@ body {
   50%       { opacity: 0.35; }
 }
 
-/* Streak glow pulse — level 4 (30+ days) */
+/* Streak glow pulse — level 4 (30+ days), uses CSS var so it follows theme */
 @keyframes streak-glow {
-  0%, 100% { box-shadow: 0 0 14px oklch(60% 0.27 24 / 0.55), 0 0 4px oklch(60% 0.27 24 / 0.3); }
-  50%       { box-shadow: 0 0 24px oklch(60% 0.27 24 / 0.80), 0 0 8px oklch(60% 0.27 24 / 0.5); }
+  0%, 100% { box-shadow: 0 0 14px color-mix(in oklch, var(--streak-4), transparent 40%), 0 0 4px color-mix(in oklch, var(--streak-4), transparent 65%); }
+  50%       { box-shadow: 0 0 26px color-mix(in oklch, var(--streak-4), transparent 18%), 0 0 8px color-mix(in oklch, var(--streak-4), transparent 45%); }
 }
 .streak-pulse { animation: streak-glow 2.4s ease-in-out infinite; }
 
