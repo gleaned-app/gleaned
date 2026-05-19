@@ -1,23 +1,63 @@
-const CACHE = "gleaned-v1";
+const CACHE = "gleaned-v2";
 
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (e) =>
+const APP_SHELL = [
+  "/",
+  "/manifest.json",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/icon-maskable-512.png",
+  "/icon-apple.png",
+];
+
+// ── Install: pre-cache app shell ────────────────────────────────────────────
+self.addEventListener("install", (e) => {
+  e.waitUntil(
+    caches.open(CACHE).then((c) => c.addAll(APP_SHELL))
+  );
+  self.skipWaiting();
+});
+
+// ── Activate: remove old caches ─────────────────────────────────────────────
+self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
     )
-  )
-);
-
-self.addEventListener("fetch", (e) => {
-  if (e.request.method !== "GET") return;
-  e.respondWith(
-    caches.open(CACHE).then(async (cache) => {
-      const cached = await cache.match(e.request);
-      const fresh = fetch(e.request)
-        .then((r) => { if (r.ok) cache.put(e.request, r.clone()); return r; })
-        .catch(() => cached);
-      return cached ?? fresh;
-    })
   );
+  self.clients.claim();
+});
+
+// ── Fetch strategy ───────────────────────────────────────────────────────────
+self.addEventListener("fetch", (e) => {
+  const { request } = e;
+  if (request.method !== "GET") return;
+
+  const url = new URL(request.url);
+
+  // Navigation (HTML page): network-first, fallback to cached "/"
+  if (request.mode === "navigate") {
+    e.respondWith(
+      fetch(request)
+        .then((r) => {
+          if (r.ok) caches.open(CACHE).then((c) => c.put(request, r.clone()));
+          return r;
+        })
+        .catch(() => caches.match("/"))
+    );
+    return;
+  }
+
+  // Same-origin assets: stale-while-revalidate
+  if (url.origin === self.location.origin) {
+    e.respondWith(
+      caches.open(CACHE).then(async (cache) => {
+        const cached = await cache.match(request);
+        const fetchPromise = fetch(request).then((r) => {
+          if (r.ok) cache.put(request, r.clone());
+          return r;
+        }).catch(() => cached);
+        return cached ?? fetchPromise;
+      })
+    );
+  }
 });

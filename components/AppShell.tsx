@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { isAuthenticated } from "@/lib/auth";
 import { SettingsProvider } from "@/lib/settings-context";
 import { useSyncStatus } from "@/lib/use-sync-status";
@@ -59,11 +59,36 @@ export default function AppShell() {
   );
 }
 
+type DeferredPrompt = { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
+
+function useInstallPrompt() {
+  const [prompt, setPrompt] = useState<DeferredPrompt | null>(null);
+  useEffect(() => {
+    function onPrompt(e: Event) {
+      e.preventDefault();
+      setPrompt(e as unknown as DeferredPrompt);
+    }
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", () => setPrompt(null));
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onPrompt);
+    };
+  }, []);
+  async function install() {
+    if (!prompt) return;
+    await prompt.prompt();
+    const { outcome } = await prompt.userChoice;
+    if (outcome === "accepted") setPrompt(null);
+  }
+  return { canInstall: !!prompt, install };
+}
+
 function AppContentWithLock({ onLock }: { onLock: () => void }) {
   const [view, setView] = useState<View>("journal");
   const [showSettings, setShowSettings] = useState(false);
   const [showConflicts, setShowConflicts] = useState(false);
   const conflictCount = useConflictCount();
+  const { canInstall, install } = useInstallPrompt();
 
   return (
     <div className="flex min-h-screen flex-col" style={{ background: "var(--bg)" }}>
@@ -97,6 +122,19 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
                 }}
               />
               {conflictCount}
+            </button>
+          )}
+          {canInstall && (
+            <button
+              onClick={install}
+              className="flex items-center gap-1.5 rounded-full px-2.5 py-1 font-sans text-xs font-medium transition-opacity hover:opacity-80"
+              style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+              title="App installieren"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Installieren
             </button>
           )}
           <SyncDot />
