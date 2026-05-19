@@ -1,26 +1,194 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme inline {
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-lora), Georgia, "Times New Roman", serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ── OKLCH palette ──────────────────────────────────────────────────────────── */
+:root {
+  --bg:              oklch(92% 0.022 75);
+  --bg-card:         oklch(97.5% 0.012 80);
+  --bg-nav:          oklch(94% 0.018 75);
+
+  --fg:              oklch(16% 0.03 55);
+  --fg-muted:        oklch(16% 0.03 55 / 0.42);
+  --fg-placeholder:  oklch(16% 0.03 55 / 0.26);
+
+  --border:          oklch(16% 0.03 55 / 0.09);
+  --border-focus:    oklch(16% 0.03 55 / 0.2);
+
+  --accent:          oklch(52% 0.13 55);
+  --accent-light:    oklch(60% 0.13 55);
+  --accent-soft:     oklch(52% 0.13 55 / 0.1);
+
+  --shadow-card:     0 1px 2px oklch(30% 0.03 60 / 0.05),
+                     0 3px 10px oklch(30% 0.03 60 / 0.04);
+  --shadow-form:     0 2px 14px oklch(30% 0.03 60 / 0.1),
+                     0 0 0 1px oklch(16% 0.03 55 / 0.07);
+
+  --due-overdue:     oklch(55% 0.19 25);
+  --due-overdue-bg:  oklch(55% 0.19 25 / 0.10);
+  --due-today:       oklch(58% 0.17 58);
+  --due-today-bg:    oklch(58% 0.17 58 / 0.11);
+  --due-soon:        var(--accent);
+  --due-soon-bg:     var(--accent-soft);
+
+  /* 3D nav button */
+  --btn-face:        oklch(95% 0.018 76);
+  --btn-top:         oklch(99% 0.008 82);
+  --btn-bottom:      oklch(76% 0.03 68);
+  --btn-border:      oklch(82% 0.025 72);
+  --btn-shadow:      oklch(30% 0.03 60 / 0.13);
+  --btn-active-face: oklch(90% 0.022 73);
+  --btn-inset:       oklch(74% 0.03 68 / 0.35);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg:              oklch(13% 0.016 55);
+    --bg-card:         oklch(17% 0.018 56);
+    --bg-nav:          oklch(14.5% 0.016 55);
+
+    --fg:              oklch(91% 0.022 76);
+    --fg-muted:        oklch(91% 0.022 76 / 0.42);
+    --fg-placeholder:  oklch(91% 0.022 76 / 0.25);
+
+    --border:          oklch(91% 0.022 76 / 0.07);
+    --border-focus:    oklch(91% 0.022 76 / 0.18);
+
+    --accent:          oklch(68% 0.13 58);
+    --accent-light:    oklch(75% 0.13 60);
+    --accent-soft:     oklch(68% 0.13 58 / 0.12);
+
+    --shadow-card:     0 1px 2px oklch(0% 0 0 / 0.25),
+                       0 3px 10px oklch(0% 0 0 / 0.18);
+    --shadow-form:     0 2px 14px oklch(0% 0 0 / 0.3),
+                       0 0 0 1px oklch(91% 0.022 76 / 0.05);
+
+    --due-overdue:     oklch(68% 0.19 25);
+    --due-overdue-bg:  oklch(68% 0.19 25 / 0.12);
+    --due-today:       oklch(72% 0.16 60);
+    --due-today-bg:    oklch(72% 0.16 60 / 0.12);
+    --due-soon:        var(--accent);
+    --due-soon-bg:     var(--accent-soft);
+
+    --btn-face:        oklch(19% 0.018 57);
+    --btn-top:         oklch(25% 0.02 60);
+    --btn-bottom:      oklch(8% 0.012 52);
+    --btn-border:      oklch(24% 0.02 57);
+    --btn-shadow:      oklch(0% 0 0 / 0.45);
+    --btn-active-face: oklch(15% 0.016 55);
+    --btn-inset:       oklch(0% 0 0 / 0.5);
   }
 }
 
+/* ── Reset & base ────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg);
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+.journal-input::placeholder { color: var(--fg-placeholder); }
+
+/* ── 3D button ───────────────────────────────────────────────────────────────── */
+.btn-3d {
+  background: var(--btn-face);
+  border: 1px solid var(--btn-border);
+  box-shadow:
+    inset 0 1px 0 var(--btn-top),
+    0 3px 0 var(--btn-bottom),
+    0 5px 10px var(--btn-shadow);
+  transform: translateY(-2px);
+  transition: transform 80ms ease, box-shadow 80ms ease, background 80ms ease;
+  user-select: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-3d:active {
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 2px 5px var(--btn-inset),
+    0 0 0 var(--btn-bottom),
+    0 1px 4px var(--btn-shadow);
+  background: var(--btn-active-face);
+}
+
+.btn-3d[data-active="true"] {
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 2px 5px var(--btn-inset),
+    0 0 0 var(--btn-bottom),
+    0 1px 4px var(--btn-shadow);
+  background: var(--btn-active-face);
+}
+
+/* ── 3D button subtle (für dichte Grids — kein permanentes Lift) ─────────────── */
+.btn-3d-subtle {
+  background: var(--btn-face);
+  border: 1px solid var(--btn-border);
+  box-shadow:
+    inset 0 1px 0 var(--btn-top),
+    0 1.5px 0 var(--btn-bottom),
+    0 2px 5px var(--btn-shadow);
+  transform: translateY(0);
+  transition: transform 70ms ease, box-shadow 70ms ease, background 70ms ease;
+  user-select: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-3d-subtle:active {
+  transform: translateY(1.5px);
+  box-shadow:
+    inset 0 1.5px 3px var(--btn-inset),
+    0 0 0 var(--btn-bottom),
+    0 1px 2px var(--btn-shadow);
+  background: var(--btn-active-face);
+}
+
+.btn-3d-subtle[data-active="true"] {
+  transform: translateY(1.5px);
+  box-shadow:
+    inset 0 1.5px 3px var(--btn-inset),
+    0 0 0 var(--btn-bottom),
+    0 1px 2px var(--btn-shadow);
+  background: var(--btn-active-face);
+}
+
+/* ── Animations ──────────────────────────────────────────────────────────────── */
+@keyframes entry-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.entry-appear { animation: entry-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.scale-in { animation: scale-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+@keyframes todo-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.todo-appear { animation: todo-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@keyframes check-pop {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.22); }
+  100% { transform: scale(1); }
+}
+.check-pop { animation: check-pop 0.22s cubic-bezier(0.34, 1.56, 0.64, 1); }
