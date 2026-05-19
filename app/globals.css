@@ -281,6 +281,13 @@ body {
   50%       { opacity: 0.35; }
 }
 
+/* Streak glow pulse — level 4 (30+ days) */
+@keyframes streak-glow {
+  0%, 100% { box-shadow: 0 0 14px oklch(60% 0.27 24 / 0.55), 0 0 4px oklch(60% 0.27 24 / 0.3); }
+  50%       { box-shadow: 0 0 24px oklch(60% 0.27 24 / 0.80), 0 0 8px oklch(60% 0.27 24 / 0.5); }
+}
+.streak-pulse { animation: streak-glow 2.4s ease-in-out infinite; }
+
 @keyframes entry-in {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
