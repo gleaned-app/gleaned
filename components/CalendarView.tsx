@@ -105,8 +105,8 @@ export default function CalendarView() {
         </button>
 
         <h2
-          className="flex-1 text-center font-serif text-xl font-normal"
-          style={{ color: "var(--fg)" }}
+          className="flex-1 text-center text-xl font-normal"
+          style={{ color: "var(--fg)", fontFamily: "var(--font-caveat), cursive", fontWeight: 500 }}
         >
           {monthLabel}
         </h2>

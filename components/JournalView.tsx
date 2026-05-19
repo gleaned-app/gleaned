@@ -124,8 +124,8 @@ export default function JournalView() {
           {filterTag ? (
             <div className="flex items-center gap-3">
               <h1
-                className="font-serif text-[2rem] font-normal leading-none tracking-tight"
-                style={{ color: "var(--fg)" }}
+                className="text-[2rem] font-normal leading-none"
+                style={{ color: "var(--fg)", fontFamily: "var(--font-caveat), cursive", fontWeight: 500 }}
               >
                 #{filterTag}
               </h1>
@@ -140,8 +140,8 @@ export default function JournalView() {
           ) : (
             <>
               <h1
-                className="font-serif text-[2.6rem] font-normal leading-none tracking-tight"
-                style={{ color: "var(--fg)" }}
+                className="text-[2.6rem] font-normal leading-none"
+                style={{ color: "var(--fg)", fontFamily: "var(--font-caveat), cursive", fontWeight: 500 }}
               >
                 {weekday}
               </h1>
@@ -167,8 +167,8 @@ export default function JournalView() {
         {!loading && (
           <div className="mb-8 hidden md:block">
             <p
-              className="font-serif text-2xl font-normal"
-              style={{ color: "var(--fg)", opacity: entries.length === 0 ? 0.3 : 1 }}
+              className="text-2xl font-normal"
+              style={{ color: "var(--fg)", opacity: entries.length === 0 ? 0.3 : 1, fontFamily: "var(--font-caveat), cursive", fontWeight: 500 }}
             >
               {filterTag ? `#${filterTag}` : t.whatStuckToday}
             </p>

@@ -152,7 +152,7 @@ export default function TodoView() {
     <div className="mx-auto max-w-[620px] px-5 pt-6 pb-10">
       {/* Header */}
       <div className="mb-4 flex items-baseline justify-between">
-        <h2 className="font-serif text-2xl font-normal" style={{ color: "var(--fg)" }}>
+        <h2 className="text-2xl font-normal" style={{ color: "var(--fg)", fontFamily: "var(--font-caveat), cursive", fontWeight: 500 }}>
           {t.toLearn}
         </h2>
         {total > 0 && (

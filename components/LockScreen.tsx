@@ -271,11 +271,12 @@ export default function LockScreen({ onAuth }: Props) {
         >
           <div className="flex items-baseline justify-between gap-4">
             <h1
-              className="font-serif italic leading-none"
+              className="leading-none"
               style={{
                 fontSize: "clamp(3.8rem, 13vw, 6.5rem)",
                 color: "var(--fg)",
-                letterSpacing: "-0.02em",
+                fontFamily: "var(--font-caveat), cursive",
+                fontWeight: 500,
               }}
             >
               gleaned
