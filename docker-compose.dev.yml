@@ -1,15 +1,11 @@
-services:
-  app:
-    build: .
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    environment:
-      NEXT_PUBLIC_COUCHDB_URL: http://${COUCHDB_USER:-admin}:${COUCHDB_PASSWORD:-changeme}@couchdb:5984/gleaned
-    depends_on:
-      couchdb:
-        condition: service_healthy
+# Development: runs only CouchDB locally.
+# Start with: docker compose -f docker-compose.dev.yml up -d
+# Then run the app with: pnpm dev
+#
+# Set in .env.local:
+#   NEXT_PUBLIC_COUCHDB_URL=http://admin:changeme@localhost:5984/gleaned
 
+services:
   couchdb:
     image: couchdb:3
     restart: unless-stopped
@@ -19,7 +15,7 @@ services:
       COUCHDB_USER: ${COUCHDB_USER:-admin}
       COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:-changeme}
     volumes:
-      - couchdb_data:/opt/couchdb/data
+      - couchdb_dev_data:/opt/couchdb/data
       - ./couchdb/local.ini:/opt/couchdb/etc/local.d/local.ini:ro
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:5984/"]
@@ -29,4 +25,4 @@ services:
       start_period: 15s
 
 volumes:
-  couchdb_data:
+  couchdb_dev_data:
