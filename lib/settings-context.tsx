@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { getSettings, saveSettings } from "./db";
+import { getSettings, saveSettings, startSync, stopSync } from "./db";
 
 export type Theme = "system" | "light" | "dark" | "sepia";
 
@@ -9,12 +9,16 @@ export interface AppSettings {
   language: "de" | "en";
   weekStart: "monday" | "sunday";
   theme: Theme;
+  couchdbUrl: string;
 }
+
+const ENV_URL = process.env.NEXT_PUBLIC_COUCHDB_URL ?? "";
 
 export const DEFAULTS: AppSettings = {
   language: "de",
   weekStart: "monday",
   theme: "system",
+  couchdbUrl: ENV_URL,
 };
 
 export function locale(settings: AppSettings): string {
@@ -43,14 +47,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     getSettings().then((s) => {
-      if (!s) return;
       const next: AppSettings = {
-        language: s.language ?? DEFAULTS.language,
-        weekStart: s.weekStart ?? DEFAULTS.weekStart,
-        theme: s.theme ?? DEFAULTS.theme,
+        language: s?.language ?? DEFAULTS.language,
+        weekStart: s?.weekStart ?? DEFAULTS.weekStart,
+        theme: s?.theme ?? DEFAULTS.theme,
+        couchdbUrl: s?.couchdbUrl ?? ENV_URL,
       };
       setSettings(next);
       applyTheme(next.theme);
+      if (next.couchdbUrl) startSync(next.couchdbUrl);
     });
   }, []);
 
@@ -58,6 +63,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const next = { ...settings, ...patch };
     setSettings(next);
     if (patch.theme) applyTheme(patch.theme);
+    if ("couchdbUrl" in patch) {
+      if (patch.couchdbUrl) startSync(patch.couchdbUrl);
+      else stopSync();
+    }
     await saveSettings(next);
   }
 
