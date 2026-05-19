@@ -1,0 +1,13 @@
+{
+  "name": "gleaned",
+  "short_name": "gleaned",
+  "description": "Dein persönliches Lern-Journal",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F3EDE3",
+  "theme_color": "#F3EDE3",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
