@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { marked } from "marked";
 import type { Entry, Attachment } from "@/types/entry";
 import { updateEntry, deleteEntry } from "@/lib/db";
+
+marked.use({ breaks: true, gfm: true });
 
 const EXT_LANG: Record<string, string> = {
   js: "javascript", ts: "typescript", jsx: "javascript", tsx: "typescript",
@@ -154,9 +157,10 @@ interface Props {
   entry: Entry;
   onDelete?: (id: string) => void;
   onUpdate?: (entry: Entry) => void;
+  onTagClick?: (tag: string) => void;
 }
 
-export default function EntryCard({ entry, onDelete, onUpdate }: Props) {
+export default function EntryCard({ entry, onDelete, onUpdate, onTagClick }: Props) {
   const [editing, setEditing] = useState(false);
   const [content, setContent] = useState(entry.content);
   const [tagInput, setTagInput] = useState("");
@@ -224,6 +228,11 @@ export default function EntryCard({ entry, onDelete, onUpdate }: Props) {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") handleSave();
     if (e.key === "Escape") handleCancel();
   }
+
+  const mdHtml = useMemo(
+    () => (entry.content ? (marked.parse(entry.content) as string) : ""),
+    [entry.content]
+  );
 
   const cardStyle = {
     background: "var(--bg-card)",
@@ -343,12 +352,10 @@ export default function EntryCard({ entry, onDelete, onUpdate }: Props) {
       </div>
 
       {entry.content ? (
-        <p
-          className="whitespace-pre-wrap font-sans text-sm leading-relaxed pr-16 sm:pr-4"
-          style={{ color: "var(--fg)" }}
-        >
-          {entry.content}
-        </p>
+        <div
+          className="md font-sans text-sm pr-16 sm:pr-4"
+          dangerouslySetInnerHTML={{ __html: mdHtml }}
+        />
       ) : null}
 
       {entry.attachments && entry.attachments.length > 0 && (
@@ -361,13 +368,19 @@ export default function EntryCard({ entry, onDelete, onUpdate }: Props) {
 
       <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
         {entry.tags.map((tag) => (
-          <span
+          <button
             key={tag}
-            className="rounded-full px-2 py-0.5 font-sans text-[11px]"
-            style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+            type="button"
+            onClick={() => onTagClick?.(tag)}
+            className="rounded-full px-2 py-0.5 font-sans text-[11px] transition-opacity hover:opacity-70"
+            style={{
+              background: "var(--accent-soft)",
+              color: "var(--accent)",
+              cursor: onTagClick ? "pointer" : "default",
+            }}
           >
             #{tag}
-          </span>
+          </button>
         ))}
         <span className="ml-auto font-sans text-[11px]" style={{ color: "var(--fg-muted)" }}>
           {time}
