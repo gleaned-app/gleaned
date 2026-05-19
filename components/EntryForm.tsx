@@ -127,15 +127,15 @@ export default function EntryForm({ onSaved }: Props) {
   const hasContent = content.trim().length > 0 || attachments.length > 0;
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="rounded-2xl transition-all duration-200"
-      style={{
-        background: "var(--bg-card)",
-        boxShadow: focused ? "var(--shadow-form)" : "var(--shadow-card)",
-      }}
-    >
-      <div className="px-5 pt-5">
+    <form onSubmit={handleSubmit} className="transition-all duration-200">
+      {/* Writing surface — blends into page, lines are the only visual structure */}
+      <div
+        className="rounded-xl px-0 pt-1 pb-0"
+        style={{
+          borderBottom: `1px solid ${focused ? "var(--accent-soft)" : "var(--border)"}`,
+          transition: "border-color 200ms ease",
+        }}
+      >
         <textarea
           ref={textareaRef}
           value={content}
@@ -149,17 +149,20 @@ export default function EntryForm({ onSaved }: Props) {
           style={{
             color: "var(--fg)",
             caretColor: "var(--accent)",
-            minHeight: "7rem",
+            minHeight: "8rem",
+            padding: "0",
+            // Lines perfectly aligned: transparent gap then 1px rule, repeating at line-height
             backgroundImage:
               "repeating-linear-gradient(to bottom, transparent, transparent calc(1.625em - 1px), var(--border) calc(1.625em - 1px), var(--border) 1.625em)",
             backgroundAttachment: "local",
+            backgroundPositionY: "0px",
           }}
         />
       </div>
 
       {/* Attachment previews */}
       {attachments.length > 0 && (
-        <div className="flex flex-wrap gap-2 px-5 pb-2">
+        <div className="flex flex-wrap gap-2 pb-2">
           {attachments.map((att, i) => {
             const cat = fileCategory(att);
             return cat === "image" ? (
@@ -201,7 +204,7 @@ export default function EntryForm({ onSaved }: Props) {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2 px-4 pb-4 pt-1">
+      <div className="flex flex-wrap items-center gap-2 pb-3 pt-2">
         {/* Upload button */}
         <button
           type="button"
