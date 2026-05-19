@@ -347,6 +347,11 @@ export default function LockScreen({ onAuth }: Props) {
             animation: "def-fade 0.7s ease 0.58s both",
           }}
         >
+          {mode === "setup" && (
+            <p className="font-serif text-sm leading-relaxed" style={{ color: "var(--fg-muted)", opacity: 0.7 }}>
+              Alles was du schreibst wird verschlüsselt — nur du kannst es lesen.
+            </p>
+          )}
           <div>
             <label
               className="mb-1.5 block font-sans text-[10px] uppercase tracking-[0.18em]"

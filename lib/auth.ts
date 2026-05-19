@@ -63,12 +63,6 @@ export function logout(): void {
   clearKey();
 }
 
-export async function isAuthenticated(): Promise<boolean> {
-  if (sessionStorage.getItem(SESSION_KEY) === "1") return true;
-  const hasPw = await hasPassword();
-  if (!hasPw) {
-    sessionStorage.setItem(SESSION_KEY, "1");
-    return true;
-  }
-  return false;
+export function isAuthenticated(): boolean {
+  return sessionStorage.getItem(SESSION_KEY) === "1";
 }
