@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "highlight.js": "^11.11.1",
+    "marked": "^18.0.4",
     "next": "16.2.6",
     "pouchdb": "^9.0.0",
     "pouchdb-find": "^9.0.0",

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useSettings } from "@/lib/settings-context";
 import type { AppSettings, Theme } from "@/lib/settings-context";
-import { exportData, importData } from "@/lib/db";
+import { exportData, importData, getAllTags, deleteTag } from "@/lib/db";
 
 interface Props {
   onClose: () => void;
@@ -53,8 +53,19 @@ export default function SettingsModal({ onClose }: Props) {
   const { settings, update } = useSettings();
   const [couchdbInput, setCouchdbInput] = useState(settings.couchdbUrl);
   const [importMsg, setImportMsg] = useState<string | null>(null);
+  const [tagMap, setTagMap] = useState<Map<string, number>>(new Map());
+  const [showTags, setShowTags] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
   const de = settings.language === "de";
+
+  useEffect(() => {
+    if (showTags) getAllTags().then(setTagMap);
+  }, [showTags]);
+
+  async function handleDeleteTag(tag: string) {
+    await deleteTag(tag);
+    setTagMap((prev) => { const n = new Map(prev); n.delete(tag); return n; });
+  }
 
   async function handleExport() {
     const json = await exportData();
@@ -213,6 +224,50 @@ export default function SettingsModal({ onClose }: Props) {
               autoCapitalize="none"
               autoCorrect="off"
             />
+          </Row>
+
+          <Row label={de ? "Tags" : "Tags"}>
+            <button
+              onClick={() => setShowTags((v) => !v)}
+              className="btn-3d w-full rounded-xl py-2.5 font-sans text-sm font-medium"
+              style={{ color: "var(--fg-muted)" }}
+            >
+              {showTags ? (de ? "Schließen" : "Close") : (de ? "Tags verwalten" : "Manage tags")}
+            </button>
+            {showTags && tagMap.size > 0 && (
+              <div
+                className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto rounded-xl p-2"
+                style={{ background: "var(--bg)", border: "1px solid var(--border)" }}
+              >
+                {[...tagMap.entries()]
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([tag, count]) => (
+                    <div key={tag} className="flex items-center justify-between rounded-lg px-2 py-1">
+                      <span className="font-sans text-xs" style={{ color: "var(--accent)" }}>
+                        #{tag}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-sans text-[10px]" style={{ color: "var(--fg-muted)" }}>
+                          {count}
+                        </span>
+                        <button
+                          onClick={() => handleDeleteTag(tag)}
+                          className="font-sans text-xs transition-opacity hover:opacity-80"
+                          style={{ color: "var(--due-overdue)" }}
+                          title={de ? "Tag entfernen" : "Remove tag"}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+            {showTags && tagMap.size === 0 && (
+              <p className="mt-2 text-center font-sans text-xs" style={{ color: "var(--fg-muted)" }}>
+                {de ? "Keine Tags vorhanden" : "No tags yet"}
+              </p>
+            )}
           </Row>
 
           <Row label={de ? "Daten" : "Data"}>
