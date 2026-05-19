@@ -14,6 +14,7 @@ import LockScreen from "./LockScreen";
 import ProfileButton from "./ProfileButton";
 import SettingsModal from "./SettingsModal";
 import ConflictModal from "./ConflictModal";
+import SearchModal from "./SearchModal";
 
 function SyncDot() {
   const status = useSyncStatus();
@@ -88,6 +89,7 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
   const [view, setView] = useState<View>("journal");
   const [showSettings, setShowSettings] = useState(false);
   const [showConflicts, setShowConflicts] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const conflictCount = useConflictCount();
   const { canInstall, install } = useInstallPrompt();
   const t = useT();
@@ -98,6 +100,10 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
         e.preventDefault();
         logout();
         onLock();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setShowSearch((v) => !v);
       }
     }
     window.addEventListener("keydown", onKey);
@@ -150,6 +156,16 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
               {t.install}
             </button>
           )}
+          <button
+            onClick={() => setShowSearch(true)}
+            className="btn-3d flex h-8 w-8 items-center justify-center rounded-full"
+            style={{ color: "var(--fg-muted)" }}
+            aria-label={t.search}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+          </button>
           <SyncDot />
           <ProfileButton onLock={onLock} onSettings={() => setShowSettings(true)} />
         </div>
@@ -163,6 +179,7 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
 
       <BottomNav current={view} onChange={setView} />
 
+      {showSearch && <SearchModal onClose={() => setShowSearch(false)} />}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
       {showConflicts && <ConflictModal onClose={() => setShowConflicts(false)} />}
     </div>

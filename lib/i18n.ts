@@ -106,6 +106,12 @@ export interface Translations {
   reminderBlocked: string;
   reminderEnable: string;
 
+  // Search
+  search: string;
+  searchPlaceholder: string;
+  searchNoResults: string;
+  searchEmpty: string;
+
   // Conflict modal
   syncConflict: string;
   conflictDesc: string;
@@ -213,6 +219,11 @@ const de: Translations = {
   reminderBlocked: "Blockiert — in Browsereinstellungen erlauben",
   reminderEnable: "Tägliche Erinnerung aktivieren",
 
+  search: "Suchen",
+  searchPlaceholder: "Einträge durchsuchen…",
+  searchNoResults: "Nichts gefunden.",
+  searchEmpty: "Schreib etwas um zu suchen",
+
   syncConflict: "Sync-Konflikt",
   conflictDesc: "Dieser Eintrag wurde auf zwei Geräten offline bearbeitet. Wähle die Version, die gespeichert werden soll.",
   noContent: "Kein Inhalt",
@@ -318,6 +329,11 @@ const en: Translations = {
   reminderOn: "Reminder on — turn off",
   reminderBlocked: "Blocked — allow in browser settings",
   reminderEnable: "Enable daily reminder",
+
+  search: "Search",
+  searchPlaceholder: "Search your entries…",
+  searchNoResults: "No results.",
+  searchEmpty: "Type something to search",
 
   syncConflict: "Sync conflict",
   conflictDesc: "This entry was edited on two devices while offline. Choose the version to keep.",

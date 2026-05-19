@@ -232,6 +232,20 @@ export async function getDatesWithEntries(): Promise<Set<string>> {
   return new Set(result.docs.map((d) => (d as Entry).date));
 }
 
+export async function searchEntries(query: string): Promise<Entry[]> {
+  const db = await getDB();
+  const q = query.toLowerCase();
+  const result = await db.find({ selector: { type: "entry" }, limit: 2000 });
+  const decrypted = await Promise.all((result.docs as Entry[]).map(decryptEntry));
+  return decrypted
+    .filter((e) =>
+      e.content?.toLowerCase().includes(q) ||
+      e.tags?.some((t) => t.toLowerCase().includes(q))
+    )
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 20);
+}
+
 export async function updateEntry(entry: Entry, content: string, tags: string[]): Promise<Entry> {
   const db = await getDB();
   for (let attempt = 0; attempt < 5; attempt++) {
