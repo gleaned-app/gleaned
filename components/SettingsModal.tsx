@@ -1,7 +1,9 @@
 "use client";
 
+import { useState, useRef } from "react";
 import { useSettings } from "@/lib/settings-context";
 import type { AppSettings, Theme } from "@/lib/settings-context";
+import { exportData, importData } from "@/lib/db";
 
 interface Props {
   onClose: () => void;
@@ -49,6 +51,35 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 export default function SettingsModal({ onClose }: Props) {
   const { settings, update } = useSettings();
+  const [couchdbInput, setCouchdbInput] = useState(settings.couchdbUrl);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+  const importRef = useRef<HTMLInputElement>(null);
+  const de = settings.language === "de";
+
+  async function handleExport() {
+    const json = await exportData();
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `gleaned-export-${new Date().toISOString().split("T")[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const { imported, skipped } = await importData(text);
+      setImportMsg(de ? `${imported} importiert, ${skipped} übersprungen` : `${imported} imported, ${skipped} skipped`);
+    } catch {
+      setImportMsg(de ? "Fehler beim Importieren" : "Import failed");
+    }
+    if (importRef.current) importRef.current.value = "";
+    setTimeout(() => setImportMsg(null), 4000);
+  }
 
   const t = settings.language === "de"
     ? { lang: "Sprache", week: "Wochenanfang", mon: "Montag", sun: "Sonntag", title: "Einstellungen", appearance: "Aussehen" }
@@ -161,6 +192,54 @@ export default function SettingsModal({ onClose }: Props) {
               ]}
               onChange={(v) => update({ weekStart: v })}
             />
+          </Row>
+
+          <Row label="Sync (CouchDB)">
+            <input
+              value={couchdbInput}
+              onChange={(e) => setCouchdbInput(e.target.value)}
+              onBlur={() => {
+                const trimmed = couchdbInput.trim();
+                if (trimmed !== settings.couchdbUrl) update({ couchdbUrl: trimmed });
+              }}
+              placeholder="http://admin:pass@localhost:5984/gleaned"
+              className="journal-input w-full rounded-xl px-3 py-2.5 font-sans text-xs outline-none"
+              style={{
+                background: "var(--bg)",
+                border: "1px solid var(--border)",
+                color: "var(--fg)",
+              }}
+              spellCheck={false}
+              autoCapitalize="none"
+              autoCorrect="off"
+            />
+          </Row>
+
+          <Row label={de ? "Daten" : "Data"}>
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <button
+                  onClick={handleExport}
+                  className="btn-3d flex-1 rounded-xl py-2.5 font-sans text-sm font-medium"
+                  style={{ color: "var(--fg-muted)" }}
+                >
+                  {de ? "Exportieren" : "Export"}
+                </button>
+                <button
+                  onClick={() => importRef.current?.click()}
+                  className="btn-3d flex-1 rounded-xl py-2.5 font-sans text-sm font-medium"
+                  style={{ color: "var(--fg-muted)" }}
+                >
+                  {de ? "Importieren" : "Import"}
+                </button>
+                <input ref={importRef} type="file" accept=".json" onChange={handleImport} className="sr-only" />
+              </div>
+              {importMsg && (
+                <p className="text-center font-sans text-xs" style={{ color: "var(--accent)" }}>
+                  {importMsg}
+                </p>
+              )}
+            </div>
           </Row>
         </div>
       </div>
