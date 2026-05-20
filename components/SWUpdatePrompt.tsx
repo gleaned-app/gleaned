@@ -31,9 +31,11 @@ export default function SWUpdatePrompt() {
 
     // After SKIP_WAITING fires, reload to apply the new SW
     let refreshing = false;
-    navigator.serviceWorker.addEventListener("controllerchange", () => {
+    function onControllerChange() {
       if (!refreshing) { refreshing = true; window.location.reload(); }
-    });
+    }
+    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+    return () => navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
   }, []);
 
   if (!waitingSW) return null;

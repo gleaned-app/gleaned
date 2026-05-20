@@ -123,6 +123,7 @@ export interface Translations {
   noTags: string;
   importResult(imported: number, skipped: number): string;
   importError: string;
+  fileTooLarge(name: string): string;
   notifDesc: string;
   reminderOn: string;
   reminderBlocked: string;
@@ -260,6 +261,7 @@ const de: Translations = {
   noTags: "Keine Tags vorhanden",
   importResult: (imported, skipped) => `${imported} importiert, ${skipped} übersprungen`,
   importError: "Fehler beim Importieren",
+  fileTooLarge: (name) => `„${name}" ist zu groß (max. 10 MB).`,
   notifDesc: "Erhalte täglich eine Erinnerung, deine Erkenntnisse einzutragen.",
   reminderOn: "Erinnerung aktiv — deaktivieren",
   reminderBlocked: "Blockiert — in Browsereinstellungen erlauben",
@@ -395,6 +397,7 @@ const en: Translations = {
   noTags: "No tags yet",
   importResult: (imported, skipped) => `${imported} imported, ${skipped} skipped`,
   importError: "Import failed",
+  fileTooLarge: (name) => `"${name}" is too large (max. 10 MB).`,
   notifDesc: "Receive a daily reminder to log what you learned.",
   reminderOn: "Reminder on — turn off",
   reminderBlocked: "Blocked — allow in browser settings",

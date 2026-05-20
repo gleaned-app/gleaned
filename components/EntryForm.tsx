@@ -87,7 +87,7 @@ export default function EntryForm({ onSaved }: Props) {
     const next: Attachment[] = [];
     for (const file of Array.from(fileList)) {
       if (file.size > MAX_FILE_SIZE) {
-        alert(`"${file.name}" ist zu groß (max. 10 MB).`);
+        alert(t.fileTooLarge(file.name));
         continue;
       }
       const data = await new Promise<string>((resolve) => {
