@@ -1,111 +1,126 @@
 # The gleaned Learning Model
 
-> Draft — work in progress. This document defines the methodology behind how gleaned structures knowledge capture.
+> Version 0.2 — methodology foundation before implementation.
 
 ---
 
 ## The Problem
 
-Most note-taking apps treat learning like memo-writing: open a text field, type something, save. The result is a flat archive of facts with no reflection, no context, no connection. You wrote it down — but you didn't learn it.
+Most note-taking apps treat learning like memo-writing: open a text field, paste something, save it. The result is a flat archive with no reflection, no context, no challenge. You wrote it down — but you didn't learn it. Worse: the ease of saving creates the illusion that you understood it.
 
-gleaned wants to capture the **learning moment**, not just the content.
+Research consistently shows that *retrieval* and *generation* are what build durable memory — not storage. Copying a paragraph into Notion does almost nothing. Explaining it in your own words does a lot.
 
----
-
-## Core Principle
-
-**Low friction by default. Depth on demand.**
-
-The minimum viable entry is one sentence in your own words. Every additional field is optional and serves a specific purpose. Nobody should feel forced to write an essay just to save what they learned.
+gleaned is built around this distinction.
 
 ---
 
-## The Model
+## The Three Pillars
 
-Every entry has one required layer and two optional layers.
+### 1. Capture — Low Friction, High Signal
 
-### Layer 0 — The Learning (required)
+The bar to start an entry is intentionally low. One sentence is enough. But there is one non-negotiable constraint: **you never copy**. Every entry must be written in your own words.
 
-> Explain it in your own words. Short. Like you're telling a friend.
+This is not aesthetic. Reformulating forces semantic processing — you have to understand something before you can explain it differently. Where you can't rephrase, you don't actually know it yet. That gap is information.
 
-This is the Feynman principle: if you can't explain it simply, you don't understand it yet. The act of rephrasing forces clarity.
+This is what makes gleaned different from a web clipper or a bookmark manager.
 
-- No copying from Wikipedia or documentation
-- No formal language required
-- One paragraph is enough — often one sentence is better
+### 2. Contextualize — Depth on Demand
 
-### Layer 1 — Context (optional, quick)
+A thought without context is hard to reconnect to later. Two optional fields anchor the entry to your life:
 
-> Where did this come from? Why did you bother writing it down?
+- **Source** — where did this come from? (URL, book, person, experience)
+- **Why it matters** — one line: what changes for you now that you know this?
 
-| Field | Description | Example |
-|---|---|---|
-| **Source** | URL, book, person, experience, experiment | `https://...`, `Clean Code ch.3`, `Mentor call` |
-| **Why it matters** | One line — what changes for you now that you know this | `Explains why my CSS animations were laggy` |
+The second field is the more important one. Information without personal relevance gets pruned faster. Tying knowledge to a concrete situation — *"this explains why my animations were janky"* — gives the brain a hook.
 
-### Layer 2 — Depth (optional, for serious learners)
+Neither field is required. The default is still fast capture.
 
-> What's still open? How does this connect?
+### 3. Confront — Spaced Reflection, Not Just Repetition
 
-| Field | Description |
-|---|---|
-| **Gap** | What you still don't understand. Open questions. The edge of your knowledge. |
-| **Connection** | What does this remind you of? Links to other entries. |
+The review queue exists to challenge you, not quiz you. SM-2 (the algorithm behind the intervals) was originally designed for vocabulary flashcards — isolated facts. It works. But complex knowledge — insights, frameworks, personal observations — needs a different kind of revisit.
+
+The goal is not "can you recall this?" but "does this still hold? can you connect it to something new?"
+
+This is what we call **Spaced Reflection** instead of Spaced Repetition. The difference is in the review prompt, not the interval math.
 
 ---
 
 ## Entry Types
 
-Not all knowledge is the same shape. A type tag helps filter and review.
+Not all knowledge is the same shape. The type determines how it gets reviewed.
 
-| Type | Description | Example |
+| Type | What it is | Example |
 |---|---|---|
 | 💡 **Insight** | A principle, rule, or mental model | "Every non-trivial program has at least one bug" |
 | 🔧 **Technique** | A method, trick, mnemonic, pattern | The P-U-I triangle for Ohm's law |
-| 📐 **Framework** | A structured system with multiple parts | CO-STAR prompt framework |
-| 📖 **Fact** | Isolated information — no framework, no principle | Capital of New Zealand is Wellington |
+| 📐 **Framework** | A structured system with multiple components | CO-STAR prompt framework |
+| 📖 **Fact** | Isolated information with no broader structure | Capital of New Zealand |
+| 🔍 **Observation** | Something you noticed from experience, not from reading | "When I'm tired I write sloppy code" |
 
-Type is optional. It's a lens for later review, not a bureaucratic requirement.
-
----
-
-## Integration with Spaced Repetition
-
-Every entry — regardless of type or how many layers it has — enters the review queue. The review interval grows automatically (SM-2 algorithm). 
-
-The entry type and depth can influence future review behavior:
-- **Insights and Techniques** benefit most from active recall (can you still explain it?)
-- **Frameworks** may want a checklist-style review (can you name all parts?)
-- **Facts** are the most forgettable — shorter initial intervals make sense
-
-This is an open design question for the next iteration.
+Type is optional on entry. It matters most at review time.
 
 ---
 
-## Influences
+## The Gap Field
 
-| Method | What we took from it |
+The most underused idea in personal knowledge management: **writing down what you don't know**.
+
+The Gap field is for open questions, unresolved tensions, things that feel shaky. It is not a to-do list. It is a snapshot of the boundary of your understanding at the moment you wrote the entry.
+
+Two concrete implications:
+
+**1. Algorithmic priority.** An entry with an open gap is unstable knowledge. It should surface in the review queue sooner and more often than a closed entry — until the gap is resolved or consciously accepted as open.
+
+**2. Review mode change.** An entry with a gap does not get a standard "do you still remember this?" review. It gets a prompt: *"You had an open question here. Do you have an answer now?"*
+
+This turns gaps into active research prompts rather than passive annotations.
+
+---
+
+## Review Behavior by Type
+
+SM-2 handles the *when*. The entry type handles the *how*.
+
+| Type | Review prompt |
 |---|---|
-| **Feynman Technique** | Layer 0 — explain in your own words |
-| **Hansei (反省)** | Layer 1 "why" + Layer 2 "gap" — reflect, don't just record |
-| **Zettelkasten** | Layer 2 "connection" — knowledge lives in links, not isolation |
-| **What / So What / Now What** | Maps to: Layer 0 / Layer 1 why / Layer 2 gap+connection |
-| **Techo culture** | Structure as invitation, not obligation — optional fields, not forms |
+| **Fact** | Title/tag shown, content hidden — active recall before revealing |
+| **Technique** | "Can you still walk through this step by step?" |
+| **Insight** | "Do you still agree with this? Can you connect it to another entry?" |
+| **Framework** | "Can you name all the components without looking?" |
+| **Observation** | "Has this changed? Have you seen the opposite?" |
+
+This is an approximation for v1. The exact prompts are an implementation decision.
 
 ---
 
-## Open Questions (to research)
+## What gleaned Will Never Do
 
-- [ ] Should the review prompt differ by entry type? (Insight → "Explain it" vs. Framework → "List the parts")
-- [ ] How does the Gap field feed back into the review queue? (Entry with open gaps should be reviewed sooner?)
-- [ ] Is a 5th type needed — **Experience** (something you did / lived, not read)?
-- [ ] Connection field: free text or actual links to entry IDs? How do we show the graph?
-- [ ] Should source URL auto-fetch a page title / preview?
+Defining the edges of a methodology is as important as defining the center.
+
+- **No web clipper that saves full articles.** Capturing someone else's words verbatim bypasses the only mechanism that actually produces understanding.
+- **No AI-generated summaries of your entries.** gleaned is your thinking. Outsourcing the synthesis defeats the point.
+- **No social or sharing features.** The journal is private by design.
+- **No gamification** — streaks, points, leaderboards. The goal is understanding, not engagement metrics.
 
 ---
 
-## What stays out
+## Scientific Grounding (Brief)
 
-- No mandatory fields beyond the core text
-- No scoring, streaks, or gamification (that's a different app)
-- No AI-generated suggestions inside the entry (gleaned is your thinking, not the machine's)
+Three concepts from learning research directly inform the model — mentioned here to ground design decisions, not to sound academic:
+
+**Desirable Difficulties (Bjork)** — Learning that requires effort produces more durable memory than learning that feels easy. The constraint of writing in your own words is a desirable difficulty. It should be framed as a feature, not a friction.
+
+**The Self-Explanation Effect** — Explaining something to yourself (or out loud) reveals gaps in understanding that passive reading hides. Layer 0 is an enforced self-explanation.
+
+**Region of Proximal Learning (Metcalfe)** — We learn most effectively at the boundary between what we know and what we don't. The Gap field is designed to make that boundary explicit and actionable.
+
+SM-2's limitation for complex knowledge (it was designed for facts) is a known tradeoff. The type-specific review prompts are our mitigation.
+
+---
+
+## Open Questions
+
+- [ ] Gap entries: flag in review UI, or separate "open gaps" view?
+- [ ] Connection field: free text for now, or links to entry IDs?
+- [ ] Should Observation type have a shorter initial review interval? (Experiences fade differently than facts)
+- [ ] How do we handle an entry where the Gap gets resolved — mark it closed, or create a new entry?
