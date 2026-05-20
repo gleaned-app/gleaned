@@ -254,7 +254,7 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
         ref={mainRef}
         className="flex-1 overflow-y-auto"
         style={{
-          paddingBottom: "calc(80px + env(safe-area-inset-bottom))",
+          paddingBottom: "calc(100px + env(safe-area-inset-bottom))",
           overscrollBehavior: "contain",
         }}
         onTouchStart={handleTouchStart}
