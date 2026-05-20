@@ -51,6 +51,20 @@ export default function SettingsModal({ onClose }: Props) {
   const { settings, update } = useSettings();
   const t = useT();
   const [active, setActive] = useState<CategoryId>("appearance");
+  const [closing, setClosing] = useState(false);
+
+  function handleClose() {
+    setClosing(true);
+    setTimeout(onClose, 190);
+  }
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") handleClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const [couchdbInput, setCouchdbInput] = useState(settings.couchdbUrl);
   const [couchdbUser, setCouchdbUser] = useState(settings.couchdbUsername);
   const [couchdbPass, setCouchdbPass] = useState(settings.couchdbPassword);
@@ -313,14 +327,18 @@ export default function SettingsModal({ onClose }: Props) {
 
   return (
     <>
-      <div className="fixed inset-0 z-50" style={{ background: "oklch(0% 0 0 / 0.45)" }} onClick={onClose} />
+      <div
+        className={`fixed inset-0 z-50${closing ? " overlay-closing" : ""}`}
+        style={{ background: "oklch(0% 0 0 / 0.45)" }}
+        onClick={handleClose}
+      />
 
       {/* Mobile: bottom sheet | Desktop: centered dialog */}
       <div
-        className="scale-in fixed z-50 flex flex-col
+        className={`${closing ? "modal-closing" : "scale-in"} fixed z-50 flex flex-col
                    bottom-0 left-0 right-0 h-[88dvh] rounded-t-3xl
                    sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-1/2
-                   sm:h-auto sm:w-[600px] sm:max-h-[80dvh] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+                   sm:h-auto sm:w-[600px] sm:max-h-[80dvh] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl`}
         style={{
           background: "var(--bg-card)",
           boxShadow: "0 -4px 40px oklch(0% 0 0 / 0.25), var(--shadow-form)",
@@ -335,7 +353,7 @@ export default function SettingsModal({ onClose }: Props) {
           <h2 className="font-serif text-xl font-normal" style={{ color: "var(--fg)" }}>
             {t.settingsTitle}
           </h2>
-          <button onClick={onClose} className="btn-3d flex h-8 w-8 items-center justify-center rounded-full font-sans text-base leading-none" style={{ color: "var(--fg-muted)" }} aria-label={t.close}>×</button>
+          <button onClick={handleClose} className="btn-3d flex h-8 w-8 items-center justify-center rounded-full font-sans text-base leading-none" style={{ color: "var(--fg-muted)" }} aria-label={t.close}>×</button>
         </div>
 
         {/* Body */}

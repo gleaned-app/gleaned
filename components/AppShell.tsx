@@ -89,6 +89,8 @@ function useInstallPrompt() {
   return { canInstall: !!prompt, install };
 }
 
+const VIEWS: View[] = ["journal", "calendar", "todos", "review"];
+
 function AppContentWithLock({ onLock }: { onLock: () => void }) {
   const [view, setView] = useState<View>("journal");
   const [calendarJumpDate, setCalendarJumpDate] = useState<string | undefined>();
@@ -97,10 +99,13 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
   const [showSearch, setShowSearch] = useState(false);
   const [reviewCount, setReviewCount] = useState(0);
   const [entryVersion, setEntryVersion] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
   const conflictCount = useConflictCount();
   const { canInstall, install } = useInstallPrompt();
   const t = useT();
   const mainRef = useRef<HTMLElement>(null);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
   // Lazy-mount: View bleibt im DOM sobald sie einmal besucht wurde → kein Skeleton-Flash bei Rückkehr
   const [visited, setVisited] = useState<Set<View>>(new Set([view]));
 
@@ -113,8 +118,30 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    const onScroll = () => setScrolled(el.scrollTop > 4);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
   function mount(v: View) {
     setVisited((prev) => { const s = new Set(prev); s.add(v); return s; });
+  }
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    if (Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
+    const idx = VIEWS.indexOf(view);
+    if (dx < 0 && idx < VIEWS.length - 1) handleViewChange(VIEWS[idx + 1]);
+    if (dx > 0 && idx > 0) handleViewChange(VIEWS[idx - 1]);
   }
 
   // Nav-tab click: gleichen Tab → scroll nach oben; anderer Tab → wechseln
@@ -126,6 +153,7 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
     mount(v);
     setCalendarJumpDate(undefined);
     if (view === "review" && v !== "review") getReviewCount().then(setReviewCount);
+    mainRef.current?.scrollTo({ top: 0 });
     setView(v);
   }
 
@@ -154,7 +182,16 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
 
   return (
     <div className="flex min-h-screen flex-col" style={{ background: "var(--bg)" }}>
-      <header className="sticky top-0 z-40 flex items-center justify-between px-5 py-3" style={{ background: "var(--bg)" }}>
+      <header
+        className="sticky top-0 z-40 flex items-center justify-between px-5 py-3"
+        style={{
+          background: "color-mix(in oklch, var(--bg) 82%, transparent)",
+          backdropFilter: "blur(20px) saturate(1.5)",
+          WebkitBackdropFilter: "blur(20px) saturate(1.5)",
+          borderBottom: `1px solid ${scrolled ? "var(--border)" : "transparent"}`,
+          transition: "border-color 250ms ease",
+        }}
+      >
         <button
           onClick={() => handleViewChange("journal")}
           className="font-sans text-[11px] font-medium tracking-[0.2em] uppercase transition-opacity hover:opacity-60"
@@ -220,6 +257,8 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
           paddingBottom: "calc(80px + env(safe-area-inset-bottom))",
           overscrollBehavior: "contain",
         }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
       >
         {/* Views bleiben im DOM sobald erstmalig besucht — kein Re-fetch, kein Skeleton-Flash */}
         <div style={{ display: view === "journal" ? "block" : "none" }}>

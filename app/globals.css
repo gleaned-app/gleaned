@@ -302,6 +302,44 @@ body {
 .hljs-emphasis                   { font-style: italic; }
 .hljs-strong                     { font-weight: bold; }
 
+/* ── Modal exit animation ────────────────────────────────────────────────────── */
+@keyframes modal-out {
+  to { opacity: 0; transform: scale(0.96) translateY(8px); }
+}
+@keyframes overlay-out {
+  to { opacity: 0; }
+}
+.modal-closing  { animation: modal-out  190ms cubic-bezier(0.4, 0, 1, 1) forwards; }
+.overlay-closing { animation: overlay-out 190ms ease forwards; }
+
+/* ── Review badge pop ─────────────────────────────────────────────────────────── */
+@keyframes badge-pop {
+  0%   { transform: scale(0.5); opacity: 0; }
+  65%  { transform: scale(1.25); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.badge-pop { animation: badge-pop 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+/* ── Entry card hover lift — pointer devices only ─────────────────────────────── */
+@media (hover: hover) {
+  .card-lift {
+    transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .card-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px oklch(0% 0 0 / 0.14), 0 2px 8px oklch(0% 0 0 / 0.07),
+                0 0 0 1px var(--border);
+  }
+}
+
+/* ── Bottom nav tab press feel ───────────────────────────────────────────────── */
+.nav-tab {
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 70ms ease, transform 70ms ease, color 150ms ease;
+}
+.nav-tab:active { opacity: 0.6; transform: scale(0.92); }
+
 /* ── Animations ──────────────────────────────────────────────────────────────── */
 @keyframes pulse {
   0%, 100% { opacity: 1; }

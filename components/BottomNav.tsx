@@ -2,6 +2,10 @@
 
 import { useT } from "@/lib/i18n";
 
+function haptic(ms = 8) {
+  if (typeof navigator !== "undefined") navigator.vibrate?.(ms);
+}
+
 export type View = "journal" | "calendar" | "todos" | "review";
 
 interface Props {
@@ -57,7 +61,10 @@ export default function BottomNav({ current, onChange, reviewCount = 0 }: Props)
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-center gap-2 px-4 sm:gap-3 sm:px-6"
       style={{
-        background: "var(--bg)",
+        background: "color-mix(in oklch, var(--bg-nav) 85%, transparent)",
+        backdropFilter: "blur(20px) saturate(1.5)",
+        WebkitBackdropFilter: "blur(20px) saturate(1.5)",
+        borderTop: "1px solid var(--border)",
         paddingBottom: "max(16px, env(safe-area-inset-bottom))",
         paddingTop: "10px",
       }}
@@ -69,23 +76,17 @@ export default function BottomNav({ current, onChange, reviewCount = 0 }: Props)
           <button
             key={tab.id}
             data-active={active}
-            onClick={() => onChange(tab.id)}
+            onClick={() => { haptic(); onChange(tab.id); }}
             className="btn-3d relative flex flex-1 flex-col items-center gap-1 rounded-2xl px-2 py-2.5 font-sans sm:flex-none sm:min-w-[80px] sm:px-4"
-            style={{
-              color: active ? "var(--accent)" : "var(--fg-muted)",
-              maxWidth: 120,
-            }}
+            style={{ color: active ? "var(--accent)" : "var(--fg-muted)", maxWidth: 120 }}
           >
             <span className="relative">
               {tab.icon}
               {showBadge && (
                 <span
-                  className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full font-sans text-[9px] font-bold"
-                  style={{
-                    background: "var(--due-overdue)",
-                    color: "#fff",
-                    lineHeight: 1,
-                  }}
+                  key={reviewCount}
+                  className="badge-pop absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full font-sans text-[9px] font-bold"
+                  style={{ background: "var(--due-overdue)", color: "#fff", lineHeight: 1 }}
                 >
                   {reviewCount > 9 ? "9+" : reviewCount}
                 </span>

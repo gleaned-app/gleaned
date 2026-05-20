@@ -42,7 +42,13 @@ export default function SearchModal({ onClose, onNavigate }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [closing, setClosing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  function handleClose() {
+    setClosing(true);
+    setTimeout(onClose, 190);
+  }
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
@@ -60,23 +66,27 @@ export default function SearchModal({ onClose, onNavigate }: Props) {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") handleClose();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, []);
 
   const q = query.trim();
 
   return (
     <>
-      <div className="fixed inset-0 z-50" style={{ background: "oklch(0% 0 0 / 0.45)" }} onClick={onClose} />
+      <div
+        className={`fixed inset-0 z-50${closing ? " overlay-closing" : ""}`}
+        style={{ background: "oklch(0% 0 0 / 0.45)" }}
+        onClick={handleClose}
+      />
 
       <div
-        className="scale-in fixed z-50 flex flex-col
+        className={`${closing ? "modal-closing" : "scale-in"} fixed z-50 flex flex-col
                    bottom-0 left-0 right-0 max-h-[88dvh] rounded-t-3xl
                    sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-[14%]
-                   sm:w-[560px] sm:max-h-[66dvh] sm:-translate-x-1/2 sm:rounded-3xl"
+                   sm:w-[560px] sm:max-h-[66dvh] sm:-translate-x-1/2 sm:rounded-3xl`}
         style={{
           background: "var(--bg-card)",
           boxShadow: "0 -4px 40px oklch(0% 0 0 / 0.25), var(--shadow-form)",
