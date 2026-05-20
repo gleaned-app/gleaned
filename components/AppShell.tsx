@@ -17,6 +17,7 @@ import ProfileButton from "./ProfileButton";
 import SettingsModal from "./SettingsModal";
 import ConflictModal from "./ConflictModal";
 import SearchModal from "./SearchModal";
+import ErrorBoundary from "./ErrorBoundary";
 
 function SyncDot() {
   const status = useSyncStatus();
@@ -191,10 +192,10 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
       </header>
 
       <main className="flex-1 overflow-y-auto" style={{ paddingBottom: "calc(80px + env(safe-area-inset-bottom))" }}>
-        {view === "journal"  && <JournalView />}
-        {view === "calendar" && <CalendarView initialDate={calendarJumpDate} />}
-        {view === "todos"    && <TodoView />}
-        {view === "review"   && <ReviewView onCountChange={setReviewCount} onNavigate={handleNavigate} />}
+        {view === "journal"  && <ErrorBoundary key="journal"><JournalView /></ErrorBoundary>}
+        {view === "calendar" && <ErrorBoundary key="calendar"><CalendarView initialDate={calendarJumpDate} /></ErrorBoundary>}
+        {view === "todos"    && <ErrorBoundary key="todos"><TodoView /></ErrorBoundary>}
+        {view === "review"   && <ErrorBoundary key="review"><ReviewView onCountChange={setReviewCount} onNavigate={handleNavigate} /></ErrorBoundary>}
       </main>
 
       <BottomNav current={view} onChange={handleViewChange} reviewCount={reviewCount} />

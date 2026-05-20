@@ -55,6 +55,14 @@ export async function startSync(url: string, username?: string, password?: strin
     .on("denied",  () => setSyncStatus("error")) as PouchDB.Replication.Sync<AnyDoc>;
 }
 
+// ─── Tags cache ──────────────────────────────────────────────────────────────
+
+let _tagsCache: Map<string, number> | null = null;
+let _tagsCacheTime = 0;
+const TAGS_CACHE_TTL = 60_000;
+
+function invalidateTagsCache() { _tagsCache = null; }
+
 // ─── DB init ─────────────────────────────────────────────────────────────────
 
 let _db: PouchDB.Database<AnyDoc> | null = null;
@@ -75,6 +83,7 @@ export async function getDB(): Promise<PouchDB.Database<AnyDoc>> {
   await Promise.all([
     _db.createIndex({ index: { fields: ["type", "date", "createdAt"] } }),
     _db.createIndex({ index: { fields: ["type", "createdAt"] } }),
+    _db.createIndex({ index: { fields: ["type", "nextReview"] } }),
   ]);
 
   return _db;
@@ -103,8 +112,9 @@ export async function getStreakData(): Promise<{ streak: number; todayCount: num
 }
 
 export async function getAllTags(): Promise<Map<string, number>> {
+  const now = Date.now();
+  if (_tagsCache && now - _tagsCacheTime < TAGS_CACHE_TTL) return _tagsCache;
   const db = await getDB();
-  // Need full docs to decrypt tags — fields projection would drop enc
   const result = await db.find({ selector: { type: "entry" } });
   const decrypted = await Promise.all((result.docs as Entry[]).map(decryptEntry));
   const counts = new Map<string, number>();
@@ -113,6 +123,8 @@ export async function getAllTags(): Promise<Map<string, number>> {
       counts.set(tag, (counts.get(tag) ?? 0) + 1);
     }
   }
+  _tagsCache = counts;
+  _tagsCacheTime = now;
   return counts;
 }
 
@@ -140,6 +152,8 @@ export async function deleteTag(tag: string): Promise<void> {
           _id: latest._id, type: "entry",
           content: doc.content, tags: newTags,
           date: latest.date, createdAt: latest.createdAt,
+          ...(latest.nextReview !== undefined ? { nextReview: latest.nextReview } : {}),
+          ...(latest.reviewInterval !== undefined ? { reviewInterval: latest.reviewInterval } : {}),
           ...(doc.attachments?.length ? { attachments: doc.attachments } : {}),
         };
         const enc = await encryptEntry(base);
@@ -150,6 +164,7 @@ export async function deleteTag(tag: string): Promise<void> {
       }
     }
   }
+  invalidateTagsCache();
 }
 
 // ─── Entry encryption helpers ────────────────────────────────────────────────
@@ -171,7 +186,12 @@ async function encryptEntry(
     ...(doc.attachments?.length ? { attachments: doc.attachments } : {}),
   };
   const enc = await encryptText(key, JSON.stringify(payload));
-  return { _id: doc._id, type: "entry", date: doc.date, createdAt: doc.createdAt, content: "", tags: [], encrypted: true, enc };
+  return {
+    _id: doc._id, type: "entry", date: doc.date, createdAt: doc.createdAt,
+    content: "", tags: [], encrypted: true, enc,
+    ...(doc.nextReview !== undefined ? { nextReview: doc.nextReview } : {}),
+    ...(doc.reviewInterval !== undefined ? { reviewInterval: doc.reviewInterval } : {}),
+  };
 }
 
 async function decryptEntry(entry: Entry): Promise<Entry> {
@@ -205,7 +225,7 @@ export async function saveEntry(content: string, tags: string[], attachments?: A
   };
   const doc = await encryptEntry(base);
   await db.put(doc as unknown as AnyDoc);
-  // Return with plaintext content for immediate display
+  invalidateTagsCache();
   return { ...doc, content, tags, ...(attachments?.length ? { attachments } : {}) } as Entry;
 }
 
@@ -282,10 +302,13 @@ export async function updateEntry(entry: Entry, content: string, tags: string[])
       const base: Omit<Entry, "_rev" | "encrypted" | "enc"> = {
         _id: latest._id, type: "entry",
         content, tags, date: latest.date, createdAt: latest.createdAt,
+        ...(latest.nextReview !== undefined ? { nextReview: latest.nextReview } : {}),
+        ...(latest.reviewInterval !== undefined ? { reviewInterval: latest.reviewInterval } : {}),
         ...(latest.attachments?.length ? { attachments: latest.attachments } : {}),
       };
       const enc = await encryptEntry(base);
       const res = await db.put({ ...enc, _rev: latest._rev } as unknown as AnyDoc);
+      invalidateTagsCache();
       return { ...enc, _rev: res.rev, content, tags } as Entry;
     } catch (err) {
       if ((err as { status?: number }).status !== 409) throw err;
@@ -425,41 +448,53 @@ export async function deleteTodo(id: string): Promise<void> {
 
 export async function getRecentEntries(limit = 50): Promise<Entry[]> {
   const db = await getDB();
+  // Pass 1: fetch only metadata (no enc blob) to sort and slice
   const result = await db.find({
     selector: { type: "entry" },
-    sort: [{ type: "asc" }, { createdAt: "asc" }],
-    limit: 2000,
+    fields: ["_id", "createdAt"],
+    limit: 5000,
   });
-  const sorted = (result.docs as unknown as Entry[])
+  const ids = (result.docs as unknown as Pick<Entry, "_id" | "createdAt">[])
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, limit);
-  return Promise.all(sorted.map(decryptEntry));
+    .slice(0, limit)
+    .map((e) => e._id);
+  if (ids.length === 0) return [];
+  // Pass 2: fetch full docs only for the entries we actually need, then decrypt
+  const docs = await Promise.all(ids.map((id) => db.get(id)));
+  return Promise.all((docs as Entry[]).map(decryptEntry));
 }
 
 export async function getReviewDue(maxBackfill = 10): Promise<Entry[]> {
   const db = await getDB();
   const today = new Date().toISOString().split("T")[0];
 
+  // Pass 1: metadata only — filter without loading enc blobs
   const result = await db.find({
     selector: { type: "entry" },
-    sort: [{ type: "asc" }, { createdAt: "asc" }],
-    limit: 2000,
+    fields: ["_id", "date", "createdAt", "nextReview"],
+    limit: 5000,
   });
-  const all = result.docs as unknown as Entry[];
+  const all = result.docs as unknown as Pick<Entry, "_id" | "date" | "createdAt" | "nextReview">[];
 
-  const scheduled = all
+  const scheduledIds = all
     .filter((e) => e.nextReview && e.nextReview <= today)
-    .slice(0, 20);
+    .slice(0, 20)
+    .map((e) => e._id);
 
-  const remaining = Math.max(0, maxBackfill - scheduled.length);
-  const backfill = remaining > 0
+  const remaining = Math.max(0, maxBackfill - scheduledIds.length);
+  const backfillIds = remaining > 0
     ? all
         .filter((e) => !e.nextReview && e.date < today)
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
         .slice(0, remaining)
+        .map((e) => e._id)
     : [];
 
-  return Promise.all([...scheduled, ...backfill].map(decryptEntry));
+  const ids = [...scheduledIds, ...backfillIds];
+  if (ids.length === 0) return [];
+  // Pass 2: fetch + decrypt only the entries we actually need
+  const docs = await Promise.all(ids.map((id) => db.get(id)));
+  return Promise.all((docs as Entry[]).map(decryptEntry));
 }
 
 export async function getReviewCount(): Promise<number> {
