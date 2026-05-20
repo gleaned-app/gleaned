@@ -93,7 +93,7 @@ export default function SettingsModal({ onClose }: Props) {
       if (pushStatus === "subscribed") {
         await unsubscribeFromPush(); setPushStatus("unsubscribed");
       } else {
-        const ok = await subscribeToPush();
+        const ok = await subscribeToPush(settings.language);
         setPushStatus(ok ? "subscribed" : await getPushStatus());
       }
     } finally { setPushLoading(false); }

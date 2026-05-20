@@ -22,7 +22,7 @@ export async function getPushStatus(): Promise<"unsupported" | "denied" | "subsc
   return sub ? "subscribed" : "unsubscribed";
 }
 
-export async function subscribeToPush(): Promise<boolean> {
+export async function subscribeToPush(lang: "de" | "en" = "en"): Promise<boolean> {
   if (!(await isPushSupported())) return false;
 
   const permission = await Notification.requestPermission();
@@ -48,7 +48,7 @@ export async function subscribeToPush(): Promise<boolean> {
     const res = await fetch(`${PUSH_BASE}/subscribe`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(sub.toJSON()),
+      body: JSON.stringify({ ...sub.toJSON(), lang }),
     });
     return res.ok;
   } catch {

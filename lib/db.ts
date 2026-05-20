@@ -283,15 +283,6 @@ export async function getEntryCountsByDate(): Promise<Map<string, number>> {
   return counts;
 }
 
-export async function getDatesWithEntries(): Promise<Set<string>> {
-  const db = await getDB();
-  const result = await db.find({
-    selector: { type: "entry" },
-    fields: ["date"],
-  });
-  return new Set(result.docs.map((d) => (d as Entry).date));
-}
-
 export async function searchEntries(query: string): Promise<Entry[]> {
   const db = await getDB();
   const q = query.toLowerCase();
