@@ -459,9 +459,10 @@ export async function getRecentEntries(limit = 50): Promise<Entry[]> {
     .slice(0, limit)
     .map((e) => e._id);
   if (ids.length === 0) return [];
-  // Pass 2: fetch full docs only for the entries we actually need, then decrypt
-  const docs = await Promise.all(ids.map((id) => db.get(id)));
-  return Promise.all((docs as Entry[]).map(decryptEntry));
+  // Pass 2: single batch request for all needed docs, then decrypt
+  const res = await db.allDocs({ keys: ids, include_docs: true });
+  const docs = res.rows.map((r) => ("doc" in r ? r.doc : null)).filter(Boolean) as Entry[];
+  return Promise.all(docs.map(decryptEntry));
 }
 
 export async function getReviewDue(maxBackfill = 10): Promise<Entry[]> {
@@ -492,9 +493,10 @@ export async function getReviewDue(maxBackfill = 10): Promise<Entry[]> {
 
   const ids = [...scheduledIds, ...backfillIds];
   if (ids.length === 0) return [];
-  // Pass 2: fetch + decrypt only the entries we actually need
-  const docs = await Promise.all(ids.map((id) => db.get(id)));
-  return Promise.all((docs as Entry[]).map(decryptEntry));
+  // Pass 2: single batch request, then decrypt only what we need
+  const res = await db.allDocs({ keys: ids, include_docs: true });
+  const docs = res.rows.map((r) => ("doc" in r ? r.doc : null)).filter(Boolean) as Entry[];
+  return Promise.all(docs.map(decryptEntry));
 }
 
 export async function getReviewCount(): Promise<number> {

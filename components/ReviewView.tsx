@@ -142,7 +142,7 @@ export default function ReviewView({
     if (touchStartX === null) return;
     const diff = e.changedTouches[0].clientX - touchStartX;
     setTouchStartX(null);
-    if (Math.abs(diff) > 56) handleReview(diff > 0);
+    if (Math.abs(diff) > 56) { navigator.vibrate?.(8); handleReview(diff > 0); }
   }
 
   return (
@@ -164,8 +164,11 @@ export default function ReviewView({
 
       {/* ── Queue ─────────────────────────────────────────────────────────── */}
       {loadingQueue ? (
-        <div className="mb-6 flex justify-center py-8">
-          <Spinner />
+        <div className="mb-6 rounded-3xl px-6 py-5" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+          <div className="skeleton mb-4 h-5 w-20 rounded-full" />
+          <div className="skeleton mb-2.5 h-4 w-full rounded-lg" />
+          <div className="skeleton mb-2.5 h-4 w-[85%] rounded-lg" />
+          <div className="skeleton h-4 w-[65%] rounded-lg" />
         </div>
       ) : queueDone || total === 0 ? (
         <div
@@ -297,7 +300,18 @@ export default function ReviewView({
 
       {/* History list */}
       {loadingHistory || loadingMonth ? (
-        <div className="flex justify-center py-8"><Spinner /></div>
+        <div className="flex flex-col gap-1.5">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-start gap-3 rounded-2xl px-4 py-3"
+              style={{ background: "var(--bg-card)", border: "1px solid var(--border)", opacity: 1 - i * 0.18 }}>
+              <div className="skeleton mt-[5px] h-2 w-2 flex-shrink-0 rounded-full" />
+              <div className="flex-1">
+                <div className="skeleton mb-2 h-3.5 rounded-lg" style={{ width: `${72 - i * 6}%` }} />
+                <div className="skeleton h-3 w-1/4 rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : displayHistory.length === 0 ? (
         <p className="py-8 text-center font-serif italic" style={{ color: "var(--fg-muted)" }}>
           {searchQuery ? tr.searchNoResults : tr.addFirstGoal}

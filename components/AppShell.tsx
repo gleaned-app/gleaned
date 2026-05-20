@@ -192,10 +192,12 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
       </header>
 
       <main className="flex-1 overflow-y-auto" style={{ paddingBottom: "calc(80px + env(safe-area-inset-bottom))" }}>
-        {view === "journal"  && <ErrorBoundary key="journal"><JournalView /></ErrorBoundary>}
-        {view === "calendar" && <ErrorBoundary key="calendar"><CalendarView initialDate={calendarJumpDate} /></ErrorBoundary>}
-        {view === "todos"    && <ErrorBoundary key="todos"><TodoView /></ErrorBoundary>}
-        {view === "review"   && <ErrorBoundary key="review"><ReviewView onCountChange={setReviewCount} onNavigate={handleNavigate} /></ErrorBoundary>}
+        <div key={view} className="fade-up" style={{ animationDuration: "180ms" }}>
+          {view === "journal"  && <ErrorBoundary key="journal"><JournalView /></ErrorBoundary>}
+          {view === "calendar" && <ErrorBoundary key="calendar"><CalendarView initialDate={calendarJumpDate} /></ErrorBoundary>}
+          {view === "todos"    && <ErrorBoundary key="todos"><TodoView /></ErrorBoundary>}
+          {view === "review"   && <ErrorBoundary key="review"><ReviewView onCountChange={setReviewCount} onNavigate={handleNavigate} /></ErrorBoundary>}
+        </div>
       </main>
 
       <BottomNav current={view} onChange={handleViewChange} reviewCount={reviewCount} />

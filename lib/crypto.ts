@@ -4,6 +4,8 @@
 
 const SESSION_KEY = "gleaned_enc_key";
 
+let _keyCache: CryptoKey | null = null;
+
 export async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
   const keyMaterial = await crypto.subtle.importKey(
     "raw",
@@ -57,27 +59,31 @@ export async function decryptText(key: CryptoKey, ciphertext: string): Promise<s
 }
 
 export async function storeKey(key: CryptoKey): Promise<void> {
+  _keyCache = key;
   const jwk = await crypto.subtle.exportKey("jwk", key);
   sessionStorage.setItem(SESSION_KEY, JSON.stringify(jwk));
 }
 
 export async function loadKey(): Promise<CryptoKey | null> {
+  if (_keyCache) return _keyCache;
   const raw = sessionStorage.getItem(SESSION_KEY);
   if (!raw) return null;
   try {
     const jwk = JSON.parse(raw) as JsonWebKey;
-    return await crypto.subtle.importKey(
+    _keyCache = await crypto.subtle.importKey(
       "jwk",
       jwk,
       { name: "AES-GCM", length: 256 },
       true,
       ["encrypt", "decrypt"],
     );
+    return _keyCache;
   } catch {
     return null;
   }
 }
 
 export function clearKey(): void {
+  _keyCache = null;
   sessionStorage.removeItem(SESSION_KEY);
 }
