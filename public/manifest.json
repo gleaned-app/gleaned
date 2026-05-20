@@ -13,17 +13,25 @@
   "categories": ["productivity", "lifestyle"],
   "prefer_related_applications": false,
   "icons": [
-    { "src": "/icon-192.png",         "sizes": "192x192",  "type": "image/png", "purpose": "any" },
-    { "src": "/icon-512.png",         "sizes": "512x512",  "type": "image/png", "purpose": "any" },
-    { "src": "/icon-maskable-512.png","sizes": "512x512",  "type": "image/png", "purpose": "maskable" },
-    { "src": "/icon.svg",             "sizes": "any",      "type": "image/svg+xml", "purpose": "any" }
+    { "src": "/icon-192.png",          "sizes": "192x192",  "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png",          "sizes": "512x512",  "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-192.png", "sizes": "192x192",  "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512",  "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon.svg",              "sizes": "any",       "type": "image/svg+xml", "purpose": "any" }
   ],
   "screenshots": [
     {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
+      "src": "/screenshot-narrow.png",
+      "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",
+      "label": "gleaned — Lern-Journal"
+    },
+    {
+      "src": "/screenshot-wide.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
       "label": "gleaned — Lern-Journal"
     }
   ]

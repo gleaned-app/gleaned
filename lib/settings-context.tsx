@@ -52,11 +52,34 @@ export function locale(settings: AppSettings): string {
   return settings.language === "de" ? "de-DE" : "en-GB";
 }
 
+const THEME_COLOR: Record<Theme, string | null> = {
+  system: null,
+  light:  "#F3EDE3",
+  dark:   "#15100C",
+  sepia:  "#DDD0A8",
+};
+
 function applyTheme(theme: Theme) {
   const el = document.documentElement;
   el.classList.remove("theme-light", "theme-dark", "theme-sepia");
   if (theme !== "system") el.classList.add(`theme-${theme}`);
   try { localStorage.setItem("gleaned-theme", theme); } catch {}
+
+  const color = THEME_COLOR[theme];
+  const existing = document.querySelector('meta[name="theme-color"][data-dynamic]') as HTMLMetaElement | null;
+  if (color) {
+    if (existing) {
+      existing.content = color;
+    } else {
+      const meta = document.createElement("meta");
+      meta.name = "theme-color";
+      meta.content = color;
+      meta.dataset.dynamic = "true";
+      document.head.appendChild(meta);
+    }
+  } else {
+    existing?.remove();
+  }
 }
 
 type Ctx = {
