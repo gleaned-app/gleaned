@@ -23,12 +23,13 @@ A personal, offline-first learning journal. Everything you write is encrypted an
 ## Features
 
 - **Daily journal** — write entries in Markdown, attach images, audio, video, code files, and PDFs
+- **Spaced repetition review** — every entry enters a review queue; swipe or tap to mark remembered or not; intervals grow automatically so you see things again right when you're about to forget them
 - **Full-text search** — instant search across all entries with highlighted matches (⌘K / Ctrl+K)
 - **Calendar heatmap** — GitHub-style activity view, browse any day's entries
-- **Learning list** — todo list with due dates, overdue indicators and progress tracking
-- **End-to-end encryption** — all entries encrypted with PBKDF2 + AES-GCM before hitting IndexedDB
-- **CouchDB sync** — optional self-hosted sync shares entries and password hash across browsers and devices
-- **PWA** — installable, works fully offline, service worker caches everything
+- **Learning list** — todo list with due dates, color labels, overdue indicators and progress tracking
+- **End-to-end encryption** — all entry content encrypted with PBKDF2 + AES-GCM before hitting IndexedDB; the key never leaves the device
+- **CouchDB sync** — optional self-hosted sync shares entries and password hash across browsers and devices; connection test built into settings
+- **PWA** — installable, works fully offline; prompts to reload when a new version is available
 - **Themes** — Auto / Light / Dark / Sepia, all in OKLCH
 - **Fonts** — Modern (DM Sans) / Classic (Lora) / Elegant (Playfair Display) / Handwriting (Caveat)
 - **i18n** — German and English, switchable at runtime
@@ -107,16 +108,23 @@ All documents live in a single PouchDB database (`gleaned`). A `type` field disc
 
 ```ts
 // Journal entry
-{ _id: "entry_<ts>_<rand>", type: "entry", content, tags, date, createdAt, attachments? }
+{
+  _id: "entry_<ts>_<rand>",
+  type: "entry",
+  content, tags, date, createdAt,
+  nextReview?,      // ISO date — when this entry is due for review
+  reviewInterval?,  // days until next review (grows with each "remembered")
+  attachments?,
+}
 
 // Learning todo
-{ _id: "todo_<ts>_<rand>", type: "todo", text, done, createdAt, dueDate? }
+{ _id: "todo_<ts>_<rand>", type: "todo", text, done, createdAt, dueDate?, color? }
 
 // Settings + auth (singleton)
-{ _id: "gleaned_settings", type: "settings", passwordHash?, theme?, language?, bodyFont?, weekStart? }
+{ _id: "gleaned_settings", type: "settings", passwordHash?, theme?, language?, bodyFont?, weekStart?, couchdbUrl?, couchdbUsername? }
 ```
 
-Entries are encrypted at write time and decrypted at read time using a key derived from the user's password. The raw content never reaches PouchDB unencrypted.
+Entries are encrypted at write time and decrypted at read time using a key derived from the user's password (PBKDF2 → AES-GCM). The plaintext never reaches IndexedDB; `content` and `tags` are replaced with an opaque `enc` blob. The derived key is cached in `sessionStorage` as a JWK so it survives page reloads within a tab without re-deriving.
 
 ---
 
@@ -125,27 +133,35 @@ Entries are encrypted at write time and decrypted at read time using a key deriv
 ```
 gleaned/
 ├── app/
-│   ├── globals.css        # OKLCH palette, themes, animations
+│   ├── globals.css        # OKLCH palette, themes, animations, skeleton shimmer
 │   ├── layout.tsx         # Fonts, PWA meta, SW registration, flash-prevention script
 │   └── page.tsx           # Entry point → <AppShell>
 ├── components/
-│   ├── AppShell.tsx        # Auth gate, layout, keyboard shortcuts
-│   ├── LockScreen.tsx      # Animated login / register screen
+│   ├── AppShell.tsx        # Auth gate, view keep-alive, layout, keyboard shortcuts
+│   ├── BottomNav.tsx       # Tab bar: Journal / Calendar / Learn / Review
+│   ├── ProfileButton.tsx   # Dropdown: settings, lock
+│   ├── LockScreen.tsx      # Animated login / register screen (canvas wheat field)
 │   ├── JournalView.tsx     # Today's entries + entry form
 │   ├── EntryForm.tsx       # Markdown textarea, tag input, file upload
 │   ├── EntryCard.tsx       # Entry display, inline edit, delete
 │   ├── SearchModal.tsx     # Full-text search overlay (⌘K)
 │   ├── CalendarView.tsx    # Heatmap calendar
-│   ├── TodoView.tsx        # Learning list with due dates
-│   ├── SettingsModal.tsx   # Theme, font, language, sync, data, notifications
-│   └── ConflictModal.tsx   # CouchDB conflict resolution UI
+│   ├── TodoView.tsx        # Learning list with due dates and color labels
+│   ├── ReviewView.tsx      # Spaced repetition queue + history browser
+│   ├── SettingsModal.tsx   # Theme, font, language, sync (with test button), data, notifications
+│   ├── ConflictModal.tsx   # CouchDB conflict resolution UI
+│   ├── SWUpdatePrompt.tsx  # "New version available" banner when SW updates
+│   └── ErrorBoundary.tsx   # Per-view error boundary with retry
 ├── lib/
-│   ├── db.ts              # PouchDB singleton, all CRUD + CouchDB sync
-│   ├── auth.ts            # PBKDF2 password setup, session management
-│   ├── crypto.ts          # AES-GCM encrypt/decrypt helpers
+│   ├── db.ts              # PouchDB singleton, all CRUD + sync + spaced repetition logic
+│   ├── auth.ts            # SHA-256 password hash, sessionStorage session
+│   ├── crypto.ts          # PBKDF2 key derivation, AES-GCM encrypt/decrypt, JWK key cache
 │   ├── i18n.ts            # DE/EN translation dictionaries + useT() hook
-│   └── settings-context.tsx # React context: theme, font, language, sync
+│   ├── settings-context.tsx # React context: theme, font, language, sync
+│   ├── use-sync-status.ts  # Hook: live sync status for the header dot
+│   ├── use-conflict-count.ts # Hook: number of unresolved CouchDB conflicts
+│   └── notifications.ts   # Push notification subscribe/unsubscribe
 └── public/
     ├── manifest.json      # PWA manifest
-    └── sw.js              # Service worker (offline-first, stale-while-revalidate)
+    └── sw.js              # Service worker (offline-first, update prompt on new version)
 ```
