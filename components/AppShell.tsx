@@ -72,10 +72,12 @@ function useInstallPrompt() {
       e.preventDefault();
       setPrompt(e as unknown as DeferredPrompt);
     }
+    function onInstalled() { setPrompt(null); }
     window.addEventListener("beforeinstallprompt", onPrompt);
-    window.addEventListener("appinstalled", () => setPrompt(null));
+    window.addEventListener("appinstalled", onInstalled);
     return () => {
       window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("appinstalled", onInstalled);
     };
   }, []);
   async function install() {
@@ -103,6 +105,11 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
 
   useEffect(() => {
     getReviewCount().then(setReviewCount);
+    function onVisible() {
+      if (document.visibilityState === "visible") getReviewCount().then(setReviewCount);
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
   function mount(v: View) {
@@ -235,7 +242,7 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
       <BottomNav current={view} onChange={handleViewChange} reviewCount={reviewCount} />
 
       <SWUpdatePrompt />
-      {showSearch && <SearchModal onClose={() => setShowSearch(false)} />}
+      {showSearch && <SearchModal onClose={() => setShowSearch(false)} onNavigate={(date) => { setShowSearch(false); handleNavigate("calendar", date); }} />}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
       {showConflicts && <ConflictModal onClose={() => setShowConflicts(false)} />}
     </div>

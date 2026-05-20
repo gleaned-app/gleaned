@@ -371,11 +371,6 @@ export async function getTodos(): Promise<Todo[]> {
   return result.docs as Todo[];
 }
 
-export async function toggleTodo(id: string, rev: string, done: boolean): Promise<void> {
-  const db = await getDB();
-  await db.put({ _id: id, _rev: rev, type: "todo", done } as unknown as AnyDoc);
-}
-
 export async function updateTodoDoc(todo: Todo): Promise<Todo> {
   const db = await getDB();
   const targetDone = !todo.done;

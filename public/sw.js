@@ -1,5 +1,7 @@
 const CACHE = "gleaned-v2";
 
+let swLang = "en";
+
 const APP_SHELL = [
   "/",
   "/manifest.json",
@@ -19,6 +21,7 @@ self.addEventListener("install", (e) => {
 // ── Update prompt: app sends SKIP_WAITING when user confirms reload ──────────
 self.addEventListener("message", (e) => {
   if (e.data?.type === "SKIP_WAITING") self.skipWaiting();
+  if (e.data?.type === "SET_LANG") swLang = e.data.lang;
 });
 
 // ── Activate: remove old caches ─────────────────────────────────────────────
@@ -68,7 +71,8 @@ self.addEventListener("fetch", (e) => {
 
 // ── Push notifications ───────────────────────────────────────────────────────
 self.addEventListener("push", (e) => {
-  let data = { title: "gleaned", body: "Was hast du heute gelernt?", url: "/" };
+  const fallbackBody = swLang === "de" ? "Was hast du heute gelernt?" : "What did you learn today?";
+  let data = { title: "gleaned", body: fallbackBody, url: "/" };
   try { data = { ...data, ...e.data.json() }; } catch {}
 
   e.waitUntil(

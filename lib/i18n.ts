@@ -204,7 +204,7 @@ const de: Translations = {
 
   navReview: "Review",
   reviewTitle: "Wiederholen",
-  reviewDaysAgo: (n) => `vor ${n} Tagen`,
+  reviewDaysAgo: (n) => n === 1 ? "vor 1 Tag" : `vor ${n} Tagen`,
   reviewAgain: "Nochmal",
   reviewGotIt: "Sitzt noch!",
   reviewEmpty: "Alles wiederholt.",
@@ -216,7 +216,7 @@ const de: Translations = {
   filterByTag: "tag filtern…",
   thisWeek: "Diese Woche",
   lastWeek: "Letzte Woche",
-  weeksAgo: (n) => `Vor ${n} Wochen`,
+  weeksAgo: (n) => n === 1 ? "Vor 1 Woche" : `Vor ${n} Wochen`,
 
   navCalendar: "Kalender",
   navLearn: "Lernen",
@@ -339,7 +339,7 @@ const en: Translations = {
 
   navReview: "Review",
   reviewTitle: "Review",
-  reviewDaysAgo: (n) => `${n} days ago`,
+  reviewDaysAgo: (n) => n === 1 ? "1 day ago" : `${n} days ago`,
   reviewAgain: "Again",
   reviewGotIt: "Got it!",
   reviewEmpty: "All caught up.",
@@ -351,7 +351,7 @@ const en: Translations = {
   filterByTag: "filter by tag…",
   thisWeek: "This week",
   lastWeek: "Last week",
-  weeksAgo: (n) => `${n} weeks ago`,
+  weeksAgo: (n) => n === 1 ? "1 week ago" : `${n} weeks ago`,
 
   navCalendar: "Calendar",
   navLearn: "Learn",

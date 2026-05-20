@@ -216,16 +216,25 @@ export default function LockScreen({ onAuth }: Props) {
       if (password !== confirm) { setError(t.passwordMismatch); return; }
       if (password.length < 4)  { setError(t.passwordTooShort); return; }
       setSubmitting(true);
-      await setupPassword(password);
-      onAuth();
+      try {
+        await setupPassword(password);
+        onAuth();
+      } catch {
+        setSubmitting(false);
+      }
     } else {
       setSubmitting(true);
-      const ok = await login(password);
-      if (ok) { onAuth(); }
-      else {
-        const msg = hasLocalAccount ? t.wrongPassword : t.noLocalAccount;
-        setError(msg);
-        setPassword("");
+      try {
+        const ok = await login(password);
+        if (ok) {
+          onAuth();
+        } else {
+          const msg = hasLocalAccount ? t.wrongPassword : t.noLocalAccount;
+          setError(msg);
+          setPassword("");
+          setSubmitting(false);
+        }
+      } catch {
         setSubmitting(false);
       }
     }

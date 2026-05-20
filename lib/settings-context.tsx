@@ -43,6 +43,9 @@ function applyBodyFont(font: BodyFont) {
 function applyLanguage(lang: "de" | "en") {
   document.documentElement.lang = lang;
   try { localStorage.setItem("gleaned-lang", lang); } catch {}
+  navigator.serviceWorker?.ready
+    .then((reg) => reg.active?.postMessage({ type: "SET_LANG", lang }))
+    .catch(() => {});
 }
 
 export function locale(settings: AppSettings): string {
