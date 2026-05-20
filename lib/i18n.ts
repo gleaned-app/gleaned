@@ -61,6 +61,7 @@ export interface Translations {
   markOpen: string;
   markDone: string;
   overdue(d: number): string;
+  color: string;
 
   // Nav + profile + header
   navCalendar: string;
@@ -175,6 +176,7 @@ const de: Translations = {
   markOpen: "Als offen markieren",
   markDone: "Als erledigt markieren",
   overdue: (d) => `${d}d überfällig`,
+  color: "Farbe",
 
   navCalendar: "Kalender",
   navLearn: "Lernen",
@@ -286,6 +288,7 @@ const en: Translations = {
   markOpen: "Mark as open",
   markDone: "Mark as done",
   overdue: (d) => `${d}d overdue`,
+  color: "Color",
 
   navCalendar: "Calendar",
   navLearn: "Learn",

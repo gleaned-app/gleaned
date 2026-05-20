@@ -6,4 +6,5 @@ export interface Todo {
   done: boolean;
   createdAt: string;
   dueDate?: string; // "YYYY-MM-DD"
+  color?: string;   // hex color
 }

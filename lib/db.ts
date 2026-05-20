@@ -286,7 +286,7 @@ export async function deleteEntry(id: string): Promise<void> {
 
 // ─── Todos ───────────────────────────────────────────────────────────────────
 
-export async function saveTodo(text: string, dueDate?: string): Promise<Todo> {
+export async function saveTodo(text: string, dueDate?: string, color?: string): Promise<Todo> {
   const db = await getDB();
   const now = new Date();
   const doc: Omit<Todo, "_rev"> = {
@@ -296,6 +296,7 @@ export async function saveTodo(text: string, dueDate?: string): Promise<Todo> {
     done: false,
     createdAt: now.toISOString(),
     ...(dueDate ? { dueDate } : {}),
+    ...(color ? { color } : {}),
   };
   await db.put(doc);
   return doc as Todo;
@@ -346,6 +347,23 @@ export async function updateTodoDueDate(todo: Todo, dueDate: string | undefined)
     }
   }
   throw new Error("gleaned: too many conflicts updating todo dueDate");
+}
+
+export async function updateTodoColor(todo: Todo, color: string | undefined): Promise<Todo> {
+  const db = await getDB();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const latest = attempt === 0 ? todo : (await db.get(todo._id)) as unknown as Todo;
+      const updated: Todo = { ...latest };
+      if (color) updated.color = color;
+      else delete updated.color;
+      const res = await db.put(updated);
+      return { ...updated, _rev: res.rev };
+    } catch (err) {
+      if ((err as { status?: number }).status !== 409) throw err;
+    }
+  }
+  throw new Error("gleaned: too many conflicts updating todo color");
 }
 
 export async function updateTodoText(todo: Todo, text: string): Promise<Todo> {
