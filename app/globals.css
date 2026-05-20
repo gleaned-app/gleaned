@@ -14,7 +14,7 @@
 /* System (no class) follows prefers-color-scheme via media query                */
 
 /* LIGHT — default and explicit */
-:root {
+html {
   --bg:              oklch(92% 0.022 75);
   --bg-card:         oklch(97.5% 0.012 80);
   --bg-nav:          oklch(94% 0.018 75);

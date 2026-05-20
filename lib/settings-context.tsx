@@ -52,34 +52,41 @@ export function locale(settings: AppSettings): string {
   return settings.language === "de" ? "de-DE" : "en-GB";
 }
 
-const THEME_COLOR: Record<Theme, string | null> = {
-  system: null,
-  light:  "#F3EDE3",
-  dark:   "#15100C",
-  sepia:  "#DDD0A8",
+const THEME_COLOR: Record<string, string> = {
+  light: "#F3EDE3",
+  dark:  "#15100C",
+  sepia: "#DDD0A8",
 };
+
+function setDynamicThemeColor(effective: "light" | "dark" | "sepia" | null) {
+  const existing = document.querySelector('meta[name="theme-color"][data-dynamic]') as HTMLMetaElement | null;
+  const color = effective ? THEME_COLOR[effective] : null;
+  if (color) {
+    if (existing) { existing.content = color; return; }
+    const meta = document.createElement("meta");
+    meta.name = "theme-color";
+    meta.content = color;
+    meta.dataset.dynamic = "true";
+    document.head.appendChild(meta);
+  } else {
+    existing?.remove();
+  }
+}
 
 function applyTheme(theme: Theme) {
   const el = document.documentElement;
   el.classList.remove("theme-light", "theme-dark", "theme-sepia");
-  if (theme !== "system") el.classList.add(`theme-${theme}`);
-  try { localStorage.setItem("gleaned-theme", theme); } catch {}
-
-  const color = THEME_COLOR[theme];
-  const existing = document.querySelector('meta[name="theme-color"][data-dynamic]') as HTMLMetaElement | null;
-  if (color) {
-    if (existing) {
-      existing.content = color;
-    } else {
-      const meta = document.createElement("meta");
-      meta.name = "theme-color";
-      meta.content = color;
-      meta.dataset.dynamic = "true";
-      document.head.appendChild(meta);
-    }
+  if (theme === "system") {
+    // Use JS to detect preference — CSS media-query cascade can be unreliable
+    // with backdrop-filter + color-mix in some browsers
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    if (prefersDark) el.classList.add("theme-dark");
+    setDynamicThemeColor(prefersDark ? "dark" : null);
   } else {
-    existing?.remove();
+    el.classList.add(`theme-${theme}`);
+    setDynamicThemeColor(theme);
   }
+  try { localStorage.setItem("gleaned-theme", theme); } catch {}
 }
 
 type Ctx = {
@@ -94,6 +101,19 @@ const SettingsContext = createContext<Ctx>({
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<AppSettings>(DEFAULTS);
+
+  // Keep theme-dark class in sync when OS preference changes while theme === "system"
+  useEffect(() => {
+    if (settings.theme !== "system") return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    function sync(dark: boolean) {
+      document.documentElement.classList.toggle("theme-dark", dark);
+      setDynamicThemeColor(dark ? "dark" : null);
+    }
+    const handler = (e: MediaQueryListEvent) => sync(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, [settings.theme]);
 
   useEffect(() => {
     getSettings().then((s) => {
