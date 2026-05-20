@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { isAuthenticated, logout } from "@/lib/auth";
 import { SettingsProvider } from "@/lib/settings-context";
 import { useSyncStatus } from "@/lib/use-sync-status";
@@ -96,13 +96,25 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
   const conflictCount = useConflictCount();
   const { canInstall, install } = useInstallPrompt();
   const t = useT();
+  const mainRef = useRef<HTMLElement>(null);
+  // Lazy-mount: View bleibt im DOM sobald sie einmal besucht wurde → kein Skeleton-Flash bei Rückkehr
+  const [visited, setVisited] = useState<Set<View>>(new Set([view]));
 
   useEffect(() => {
     getReviewCount().then(setReviewCount);
   }, []);
 
-  // Nav-tab click: clears any calendar jump date
+  function mount(v: View) {
+    setVisited((prev) => { const s = new Set(prev); s.add(v); return s; });
+  }
+
+  // Nav-tab click: gleichen Tab → scroll nach oben; anderer Tab → wechseln
   function handleViewChange(v: View) {
+    if (v === view) {
+      mainRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    mount(v);
     setCalendarJumpDate(undefined);
     if (view === "review" && v !== "review") getReviewCount().then(setReviewCount);
     setView(v);
@@ -110,6 +122,7 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
 
   // Programmatic navigation (e.g. from Review → Calendar with a specific date)
   function handleNavigate(v: View, date?: string) {
+    mount(v);
     setCalendarJumpDate(date);
     setView(v);
   }
@@ -134,7 +147,7 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
     <div className="flex min-h-screen flex-col" style={{ background: "var(--bg)" }}>
       <header className="sticky top-0 z-40 flex items-center justify-between px-5 py-3" style={{ background: "var(--bg)" }}>
         <button
-          onClick={() => setView("journal")}
+          onClick={() => handleViewChange("journal")}
           className="font-sans text-[11px] font-medium tracking-[0.2em] uppercase transition-opacity hover:opacity-60"
           style={{ color: "var(--fg-muted)" }}
         >
@@ -191,12 +204,30 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto" style={{ paddingBottom: "calc(80px + env(safe-area-inset-bottom))" }}>
-        <div key={view} className="fade-up" style={{ animationDuration: "180ms" }}>
-          {view === "journal"  && <ErrorBoundary key="journal"><JournalView /></ErrorBoundary>}
-          {view === "calendar" && <ErrorBoundary key="calendar"><CalendarView initialDate={calendarJumpDate} /></ErrorBoundary>}
-          {view === "todos"    && <ErrorBoundary key="todos"><TodoView /></ErrorBoundary>}
-          {view === "review"   && <ErrorBoundary key="review"><ReviewView onCountChange={setReviewCount} onNavigate={handleNavigate} /></ErrorBoundary>}
+      <main
+        ref={mainRef}
+        className="flex-1 overflow-y-auto"
+        style={{
+          paddingBottom: "calc(80px + env(safe-area-inset-bottom))",
+          overscrollBehavior: "contain",
+        }}
+      >
+        {/* Views bleiben im DOM sobald erstmalig besucht — kein Re-fetch, kein Skeleton-Flash */}
+        <div style={{ display: view === "journal" ? "block" : "none" }}>
+          {visited.has("journal") && <ErrorBoundary key="journal"><JournalView /></ErrorBoundary>}
+        </div>
+        <div style={{ display: view === "calendar" ? "block" : "none" }}>
+          {visited.has("calendar") && (
+            <ErrorBoundary key="calendar">
+              <CalendarView key={calendarJumpDate ?? "cal"} initialDate={calendarJumpDate} />
+            </ErrorBoundary>
+          )}
+        </div>
+        <div style={{ display: view === "todos" ? "block" : "none" }}>
+          {visited.has("todos") && <ErrorBoundary key="todos"><TodoView /></ErrorBoundary>}
+        </div>
+        <div style={{ display: view === "review" ? "block" : "none" }}>
+          {visited.has("review") && <ErrorBoundary key="review"><ReviewView onCountChange={setReviewCount} onNavigate={handleNavigate} /></ErrorBoundary>}
         </div>
       </main>
 

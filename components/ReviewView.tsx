@@ -82,6 +82,7 @@ export default function ReviewView({
   const [total, setTotal] = useState(0);
   const [slide, setSlide] = useState<SlideDir>(null);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [dragX, setDragX] = useState(0);
 
   // History
   const [history, setHistory] = useState<Entry[]>([]);
@@ -114,6 +115,11 @@ export default function ReviewView({
 
   const current = queue[index] ?? null;
   const queueDone = !loadingQueue && index >= total;
+
+  const activeDrag = !slide && dragX !== 0;
+  const dragRotate = activeDrag ? Math.max(-7, Math.min(7, dragX * 0.05)) : 0;
+  const dragScale = activeDrag ? 1 + Math.min(Math.abs(dragX) / 600, 0.025) : 1;
+  const dragTranslate = slide === "left" ? -90 : slide === "right" ? 90 : activeDrag ? dragX : 0;
   const sourceEntries = selectedMonth ? monthEntries : history;
   const displayHistory = searchQuery.trim()
     ? sourceEntries.filter((e) =>
@@ -137,11 +143,19 @@ export default function ReviewView({
     [current, slide, index, total, onCountChange]
   );
 
-  function onTouchStart(e: React.TouchEvent) { setTouchStartX(e.touches[0].clientX); }
+  function onTouchStart(e: React.TouchEvent) {
+    setTouchStartX(e.touches[0].clientX);
+    setDragX(0);
+  }
+  function onTouchMove(e: React.TouchEvent) {
+    if (touchStartX === null || slide) return;
+    setDragX(e.touches[0].clientX - touchStartX);
+  }
   function onTouchEnd(e: React.TouchEvent) {
     if (touchStartX === null) return;
     const diff = e.changedTouches[0].clientX - touchStartX;
     setTouchStartX(null);
+    setDragX(0);
     if (Math.abs(diff) > 56) { navigator.vibrate?.(8); handleReview(diff > 0); }
   }
 
@@ -193,15 +207,19 @@ export default function ReviewView({
           </div>
           <div
             onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
             onTouchEnd={onTouchEnd}
             className="mb-4 select-none"
             style={{
-              transform: slide === "left" ? "translateX(-90px)" : slide === "right" ? "translateX(90px)" : "translateX(0)",
+              touchAction: "pan-y",
+              transform: `translateX(${dragTranslate}px) rotate(${dragRotate}deg) scale(${dragScale})`,
               opacity: slide ? 0 : 1,
               transition: slide ? "transform 0.28s cubic-bezier(0.4,0,1,1), opacity 0.22s ease" : "none",
+              willChange: "transform",
+              transformOrigin: "50% 110%",
             }}
           >
-            {current && <ReviewCard entry={current} tr={tr} />}
+            {current && <ReviewCard entry={current} tr={tr} dragX={activeDrag ? dragX : 0} />}
           </div>
           <div className="mb-2 flex gap-3">
             <button onClick={() => handleReview(false)} disabled={!!slide}
@@ -343,10 +361,71 @@ export default function ReviewView({
 
 // ─── Review card ──────────────────────────────────────────────────────────────
 
-function ReviewCard({ entry, tr }: { entry: Entry; tr: ReturnType<typeof useT> }) {
+function ReviewCard({ entry, tr, dragX = 0 }: { entry: Entry; tr: ReturnType<typeof useT>; dragX?: number }) {
+  const abs = Math.abs(dragX);
+  const isRight = dragX > 0;
+  const overlayOpacity = Math.min(abs / 180, 0.42);
+  const labelOpacity = Math.max(0, Math.min(1, (abs - 28) / 55));
+
+  const overlayPos = isRight ? "75% 20%" : "25% 20%";
+  const overlayVar = isRight ? "var(--accent)" : "var(--due-overdue)";
+
   return (
-    <div className="fade-up rounded-3xl px-6 py-5"
-      style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}>
+    <div
+      className="rounded-3xl px-6 py-5"
+      style={{
+        background: "var(--bg-card)",
+        border: "1px solid var(--border)",
+        boxShadow: "var(--shadow-card)",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {/* Directional tint overlay — opacity on element so color stays CSS-var */}
+      {dragX !== 0 && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "inherit",
+            pointerEvents: "none",
+            opacity: overlayOpacity,
+            background: `radial-gradient(ellipse at ${overlayPos}, ${overlayVar}, transparent 62%)`,
+          }}
+        />
+      )}
+
+      {/* Stamp label */}
+      {dragX !== 0 && (
+        <div
+          style={{
+            position: "absolute",
+            top: 18,
+            ...(isRight ? { right: 18 } : { left: 18 }),
+            opacity: labelOpacity,
+            transform: isRight ? "rotate(12deg)" : "rotate(-12deg)",
+            pointerEvents: "none",
+            zIndex: 10,
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "var(--font-caveat), cursive",
+              fontSize: "1.05rem",
+              fontWeight: 700,
+              letterSpacing: "0.06em",
+              color: isRight ? "var(--accent)" : "var(--due-overdue)",
+              border: `2px solid ${isRight ? "var(--accent)" : "var(--due-overdue)"}`,
+              borderRadius: 6,
+              padding: "2px 9px",
+              display: "block",
+            }}
+          >
+            {isRight ? tr.reviewGotIt : tr.reviewAgain}
+          </span>
+        </div>
+      )}
+
       <span className="mb-3 inline-block rounded-full px-3 py-0.5 font-sans text-sm"
         style={{ background: "var(--border)", color: "var(--fg-muted)", fontFamily: "var(--font-caveat), cursive", fontSize: "0.95rem" }}>
         {contextLabel(entry.date, tr)}
