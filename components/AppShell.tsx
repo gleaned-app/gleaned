@@ -9,7 +9,9 @@ import { useT } from "@/lib/i18n";
 import JournalView from "./JournalView";
 import CalendarView from "./CalendarView";
 import TodoView from "./TodoView";
-import BottomNav from "./BottomNav";
+import ReviewView from "./ReviewView";
+import BottomNav, { type View } from "./BottomNav";
+import { getReviewCount } from "@/lib/db";
 import LockScreen from "./LockScreen";
 import ProfileButton from "./ProfileButton";
 import SettingsModal from "./SettingsModal";
@@ -40,8 +42,6 @@ function SyncDot() {
     />
   );
 }
-
-type View = "journal" | "calendar" | "todos";
 
 export default function AppShell() {
   const [authed, setAuthed] = useState(() => isAuthenticated());
@@ -90,9 +90,21 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
   const [showSettings, setShowSettings] = useState(false);
   const [showConflicts, setShowConflicts] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [reviewCount, setReviewCount] = useState(0);
   const conflictCount = useConflictCount();
   const { canInstall, install } = useInstallPrompt();
   const t = useT();
+
+  useEffect(() => {
+    getReviewCount().then(setReviewCount);
+  }, []);
+
+  function handleViewChange(v: View) {
+    if (view === "review" && v !== "review") {
+      getReviewCount().then(setReviewCount);
+    }
+    setView(v);
+  }
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -175,9 +187,10 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
         {view === "journal"  && <JournalView />}
         {view === "calendar" && <CalendarView />}
         {view === "todos"    && <TodoView />}
+        {view === "review"   && <ReviewView onCountChange={setReviewCount} />}
       </main>
 
-      <BottomNav current={view} onChange={setView} />
+      <BottomNav current={view} onChange={handleViewChange} reviewCount={reviewCount} />
 
       {showSearch && <SearchModal onClose={() => setShowSearch(false)} />}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}

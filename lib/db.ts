@@ -191,6 +191,7 @@ async function decryptEntry(entry: Entry): Promise<Entry> {
 export async function saveEntry(content: string, tags: string[], attachments?: Attachment[]): Promise<Entry> {
   const db = await getDB();
   const now = new Date();
+  const tomorrow = new Date(now.getTime() + 86_400_000).toISOString().split("T")[0];
   const base: Omit<Entry, "_rev" | "encrypted" | "enc"> = {
     _id: `entry_${now.getTime()}_${Math.random().toString(36).slice(2, 7)}`,
     type: "entry",
@@ -198,6 +199,8 @@ export async function saveEntry(content: string, tags: string[], attachments?: A
     tags,
     date: now.toISOString().split("T")[0],
     createdAt: now.toISOString(),
+    nextReview: tomorrow,
+    reviewInterval: 1,
     ...(attachments?.length ? { attachments } : {}),
   };
   const doc = await encryptEntry(base);
@@ -394,6 +397,71 @@ export async function deleteTodo(id: string): Promise<void> {
     }
   }
   throw new Error("gleaned: too many conflicts deleting todo");
+}
+
+// ─── Review (spaced repetition) ──────────────────────────────────────────────
+
+export async function getReviewDue(maxBackfill = 10): Promise<Entry[]> {
+  const db = await getDB();
+  const today = new Date().toISOString().split("T")[0];
+
+  const result = await db.find({
+    selector: { type: "entry" },
+    sort: [{ type: "asc" }, { createdAt: "asc" }],
+    limit: 2000,
+  });
+  const all = result.docs as unknown as Entry[];
+
+  const scheduled = all
+    .filter((e) => e.nextReview && e.nextReview <= today)
+    .slice(0, 20);
+
+  const remaining = Math.max(0, maxBackfill - scheduled.length);
+  const backfill = remaining > 0
+    ? all
+        .filter((e) => !e.nextReview && e.date < today)
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+        .slice(0, remaining)
+    : [];
+
+  return Promise.all([...scheduled, ...backfill].map(decryptEntry));
+}
+
+export async function getReviewCount(): Promise<number> {
+  const db = await getDB();
+  const today = new Date().toISOString().split("T")[0];
+
+  const result = await db.find({
+    selector: { type: "entry" },
+    fields: ["_id", "nextReview", "date"],
+    limit: 2000,
+  });
+  const all = result.docs as unknown as Pick<Entry, "_id" | "nextReview" | "date">[];
+
+  const scheduled = all.filter((e) => e.nextReview && e.nextReview <= today).length;
+  const backfill  = all.filter((e) => !e.nextReview && e.date < today).length;
+  return Math.min(scheduled, 20) + Math.min(Math.max(0, 10 - Math.min(scheduled, 20)), backfill);
+}
+
+export async function markReviewed(entry: Entry, remembered: boolean): Promise<Entry> {
+  const db = await getDB();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const latest = attempt === 0
+        ? entry
+        : (await db.get(entry._id)) as unknown as Entry;
+      const currentInterval = latest.reviewInterval ?? 1;
+      const newInterval = remembered ? Math.min(currentInterval * 2, 60) : 1;
+      const nextReview = new Date(Date.now() + newInterval * 86_400_000)
+        .toISOString().split("T")[0];
+      const updated = { ...latest, reviewInterval: newInterval, nextReview };
+      const res = await db.put(updated as unknown as AnyDoc);
+      return { ...updated, _rev: res.rev };
+    } catch (err) {
+      if ((err as { status?: number }).status !== 409) throw err;
+    }
+  }
+  throw new Error("gleaned: too many conflicts updating review");
 }
 
 // ─── Settings ────────────────────────────────────────────────────────────────

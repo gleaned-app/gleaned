@@ -63,6 +63,16 @@ export interface Translations {
   overdue(d: number): string;
   color: string;
 
+  // Review
+  navReview: string;
+  reviewTitle: string;
+  reviewDaysAgo(n: number): string;
+  reviewAgain: string;
+  reviewGotIt: string;
+  reviewEmpty: string;
+  reviewEmptyBody: string;
+  reviewOf(done: number, total: number): string;
+
   // Nav + profile + header
   navCalendar: string;
   navLearn: string;
@@ -178,6 +188,15 @@ const de: Translations = {
   overdue: (d) => `${d}d überfällig`,
   color: "Farbe",
 
+  navReview: "Review",
+  reviewTitle: "Wiederholen",
+  reviewDaysAgo: (n) => `vor ${n} Tagen`,
+  reviewAgain: "Nochmal",
+  reviewGotIt: "Sitzt noch!",
+  reviewEmpty: "Alles wiederholt.",
+  reviewEmptyBody: "Du investierst in dein Wissen. Das zeigt.",
+  reviewOf: (done, total) => `${done} von ${total}`,
+
   navCalendar: "Kalender",
   navLearn: "Lernen",
   navJournal: "Journal",
@@ -289,6 +308,15 @@ const en: Translations = {
   markDone: "Mark as done",
   overdue: (d) => `${d}d overdue`,
   color: "Color",
+
+  navReview: "Review",
+  reviewTitle: "Review",
+  reviewDaysAgo: (n) => `${n} days ago`,
+  reviewAgain: "Again",
+  reviewGotIt: "Got it!",
+  reviewEmpty: "All caught up.",
+  reviewEmptyBody: "You're investing in your knowledge. It shows.",
+  reviewOf: (done, total) => `${done} of ${total}`,
 
   navCalendar: "Calendar",
   navLearn: "Learn",

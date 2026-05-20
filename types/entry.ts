@@ -17,4 +17,7 @@ export interface Entry {
   // encryption — present when entry was saved with a password set
   encrypted?: boolean;
   enc?: string;
+  // spaced repetition
+  nextReview?: string;    // YYYY-MM-DD
+  reviewInterval?: number; // days until next review
 }
