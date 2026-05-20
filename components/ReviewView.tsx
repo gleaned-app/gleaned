@@ -265,9 +265,7 @@ export default function ReviewView({
             {/* Compact tag filter chip */}
             <div
               className="flex items-center gap-1 rounded-full px-2.5 py-1 transition-colors"
-              style={{
-                background: searchQuery ? "var(--accent-soft)" : "var(--border)",
-              }}
+              style={{ background: searchQuery ? "var(--accent-soft)" : "var(--border)" }}
             >
               <span
                 className="font-sans text-xs font-semibold select-none flex-shrink-0"
@@ -278,14 +276,10 @@ export default function ReviewView({
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value.replace(/^#/, ""))}
-                placeholder="tag…"
+                placeholder="tag..."
+                size={searchQuery ? Math.max(4, searchQuery.length + 1) : 4}
                 className="bg-transparent font-sans text-xs outline-none"
-                style={{
-                  width: searchQuery ? `${Math.max(36, searchQuery.length * 7 + 4)}px` : "36px",
-                  minWidth: "36px",
-                  maxWidth: "120px",
-                  color: searchQuery ? "var(--accent)" : "var(--fg-muted)",
-                }}
+                style={{ color: searchQuery ? "var(--accent)" : "var(--fg-muted)" }}
               />
               {searchQuery && (
                 <button
@@ -293,7 +287,7 @@ export default function ReviewView({
                   className="flex-shrink-0 font-sans text-xs leading-none transition-opacity hover:opacity-60"
                   style={{ color: "var(--accent)" }}
                 >
-                  ×
+                  x
                 </button>
               )}
             </div>
