@@ -111,6 +111,26 @@ This is an approximation for v1. The exact prompts are an implementation decisio
 
 ---
 
+## On Streaks and Human Nature
+
+We are all only human. Time passes regardless of what we do with it. The question is whether we use it to grow or let it run out unnoticed.
+
+Knowledge is one of the few things that compounds — the more you have, the better you can acquire more. And unlike most resources, nobody can take it from you. Investing in understanding is not a productivity hack. It is one of the more serious things a person can do.
+
+Given that, a streak counter is not a gimmick. It is an acknowledgment that motivation is complicated. Most people do not start learning out of pure intrinsic drive — they start because it feels good to see a number grow. Over time, if the tool is honest and the learning is real, that extrinsic motivation quietly becomes intrinsic. The streak becomes irrelevant because the habit is already there.
+
+The streak in gleaned exists to serve this transition. It belongs to you — it is not reported anywhere, nobody else sees it, and you can technically break it without consequence because there is no authority watching. That is by design. A streak that creates anxiety or guilt has failed. A streak that quietly marks your consistency has done its job.
+
+What we draw the line at is **manipulative** gamification — mechanics that exist to serve the app's retention metrics rather than your growth:
+
+- No push notifications designed to guilt you back into the app
+- No points, badges, or leaderboards
+- No streak "freezes" you can buy
+
+The difference is simple: does this feature serve the user's learning, or does it serve the product's engagement numbers? Streaks serve learning. Everything else on that list does not.
+
+---
+
 ## What gleaned Will Never Do
 
 Defining the edges of a methodology is as important as defining the center.
@@ -118,7 +138,7 @@ Defining the edges of a methodology is as important as defining the center.
 - **No web clipper that saves full articles.** Capturing someone else's words verbatim bypasses the only mechanism that actually produces understanding.
 - **No AI-generated summaries of your entries.** gleaned is your thinking. Outsourcing the synthesis defeats the point.
 - **No social or sharing features.** The journal is private by design.
-- **No gamification** — streaks, points, leaderboards. The goal is understanding, not engagement metrics.
+- **No manipulative gamification** — guilt-driven notifications, points, leaderboards, or mechanics that serve retention over learning. A streak counter is the exception: it is a simple, honest marker of consistency that belongs entirely to the user.
 
 ---
 
