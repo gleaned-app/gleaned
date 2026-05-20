@@ -17,15 +17,19 @@ function firstDayOfMonth(year: number, month: number, weekStart: "monday" | "sun
   return day === 0 ? 6 : day - 1;
 }
 
-export default function CalendarView() {
+export default function CalendarView({ initialDate }: { initialDate?: string }) {
   const { settings } = useSettings();
   const t = useT();
   const loc = locale(settings);
   const todayDate = new Date();
-  const [year, setYear] = useState(todayDate.getFullYear());
-  const [month, setMonth] = useState(todayDate.getMonth());
+  const [year, setYear] = useState(() =>
+    initialDate ? parseInt(initialDate.slice(0, 4)) : todayDate.getFullYear()
+  );
+  const [month, setMonth] = useState(() =>
+    initialDate ? parseInt(initialDate.slice(5, 7)) - 1 : todayDate.getMonth()
+  );
   const [entryCounts, setEntryCounts] = useState<Map<string, number>>(new Map());
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(initialDate ?? null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [dayEntries, setDayEntries] = useState<Entry[]>([]);
   const [loadingEntries, setLoadingEntries] = useState(false);

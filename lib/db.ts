@@ -218,6 +218,28 @@ export async function getEntriesByDate(date: string): Promise<Entry[]> {
   return Promise.all((result.docs as Entry[]).map(decryptEntry));
 }
 
+export async function getEntryMonths(): Promise<string[]> {
+  const db = await getDB();
+  const result = await db.find({ selector: { type: "entry" }, fields: ["date"], limit: 5000 });
+  const months = new Set<string>();
+  for (const doc of result.docs as { date?: string }[]) {
+    if (doc.date) months.add(doc.date.slice(0, 7));
+  }
+  return Array.from(months).sort().reverse();
+}
+
+export async function getEntriesForMonth(year: number, month: number): Promise<Entry[]> {
+  const db = await getDB();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const prefix = `${year}-${pad(month + 1)}`;
+  const result = await db.find({
+    selector: { type: "entry", date: { $gte: `${prefix}-01`, $lte: `${prefix}-31` } },
+    sort: [{ type: "asc" }, { date: "asc" }, { createdAt: "asc" }],
+    limit: 1000,
+  });
+  return Promise.all((result.docs as Entry[]).map(decryptEntry));
+}
+
 export async function getEntryCountsByDate(): Promise<Map<string, number>> {
   const db = await getDB();
   const result = await db.find({ selector: { type: "entry" }, fields: ["date"] });

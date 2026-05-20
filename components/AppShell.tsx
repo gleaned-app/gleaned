@@ -87,6 +87,7 @@ function useInstallPrompt() {
 
 function AppContentWithLock({ onLock }: { onLock: () => void }) {
   const [view, setView] = useState<View>("journal");
+  const [calendarJumpDate, setCalendarJumpDate] = useState<string | undefined>();
   const [showSettings, setShowSettings] = useState(false);
   const [showConflicts, setShowConflicts] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -99,10 +100,16 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
     getReviewCount().then(setReviewCount);
   }, []);
 
+  // Nav-tab click: clears any calendar jump date
   function handleViewChange(v: View) {
-    if (view === "review" && v !== "review") {
-      getReviewCount().then(setReviewCount);
-    }
+    setCalendarJumpDate(undefined);
+    if (view === "review" && v !== "review") getReviewCount().then(setReviewCount);
+    setView(v);
+  }
+
+  // Programmatic navigation (e.g. from Review → Calendar with a specific date)
+  function handleNavigate(v: View, date?: string) {
+    setCalendarJumpDate(date);
     setView(v);
   }
 
@@ -185,9 +192,9 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
 
       <main className="flex-1 overflow-y-auto" style={{ paddingBottom: "calc(80px + env(safe-area-inset-bottom))" }}>
         {view === "journal"  && <JournalView />}
-        {view === "calendar" && <CalendarView />}
+        {view === "calendar" && <CalendarView initialDate={calendarJumpDate} />}
         {view === "todos"    && <TodoView />}
-        {view === "review"   && <ReviewView onCountChange={setReviewCount} />}
+        {view === "review"   && <ReviewView onCountChange={setReviewCount} onNavigate={handleNavigate} />}
       </main>
 
       <BottomNav current={view} onChange={handleViewChange} reviewCount={reviewCount} />
