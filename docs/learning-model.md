@@ -85,6 +85,8 @@ The most underused idea in personal knowledge management: **writing down what yo
 
 The Gap field is for open questions, unresolved tensions, things that feel shaky. It is not a to-do list. It is a snapshot of the boundary of your understanding at the moment you wrote the entry.
 
+In Japanese aesthetics, *wabi-sabi* finds beauty in the imperfect and incomplete. An entry without a Gap is closed — it has nowhere left to grow. An entry with an open Gap is still alive. The unresolved question is not a flaw in the entry; it is often the most valuable part of it.
+
 Two concrete implications:
 
 **1. Algorithmic priority.** An entry with an open gap is unstable knowledge. It should surface in the review queue sooner and more often than a closed entry — until the gap is resolved or consciously accepted as open.
@@ -103,11 +105,27 @@ SM-2 handles the *when*. The entry type handles the *how*.
 |---|---|
 | **Fact** | Title/tag shown, content hidden — active recall before revealing |
 | **Technique** | "Can you still walk through this step by step?" |
-| **Insight** | "Do you still agree with this? Can you connect it to another entry?" |
+| **Insight** | "Is this still true for who you are today? Can you connect it to another entry?" |
 | **Framework** | "Can you name all the components without looking?" |
 | **Observation** | "Has this changed? Have you seen the opposite?" |
 
+The Insight and Observation prompts carry a specific assumption from Buddhist philosophy (*anicca* — impermanence): knowledge is not a stone you put in a cabinet. It is living. An insight you wrote two years ago may be wrong today — not because you forgot it, but because you have grown past it. The review is not just "do you remember?" but "do you still agree?"
+
 This is an approximation for v1. The exact prompts are an implementation decision.
+
+---
+
+## A Fair Warning
+
+gleaned is, by design, an anti-Dunning-Kruger machine.
+
+It forces you to explain things in your own words — which reveals you understand less than you thought. It makes you write down what you don't know — which makes the gaps visible. It asks you at review whether you still agree with what you wrote — which means old certainties get questioned. It tells you that knowledge decays and needs revisiting — which means nothing ever feels fully done.
+
+Used seriously, gleaned will make you feel like you know less than when you started.
+
+That is not a bug. That is the correct epistemic state. The Dunning-Kruger effect describes people who know little and feel confident. gleaned works in the opposite direction: the more you use it, the more precisely you can map the boundary between what you know and what you don't. That boundary gets sharper, not smaller.
+
+The side effect is real though: this can look a lot like imposter syndrome from the inside. The antidote is the entry history — the record of everything you have actually learned, sitting there, dated, in your own words. You know more than you did. You are just also more honest about it now.
 
 ---
 
