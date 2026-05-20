@@ -75,6 +75,7 @@ export interface Translations {
   reviewHistory: string;
   filterRecent: string;
   filterAllTags: string;
+  filterByTag: string;
   thisWeek: string;
   lastWeek: string;
   weeksAgo(n: number): string;
@@ -205,6 +206,7 @@ const de: Translations = {
   reviewHistory: "Verlauf",
   filterRecent: "Neueste",
   filterAllTags: "Alle",
+  filterByTag: "tag filtern…",
   thisWeek: "Diese Woche",
   lastWeek: "Letzte Woche",
   weeksAgo: (n) => `Vor ${n} Wochen`,
@@ -332,6 +334,7 @@ const en: Translations = {
   reviewHistory: "History",
   filterRecent: "Recent",
   filterAllTags: "All",
+  filterByTag: "filter by tag…",
   thisWeek: "This week",
   lastWeek: "Last week",
   weeksAgo: (n) => `${n} weeks ago`,

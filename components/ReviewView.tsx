@@ -122,7 +122,7 @@ export default function ReviewView({
     if (selectedTag && !e.tags.includes(selectedTag)) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
-      return e.content.toLowerCase().includes(q) || e.tags.some((t) => t.toLowerCase().includes(q));
+      return e.tags.some((t) => t.toLowerCase().includes(q));
     }
     return true;
   });
@@ -233,25 +233,23 @@ export default function ReviewView({
         <div className="h-px flex-1" style={{ background: "var(--border)" }} />
       </div>
 
-      {/* Search input — always visible when entries exist */}
+      {/* Tag filter input — always visible when entries exist */}
       {!loadingHistory && sourceEntries.length > 0 && (
-        <div className="mb-4 relative">
-          <svg
-            width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ color: "var(--fg-muted)", opacity: 0.5 }}
+        <div className="mb-4 relative flex items-center">
+          <span
+            className="absolute left-3.5 font-sans text-sm font-medium pointer-events-none select-none"
+            style={{ color: "var(--accent)", opacity: 0.7 }}
           >
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-          </svg>
+            #
+          </span>
           <input
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={tr.searchPlaceholder}
-            className="w-full rounded-xl py-2.5 pl-9 pr-9 font-sans text-sm outline-none"
+            onChange={(e) => setSearchQuery(e.target.value.replace(/^#/, ""))}
+            placeholder={tr.filterByTag}
+            className="w-full rounded-xl py-2.5 pl-7 pr-9 font-sans text-sm outline-none"
             style={{
               background: "var(--bg-card)",
-              border: "1px solid var(--border)",
+              border: `1px solid ${searchQuery ? "var(--accent-soft)" : "var(--border)"}`,
               color: "var(--fg)",
             }}
           />
