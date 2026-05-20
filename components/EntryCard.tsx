@@ -250,7 +250,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
 
   const cardClass = flat
     ? "py-1"
-    : "rounded-xl px-5 py-4";
+    : "card-lift rounded-xl px-5 py-4";
 
   if (editing) {
     return (

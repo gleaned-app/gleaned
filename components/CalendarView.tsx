@@ -94,51 +94,66 @@ export default function CalendarView({ initialDate, entryVersion }: { initialDat
   });
 
   return (
-    <div className="mx-auto max-w-[620px] px-4 pt-3">
-      {/* Month navigation */}
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <button
-          onClick={prev}
-          className="btn-3d flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl"
-          style={{ color: "var(--fg-muted)" }}
-          aria-label={t.prevMonth}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-        </button>
+    <>
+      {/* Sticky frosted glass header: month nav + weekday labels */}
+      <div
+        className="sticky top-0 z-10"
+        style={{
+          background: "color-mix(in oklch, var(--bg) 82%, transparent)",
+          backdropFilter: "blur(20px) saturate(1.5)",
+          WebkitBackdropFilter: "blur(20px) saturate(1.5)",
+          borderBottom: "1px solid var(--border)",
+        }}
+      >
+        <div className="mx-auto max-w-[620px] px-4 pb-2 pt-3">
+          {/* Month navigation */}
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <button
+              onClick={prev}
+              className="btn-3d flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl"
+              style={{ color: "var(--fg-muted)" }}
+              aria-label={t.prevMonth}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
 
-        <h2
-          className="flex-1 text-center text-xl font-normal"
-          style={{ color: "var(--fg)", fontFamily: "var(--font-caveat), cursive", fontWeight: 500 }}
-        >
-          {monthLabel}
-        </h2>
+            <h2
+              className="flex-1 text-center text-xl font-normal"
+              style={{ color: "var(--fg)", fontFamily: "var(--font-caveat), cursive", fontWeight: 500 }}
+            >
+              {monthLabel}
+            </h2>
 
-        <button
-          onClick={next}
-          className="btn-3d flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl"
-          style={{ color: "var(--fg-muted)" }}
-          aria-label={t.nextMonth}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        </button>
-      </div>
-
-      {/* Weekday headers */}
-      <div className="mb-2 grid grid-cols-7 gap-1.5">
-        {DAYS.map((d) => (
-          <div
-            key={d}
-            className="flex items-center justify-center py-1 font-sans text-[10px] font-medium uppercase tracking-wider"
-            style={{ color: "var(--fg-muted)" }}
-          >
-            {d}
+            <button
+              onClick={next}
+              className="btn-3d flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl"
+              style={{ color: "var(--fg-muted)" }}
+              aria-label={t.nextMonth}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
           </div>
-        ))}
+
+          {/* Weekday headers */}
+          <div className="grid grid-cols-7 gap-1.5">
+            {DAYS.map((d) => (
+              <div
+                key={d}
+                className="flex items-center justify-center py-1 font-sans text-[10px] font-medium uppercase tracking-wider"
+                style={{ color: "var(--fg-muted)" }}
+              >
+                {d}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
+
+    <div className="mx-auto max-w-[620px] px-4 pt-3">
 
       {/* Calendar grid — extra padding-bottom so btn shadows aren't clipped */}
       <div
@@ -270,5 +285,6 @@ export default function CalendarView({ initialDate, entryVersion }: { initialDat
         </div>
       )}
     </div>
+    </>
   );
 }

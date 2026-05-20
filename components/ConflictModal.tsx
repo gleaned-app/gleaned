@@ -101,6 +101,20 @@ export default function ConflictModal({ onClose }: Props) {
   const [loading, setLoading] = useState(true);
   const [current, setCurrent] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [closing, setClosing] = useState(false);
+
+  function handleClose() {
+    setClosing(true);
+    setTimeout(onClose, 190);
+  }
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") handleClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useEffect(() => {
     getConflicts()
@@ -133,14 +147,14 @@ export default function ConflictModal({ onClose }: Props) {
   return (
     <>
       <div
-        className="fixed inset-0 z-50"
+        className={`fixed inset-0 z-50${closing ? " overlay-closing" : ""}`}
         style={{ background: "oklch(0% 0 0 / 0.5)" }}
-        onClick={onClose}
+        onClick={handleClose}
       />
 
       <div
-        className="scale-in fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl px-5 pb-[max(32px,env(safe-area-inset-bottom))] pt-5
-                   sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-[540px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:pb-6"
+        className={`${closing ? "modal-closing" : "scale-in"} fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl px-5 pb-[max(32px,env(safe-area-inset-bottom))] pt-5
+                   sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-[540px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:pb-6`}
         style={{
           background: "var(--bg-card)",
           boxShadow: "0 -4px 40px oklch(0% 0 0 / 0.25), var(--shadow-form)",
@@ -163,7 +177,7 @@ export default function ConflictModal({ onClose }: Props) {
             )}
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="btn-3d flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full font-sans text-base leading-none"
             style={{ color: "var(--fg-muted)" }}
             aria-label={t.close}
