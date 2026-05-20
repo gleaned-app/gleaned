@@ -14,15 +14,33 @@ gleaned is built around this distinction.
 
 ---
 
+## A Note on Friction
+
+Investing in yourself is hard work. That is not a design problem to be solved.
+
+Anyone can let time pass. Deciding to actively learn — to sit down, think, formulate, reflect — that takes effort. gleaned does not try to make learning feel effortless. It is not a productivity app optimized for engagement or streaks.
+
+There are two completely different kinds of friction, and they need to be treated differently:
+
+**Administrative friction** is the wrong kind: Where do I save this? Which field is which? How do I navigate back? This is bureaucratic overhead that has nothing to do with learning. It should be eliminated entirely.
+
+**Cognitive friction** is the right kind: formulating in your own words, asking yourself why something matters, naming what you don't yet understand. This is hard because it requires actual thinking. It is not a usability problem — it is the mechanism. Removing it would break the tool.
+
+gleaned is designed for someone who has already decided to do the work. The goal is not motivation — it is getting out of the way so the hard work can happen without interference.
+
+---
+
 ## The Three Pillars
 
-### 1. Capture — Low Friction, High Signal
+### 1. Capture — No Administrative Friction, Cognitive Friction Enforced
 
-The bar to start an entry is intentionally low. One sentence is enough. But there is one non-negotiable constraint: **you never copy**. Every entry must be written in your own words.
+The bar to start an entry is intentionally low: one sentence, no required fields, no type selection up front. Administrative overhead is zero.
 
-This is not aesthetic. Reformulating forces semantic processing — you have to understand something before you can explain it differently. Where you can't rephrase, you don't actually know it yet. That gap is information.
+But there is one non-negotiable constraint: **you never copy**. Every entry must be written in your own words.
 
-This is what makes gleaned different from a web clipper or a bookmark manager.
+This is not aesthetic preference. Reformulating forces you to process meaning — you cannot rephrase something you don't understand. Where you can't find your own words, you don't actually know it yet. That friction is the point. It is the first moment of real learning.
+
+This is what separates gleaned from a web clipper, a bookmark manager, or a read-it-later app.
 
 ### 2. Contextualize — Depth on Demand
 
