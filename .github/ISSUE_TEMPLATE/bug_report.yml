@@ -1,0 +1,125 @@
+name: Bug Report
+description: Something isn't working as expected
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill in as much detail as you can — it helps a lot.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: A clear and concise description of the bug.
+      placeholder: "When I click X, Y happens instead of Z."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we reliably trigger this?
+      placeholder: |
+        1. Go to …
+        2. Do …
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What should have happened?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where in the app?
+      options:
+        - Journal (writing / editing entries)
+        - Calendar (heatmap / day view)
+        - Learning list (todos)
+        - Review (spaced repetition)
+        - Search
+        - Settings
+        - Sync (CouchDB)
+        - Authentication (lock screen / password)
+        - PWA / install / offline
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: theme
+    attributes:
+      label: Active theme
+      options:
+        - Auto (system)
+        - Light
+        - Dark
+        - Sepia
+        - Not sure / doesn't matter
+    validations:
+      required: true
+
+  - type: dropdown
+    id: pwa
+    attributes:
+      label: Running as
+      options:
+        - Installed PWA (home screen / app window)
+        - Browser tab
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser & version
+      placeholder: "Chrome 124 / Safari 17.4 / Firefox 126"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: OS & version
+      placeholder: "macOS 15.4 / iOS 18.3 / Windows 11 / Android 15"
+    validations:
+      required: true
+
+  - type: input
+    id: gleaned_version
+    attributes:
+      label: gleaned version or commit
+      description: Found in the browser tab title or git log.
+      placeholder: "0.1.0 / abc1234"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console errors or logs
+      description: Open DevTools → Console and paste any relevant output.
+      render: shell
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or screen recording
+      description: Drag and drop images here if helpful.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this hasn't been reported yet
+          required: true
+        - label: I can reproduce this reliably (not a one-off fluke)
+          required: true
