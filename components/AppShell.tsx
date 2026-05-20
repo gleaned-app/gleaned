@@ -96,6 +96,7 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
   const [showConflicts, setShowConflicts] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [reviewCount, setReviewCount] = useState(0);
+  const [entryVersion, setEntryVersion] = useState(0);
   const conflictCount = useConflictCount();
   const { canInstall, install } = useInstallPrompt();
   const t = useT();
@@ -222,12 +223,12 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
       >
         {/* Views bleiben im DOM sobald erstmalig besucht — kein Re-fetch, kein Skeleton-Flash */}
         <div style={{ display: view === "journal" ? "block" : "none" }}>
-          {visited.has("journal") && <ErrorBoundary key="journal"><JournalView /></ErrorBoundary>}
+          {visited.has("journal") && <ErrorBoundary key="journal"><JournalView onEntryChange={() => setEntryVersion((v) => v + 1)} onScrollTop={() => mainRef.current?.scrollTo({ top: 0, behavior: "smooth" })} /></ErrorBoundary>}
         </div>
         <div style={{ display: view === "calendar" ? "block" : "none" }}>
           {visited.has("calendar") && (
             <ErrorBoundary key="calendar">
-              <CalendarView key={calendarJumpDate ?? "cal"} initialDate={calendarJumpDate} />
+              <CalendarView key={calendarJumpDate ?? "cal"} initialDate={calendarJumpDate} entryVersion={entryVersion} />
             </ErrorBoundary>
           )}
         </div>

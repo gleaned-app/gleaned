@@ -17,7 +17,7 @@ function firstDayOfMonth(year: number, month: number, weekStart: "monday" | "sun
   return day === 0 ? 6 : day - 1;
 }
 
-export default function CalendarView({ initialDate }: { initialDate?: string }) {
+export default function CalendarView({ initialDate, entryVersion }: { initialDate?: string; entryVersion?: number }) {
   const { settings } = useSettings();
   const t = useT();
   const loc = locale(settings);
@@ -41,7 +41,7 @@ export default function CalendarView({ initialDate }: { initialDate?: string }) 
 
   useEffect(() => {
     getEntryCountsByDate().then(setEntryCounts);
-  }, []);
+  }, [entryVersion]);
 
   useEffect(() => {
     if (!selected) return;
