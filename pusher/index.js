@@ -184,7 +184,29 @@ app.post("/send", async (req, res) => {
 });
 
 // ── Daily learning reminder ───────────────────────────────────────────────────
+// Only fires if no entry was written today — avoids guilt-pinging users who
+// already used the app.
+async function hasEntryToday() {
+  try {
+    const db = couch.db.use(GLEANED_DB);
+    await db.info();
+    const today = new Date().toISOString().split("T")[0];
+    const result = await db.find({
+      selector: { type: "entry", date: today },
+      fields: ["_id"],
+      limit: 1,
+    });
+    return (result.docs ?? []).length > 0;
+  } catch {
+    return false;
+  }
+}
+
 cron.schedule(`${PUSH_MINUTE} ${PUSH_HOUR} * * *`, async () => {
+  if (await hasEntryToday()) {
+    console.log(`[${new Date().toISOString()}] Daily reminder skipped — entry already written today`);
+    return;
+  }
   console.log(`[${new Date().toISOString()}] Sending daily reminder...`);
   const result = await broadcast((lang) => ({
     title: MSG[lang]?.dailyTitle ?? "gleaned",
