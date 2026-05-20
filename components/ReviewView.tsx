@@ -90,6 +90,8 @@ export default function ReviewView({
   const [monthEntries, setMonthEntries] = useState<Entry[]>([]);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
+  const [searchQuery, setSearchQuery] = useState("");
+
   const [loadingQueue, setLoadingQueue] = useState(true);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [loadingMonth, setLoadingMonth] = useState(false);
@@ -105,6 +107,7 @@ export default function ReviewView({
     if (!selectedMonth) return;
     setLoadingMonth(true);
     setSelectedTag(null);
+    setSearchQuery("");
     const [y, m] = selectedMonth.split("-").map(Number);
     getEntriesForMonth(y, m - 1)
       .then((e) => setMonthEntries(e.sort((a: Entry, b: Entry) => b.createdAt.localeCompare(a.createdAt))))
@@ -115,9 +118,14 @@ export default function ReviewView({
   const queueDone = !loadingQueue && index >= total;
   const sourceEntries = selectedMonth ? monthEntries : history;
   const availableTags = Array.from(new Set(sourceEntries.flatMap((e) => e.tags))).sort();
-  const displayHistory = selectedTag
-    ? sourceEntries.filter((e) => e.tags.includes(selectedTag))
-    : sourceEntries;
+  const displayHistory = sourceEntries.filter((e) => {
+    if (selectedTag && !e.tags.includes(selectedTag)) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      return e.content.toLowerCase().includes(q) || e.tags.some((t) => t.toLowerCase().includes(q));
+    }
+    return true;
+  });
   const weeks = groupByWeek(displayHistory, tr, loc);
 
   const handleReview = useCallback(
@@ -225,6 +233,40 @@ export default function ReviewView({
         <div className="h-px flex-1" style={{ background: "var(--border)" }} />
       </div>
 
+      {/* Search input — always visible when entries exist */}
+      {!loadingHistory && sourceEntries.length > 0 && (
+        <div className="mb-4 relative">
+          <svg
+            width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ color: "var(--fg-muted)", opacity: 0.5 }}
+          >
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={tr.searchPlaceholder}
+            className="w-full rounded-xl py-2.5 pl-9 pr-9 font-sans text-sm outline-none"
+            style={{
+              background: "var(--bg-card)",
+              border: "1px solid var(--border)",
+              color: "var(--fg)",
+            }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 font-sans text-lg leading-none transition-opacity hover:opacity-60"
+              style={{ color: "var(--fg-muted)" }}
+            >
+              ×
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Month filter chips */}
       {allMonths.length > 0 && (
         <div className="mb-5 -mx-5 px-5 overflow-x-auto">
@@ -295,7 +337,7 @@ export default function ReviewView({
         <div className="flex justify-center py-8"><Spinner /></div>
       ) : displayHistory.length === 0 ? (
         <p className="py-8 text-center font-serif italic" style={{ color: "var(--fg-muted)" }}>
-          {tr.addFirstGoal}
+          {searchQuery || selectedTag ? tr.searchNoResults : tr.addFirstGoal}
         </p>
       ) : (
         <div className="flex flex-col gap-6">
