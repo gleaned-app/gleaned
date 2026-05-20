@@ -500,13 +500,6 @@ function HistoryRow({ entry, loc, onClick }: { entry: Entry; loc: string; onClic
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
 
-function Spinner() {
-  return (
-    <span className="h-4 w-4 animate-spin rounded-full border-2"
-      style={{ borderColor: "var(--border)", borderTopColor: "var(--accent)" }} />
-  );
-}
-
 function IconAgain() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">

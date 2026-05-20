@@ -110,7 +110,7 @@ export default function JournalView() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  const emptyLabel = filterTag ? t.noEntriesTag(filterTag) : t.whatsSticking;
+  const emptyLabel = filterTag ? t.noEntriesTag(filterTag) : t.nothingYetToday;
 
   return (
     <div className="md:flex md:min-h-full">
@@ -254,7 +254,7 @@ export default function JournalView() {
             className="mt-12 text-center font-serif text-xl italic md:mt-2 md:text-left"
             style={{ color: "var(--fg-muted)", opacity: 0.5 }}
           >
-            {t.nothingYetToday}
+            {emptyLabel}
           </p>
         )}
 

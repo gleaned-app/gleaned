@@ -223,3 +223,20 @@ describe("importResult", () => {
     expect(T.en.importResult(10, 0)).toBe("10 imported, 0 skipped");
   });
 });
+
+// ─── fileTooLarge ─────────────────────────────────────────────────────────────
+
+describe("fileTooLarge", () => {
+  it("de: includes filename", () => {
+    expect(T.de.fileTooLarge("photo.jpg")).toContain("photo.jpg");
+  });
+  it("de: mentions size limit", () => {
+    expect(T.de.fileTooLarge("video.mp4")).toContain("10 MB");
+  });
+  it("en: includes filename", () => {
+    expect(T.en.fileTooLarge("photo.jpg")).toContain("photo.jpg");
+  });
+  it("en: mentions size limit", () => {
+    expect(T.en.fileTooLarge("video.mp4")).toContain("10 MB");
+  });
+});
