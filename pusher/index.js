@@ -35,8 +35,30 @@ async function getSubsDb() {
   return couch.db.use(DB_NAME);
 }
 
+// ── Localized notification strings ───────────────────────────────────────────
+const MSG = {
+  de: {
+    dailyTitle: "gleaned",
+    dailyBody:  "Was hast du heute gelernt?",
+    dueTitle:   "gleaned · Lernziele",
+    dueToday1:  (text) => `Heute fällig: ${text}`,
+    dueTodayN:  (n)    => `${n} Lernziele heute fällig`,
+    overdue1:   (text) => `Überfällig: ${text}`,
+    mixed:      (today, over) => [today && `${today} heute fällig`, over && `${over} überfällig`].filter(Boolean).join(", "),
+  },
+  en: {
+    dailyTitle: "gleaned",
+    dailyBody:  "What did you learn today?",
+    dueTitle:   "gleaned · Learning goals",
+    dueToday1:  (text) => `Due today: ${text}`,
+    dueTodayN:  (n)    => `${n} learning goals due today`,
+    overdue1:   (text) => `Overdue: ${text}`,
+    mixed:      (today, over) => [today && `${today} due today`, over && `${over} overdue`].filter(Boolean).join(", "),
+  },
+};
+
 // ── Send push to all subscribers ─────────────────────────────────────────────
-async function broadcast(payload) {
+async function broadcast(buildPayload) {
   const db = await getSubsDb();
   const { rows } = await db.list({ include_docs: true });
   const subs = rows.filter((r) => r.doc && !r.id.startsWith("_design"));
@@ -44,6 +66,8 @@ async function broadcast(payload) {
 
   await Promise.allSettled(
     subs.map(async ({ doc }) => {
+      const lang = doc.lang === "en" ? "en" : "de";
+      const payload = typeof buildPayload === "function" ? buildPayload(lang) : buildPayload;
       try {
         await webpush.sendNotification(
           { endpoint: doc.endpoint, keys: doc.keys },
@@ -87,25 +111,26 @@ async function sendDueReminders() {
   );
   if (!due.length) return;
 
-  const overdue   = due.filter((d) => d.dueDate < today);
-  const dueToday  = due.filter((d) => d.dueDate === today);
+  const overdue  = due.filter((d) => d.dueDate < today);
+  const dueToday = due.filter((d) => d.dueDate === today);
 
-  let body;
-  if (dueToday.length === 1 && overdue.length === 0) {
-    body = `Heute fällig: ${dueToday[0].text}`;
-  } else if (dueToday.length > 0 && overdue.length === 0) {
-    body = `${dueToday.length} Lernziele heute fällig`;
-  } else if (dueToday.length === 0 && overdue.length === 1) {
-    body = `Überfällig: ${overdue[0].text}`;
-  } else {
-    const parts = [];
-    if (dueToday.length) parts.push(`${dueToday.length} heute fällig`);
-    if (overdue.length)  parts.push(`${overdue.length} überfällig`);
-    body = parts.join(", ");
-  }
+  const buildPayload = (lang) => {
+    const m = MSG[lang] ?? MSG.en;
+    let body;
+    if (dueToday.length === 1 && overdue.length === 0) {
+      body = m.dueToday1(dueToday[0].text);
+    } else if (dueToday.length > 0 && overdue.length === 0) {
+      body = m.dueTodayN(dueToday.length);
+    } else if (dueToday.length === 0 && overdue.length === 1) {
+      body = m.overdue1(overdue[0].text);
+    } else {
+      body = m.mixed(dueToday.length || null, overdue.length || null);
+    }
+    return { title: m.dueTitle, body, url: "/" };
+  };
 
-  console.log(`[${new Date().toISOString()}] Due reminder: ${body}`);
-  const result2 = await broadcast({ title: "gleaned · Lernziele", body, url: "/" });
+  console.log(`[${new Date().toISOString()}] Due reminder (${due.length} todos)`);
+  const result2 = await broadcast(buildPayload);
   console.log(`Sent: ${result2.sent} ok, ${result2.failed} failed`);
 }
 
@@ -125,7 +150,7 @@ app.post("/subscribe", async (req, res) => {
     const db = await getSubsDb();
     const id = Buffer.from(sub.endpoint).toString("base64url").slice(0, 64);
     try { const existing = await db.get(id); await db.destroy(id, existing._rev); } catch {}
-    await db.insert({ endpoint: sub.endpoint, keys: sub.keys, createdAt: new Date().toISOString() }, id);
+    await db.insert({ endpoint: sub.endpoint, keys: sub.keys, lang: sub.lang || "en", createdAt: new Date().toISOString() }, id);
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -147,20 +172,25 @@ app.delete("/subscribe", async (req, res) => {
 
 // Manual send (for testing: POST /send with optional JSON body)
 app.post("/send", async (req, res) => {
-  const payload = {
-    title: "gleaned",
-    body: "Was hast du heute gelernt?",
+  const override = req.body ?? {};
+  const buildPayload = (lang) => ({
+    title: MSG[lang]?.dailyTitle ?? "gleaned",
+    body: MSG[lang]?.dailyBody ?? "What did you learn today?",
     url: "/",
-    ...req.body,
-  };
-  const result = await broadcast(payload).catch((e) => ({ error: e.message }));
+    ...override,
+  });
+  const result = await broadcast(buildPayload).catch((e) => ({ error: e.message }));
   res.json(result);
 });
 
 // ── Daily learning reminder ───────────────────────────────────────────────────
 cron.schedule(`${PUSH_MINUTE} ${PUSH_HOUR} * * *`, async () => {
   console.log(`[${new Date().toISOString()}] Sending daily reminder...`);
-  const result = await broadcast({ title: "gleaned", body: "Was hast du heute gelernt?", url: "/" });
+  const result = await broadcast((lang) => ({
+    title: MSG[lang]?.dailyTitle ?? "gleaned",
+    body:  MSG[lang]?.dailyBody  ?? "What did you learn today?",
+    url:   "/",
+  }));
   console.log(`Sent: ${result.sent} ok, ${result.failed} failed`);
 });
 
