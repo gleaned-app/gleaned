@@ -136,6 +136,7 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
   }
 
   function handleTouchEnd(e: React.TouchEvent) {
+    if (view === "review") return; // ReviewView handles its own card swipe
     const dx = e.changedTouches[0].clientX - touchStartX.current;
     const dy = e.changedTouches[0].clientY - touchStartY.current;
     if (Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
