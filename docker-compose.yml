@@ -20,6 +20,8 @@ services:
       COUCHDB_URL: http://${COUCHDB_USER:-admin}:${COUCHDB_PASSWORD:-changeme}@couchdb:5984
       PUSH_HOUR: ${PUSH_HOUR:-20}
       PUSH_MINUTE: ${PUSH_MINUTE:-0}
+      DUE_HOUR: ${DUE_HOUR:-9}
+      DUE_MINUTE: ${DUE_MINUTE:-0}
     depends_on:
       couchdb:
         condition: service_healthy
