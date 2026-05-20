@@ -4,6 +4,18 @@ import { loadKey, encryptText, decryptText } from "./crypto";
 
 type AnyDoc = Entry | Todo;
 
+// ─── Type guards ─────────────────────────────────────────────────────────────
+// Protects against corrupted DB documents instead of crashing the whole Promise.all
+
+function isEntry(doc: unknown): doc is Entry {
+  return (
+    !!doc &&
+    typeof doc === "object" &&
+    (doc as Record<string, unknown>).type === "entry" &&
+    typeof (doc as Record<string, unknown>)._id === "string"
+  );
+}
+
 // ─── Sync status ─────────────────────────────────────────────────────────────
 
 export type SyncStatus = "idle" | "syncing" | "synced" | "error";
@@ -116,7 +128,7 @@ export async function getAllTags(): Promise<Map<string, number>> {
   if (_tagsCache && now - _tagsCacheTime < TAGS_CACHE_TTL) return _tagsCache;
   const db = await getDB();
   const result = await db.find({ selector: { type: "entry" } });
-  const decrypted = await Promise.all((result.docs as Entry[]).map(decryptEntry));
+  const decrypted = await Promise.all((result.docs as unknown[]).filter(isEntry).map(decryptEntry));
   const counts = new Map<string, number>();
   for (const doc of decrypted) {
     for (const tag of doc.tags ?? []) {
@@ -235,7 +247,7 @@ export async function getEntriesByDate(date: string): Promise<Entry[]> {
     selector: { type: "entry", date },
     sort: [{ type: "asc" }, { date: "asc" }, { createdAt: "asc" }],
   });
-  return Promise.all((result.docs as Entry[]).map(decryptEntry));
+  return Promise.all((result.docs as unknown[]).filter(isEntry).map(decryptEntry));
 }
 
 export async function getEntryMonths(): Promise<string[]> {
@@ -257,7 +269,7 @@ export async function getEntriesForMonth(year: number, month: number): Promise<E
     sort: [{ type: "asc" }, { date: "asc" }, { createdAt: "asc" }],
     limit: 1000,
   });
-  return Promise.all((result.docs as Entry[]).map(decryptEntry));
+  return Promise.all((result.docs as unknown[]).filter(isEntry).map(decryptEntry));
 }
 
 export async function getEntryCountsByDate(): Promise<Map<string, number>> {
@@ -284,7 +296,7 @@ export async function searchEntries(query: string): Promise<Entry[]> {
   const db = await getDB();
   const q = query.toLowerCase();
   const result = await db.find({ selector: { type: "entry" }, limit: 2000 });
-  const decrypted = await Promise.all((result.docs as Entry[]).map(decryptEntry));
+  const decrypted = await Promise.all((result.docs as unknown[]).filter(isEntry).map(decryptEntry));
   return decrypted
     .filter((e) =>
       e.content?.toLowerCase().includes(q) ||
@@ -461,7 +473,7 @@ export async function getRecentEntries(limit = 50): Promise<Entry[]> {
   if (ids.length === 0) return [];
   // Pass 2: single batch request for all needed docs, then decrypt
   const res = await db.allDocs({ keys: ids, include_docs: true });
-  const docs = res.rows.map((r) => ("doc" in r ? r.doc : null)).filter(Boolean) as Entry[];
+  const docs = (res.rows.map((r) => ("doc" in r ? r.doc : null)) as unknown[]).filter(isEntry);
   return Promise.all(docs.map(decryptEntry));
 }
 
@@ -495,7 +507,7 @@ export async function getReviewDue(maxBackfill = 10): Promise<Entry[]> {
   if (ids.length === 0) return [];
   // Pass 2: single batch request, then decrypt only what we need
   const res = await db.allDocs({ keys: ids, include_docs: true });
-  const docs = res.rows.map((r) => ("doc" in r ? r.doc : null)).filter(Boolean) as Entry[];
+  const docs = (res.rows.map((r) => ("doc" in r ? r.doc : null)) as unknown[]).filter(isEntry);
   return Promise.all(docs.map(decryptEntry));
 }
 

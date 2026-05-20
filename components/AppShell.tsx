@@ -18,6 +18,7 @@ import SettingsModal from "./SettingsModal";
 import ConflictModal from "./ConflictModal";
 import SearchModal from "./SearchModal";
 import ErrorBoundary from "./ErrorBoundary";
+import SWUpdatePrompt from "./SWUpdatePrompt";
 
 function SyncDot() {
   const status = useSyncStatus();
@@ -233,6 +234,7 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
 
       <BottomNav current={view} onChange={handleViewChange} reviewCount={reviewCount} />
 
+      <SWUpdatePrompt />
       {showSearch && <SearchModal onClose={() => setShowSearch(false)} />}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
       {showConflicts && <ConflictModal onClose={() => setShowConflicts(false)} />}

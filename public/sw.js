@@ -9,12 +9,16 @@ const APP_SHELL = [
   "/icon-apple.png",
 ];
 
-// ── Install: pre-cache app shell ────────────────────────────────────────────
+// ── Install: pre-cache app shell (wait for explicit skipWaiting from app) ───
 self.addEventListener("install", (e) => {
   e.waitUntil(
     caches.open(CACHE).then((c) => c.addAll(APP_SHELL))
   );
-  self.skipWaiting();
+});
+
+// ── Update prompt: app sends SKIP_WAITING when user confirms reload ──────────
+self.addEventListener("message", (e) => {
+  if (e.data?.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 // ── Activate: remove old caches ─────────────────────────────────────────────

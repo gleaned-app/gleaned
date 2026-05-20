@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import {
   getTodos,
   saveTodo,
@@ -508,7 +508,7 @@ export default function TodoView() {
 
 type OpenPanel = "date" | "color" | null;
 
-function TodoItem({
+const TodoItem = memo(function TodoItem({
   todo,
   index,
   onToggle,
@@ -906,4 +906,4 @@ function TodoItem({
       )}
     </div>
   );
-}
+});

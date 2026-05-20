@@ -53,7 +53,7 @@ export default function SearchModal({ onClose }: Props) {
       const res = await searchEntries(q);
       setResults(res);
       setLoading(false);
-    }, 150);
+    }, 300);
     return () => clearTimeout(timer);
   }, [query]);
 

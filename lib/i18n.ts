@@ -128,6 +128,9 @@ export interface Translations {
   reminderBlocked: string;
   reminderEnable: string;
 
+  swUpdateAvailable: string;
+  swUpdateReload: string;
+
   // Search
   search: string;
   searchPlaceholder: string;
@@ -262,6 +265,9 @@ const de: Translations = {
   reminderBlocked: "Blockiert — in Browsereinstellungen erlauben",
   reminderEnable: "Tägliche Erinnerung aktivieren",
 
+  swUpdateAvailable: "Neue Version verfügbar",
+  swUpdateReload: "Neu laden",
+
   search: "Suchen",
   searchPlaceholder: "Einträge durchsuchen…",
   searchNoResults: "Nichts gefunden.",
@@ -393,6 +399,9 @@ const en: Translations = {
   reminderOn: "Reminder on — turn off",
   reminderBlocked: "Blocked — allow in browser settings",
   reminderEnable: "Enable daily reminder",
+
+  swUpdateAvailable: "New version available",
+  swUpdateReload: "Reload",
 
   search: "Search",
   searchPlaceholder: "Search your entries…",
