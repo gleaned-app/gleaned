@@ -74,6 +74,7 @@ export interface Translations {
   reviewOf(done: number, total: number): string;
   reviewHistory: string;
   filterRecent: string;
+  filterAllTags: string;
   thisWeek: string;
   lastWeek: string;
   weeksAgo(n: number): string;
@@ -203,6 +204,7 @@ const de: Translations = {
   reviewOf: (done, total) => `${done} von ${total}`,
   reviewHistory: "Verlauf",
   filterRecent: "Neueste",
+  filterAllTags: "Alle",
   thisWeek: "Diese Woche",
   lastWeek: "Letzte Woche",
   weeksAgo: (n) => `Vor ${n} Wochen`,
@@ -329,6 +331,7 @@ const en: Translations = {
   reviewOf: (done, total) => `${done} of ${total}`,
   reviewHistory: "History",
   filterRecent: "Recent",
+  filterAllTags: "All",
   thisWeek: "This week",
   lastWeek: "Last week",
   weeksAgo: (n) => `${n} weeks ago`,

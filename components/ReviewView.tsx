@@ -88,6 +88,7 @@ export default function ReviewView({
   const [allMonths, setAllMonths] = useState<string[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [monthEntries, setMonthEntries] = useState<Entry[]>([]);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   const [loadingQueue, setLoadingQueue] = useState(true);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -103,6 +104,7 @@ export default function ReviewView({
   useEffect(() => {
     if (!selectedMonth) return;
     setLoadingMonth(true);
+    setSelectedTag(null);
     const [y, m] = selectedMonth.split("-").map(Number);
     getEntriesForMonth(y, m - 1)
       .then((e) => setMonthEntries(e.sort((a: Entry, b: Entry) => b.createdAt.localeCompare(a.createdAt))))
@@ -111,7 +113,11 @@ export default function ReviewView({
 
   const current = queue[index] ?? null;
   const queueDone = !loadingQueue && index >= total;
-  const displayHistory = selectedMonth ? monthEntries : history;
+  const sourceEntries = selectedMonth ? monthEntries : history;
+  const availableTags = Array.from(new Set(sourceEntries.flatMap((e) => e.tags))).sort();
+  const displayHistory = selectedTag
+    ? sourceEntries.filter((e) => e.tags.includes(selectedTag))
+    : sourceEntries;
   const weeks = groupByWeek(displayHistory, tr, loc);
 
   const handleReview = useCallback(
@@ -246,6 +252,38 @@ export default function ReviewView({
                 }}
               >
                 {monthChipLabel(ym, loc)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tag filter chips */}
+      {!loadingHistory && !loadingMonth && availableTags.length > 1 && (
+        <div className="mb-5 -mx-5 px-5 overflow-x-auto">
+          <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
+            <button
+              onClick={() => setSelectedTag(null)}
+              className="rounded-full px-3 py-1 font-sans text-xs font-medium transition-opacity hover:opacity-80"
+              style={{
+                background: selectedTag === null ? "var(--accent-soft)" : "var(--border)",
+                color:      selectedTag === null ? "var(--accent)"      : "var(--fg-muted)",
+              }}
+            >
+              {tr.filterAllTags}
+            </button>
+            {availableTags.map((tag) => (
+              <button
+                key={tag}
+                onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
+                className="rounded-full px-3 py-1 font-sans text-xs font-medium transition-opacity hover:opacity-80"
+                style={{
+                  background: selectedTag === tag ? "var(--accent-soft)" : "var(--border)",
+                  color:      selectedTag === tag ? "var(--accent)"      : "var(--fg-muted)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                #{tag}
               </button>
             ))}
           </div>
