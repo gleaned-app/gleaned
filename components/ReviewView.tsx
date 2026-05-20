@@ -88,7 +88,6 @@ export default function ReviewView({
   const [allMonths, setAllMonths] = useState<string[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [monthEntries, setMonthEntries] = useState<Entry[]>([]);
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -106,7 +105,6 @@ export default function ReviewView({
   useEffect(() => {
     if (!selectedMonth) return;
     setLoadingMonth(true);
-    setSelectedTag(null);
     setSearchQuery("");
     const [y, m] = selectedMonth.split("-").map(Number);
     getEntriesForMonth(y, m - 1)
@@ -117,15 +115,11 @@ export default function ReviewView({
   const current = queue[index] ?? null;
   const queueDone = !loadingQueue && index >= total;
   const sourceEntries = selectedMonth ? monthEntries : history;
-  const availableTags = Array.from(new Set(sourceEntries.flatMap((e) => e.tags))).sort();
-  const displayHistory = sourceEntries.filter((e) => {
-    if (selectedTag && !e.tags.includes(selectedTag)) return false;
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      return e.tags.some((t) => t.toLowerCase().includes(q));
-    }
-    return true;
-  });
+  const displayHistory = searchQuery.trim()
+    ? sourceEntries.filter((e) =>
+        e.tags.some((t) => t.toLowerCase().includes(searchQuery.trim().toLowerCase()))
+      )
+    : sourceEntries;
   const weeks = groupByWeek(displayHistory, tr, loc);
 
   const handleReview = useCallback(
@@ -233,99 +227,76 @@ export default function ReviewView({
         <div className="h-px flex-1" style={{ background: "var(--border)" }} />
       </div>
 
-      {/* Tag filter input — always visible when entries exist */}
+      {/* ── Filter row: month chips + tag input ─────────────────────────── */}
       {!loadingHistory && sourceEntries.length > 0 && (
-        <div className="mb-4 relative flex items-center">
-          <span
-            className="absolute left-3.5 font-sans text-sm font-medium pointer-events-none select-none"
-            style={{ color: "var(--accent)", opacity: 0.7 }}
-          >
-            #
-          </span>
-          <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value.replace(/^#/, ""))}
-            placeholder={tr.filterByTag}
-            className="w-full rounded-xl py-2.5 pl-7 pr-9 font-sans text-sm outline-none"
-            style={{
-              background: "var(--bg-card)",
-              border: `1px solid ${searchQuery ? "var(--accent-soft)" : "var(--border)"}`,
-              color: "var(--fg)",
-            }}
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 font-sans text-lg leading-none transition-opacity hover:opacity-60"
-              style={{ color: "var(--fg-muted)" }}
-            >
-              ×
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Month filter chips */}
-      {allMonths.length > 0 && (
         <div className="mb-5 -mx-5 px-5 overflow-x-auto">
-          <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
-            {/* "Recent" chip */}
-            <button
-              onClick={() => setSelectedMonth(null)}
-              className="rounded-full px-3 py-1 font-sans text-xs font-medium transition-opacity hover:opacity-80"
+          <div className="flex items-center gap-2 pb-1" style={{ width: "max-content" }}>
+            {allMonths.length > 0 && (
+              <>
+                <button
+                  onClick={() => setSelectedMonth(null)}
+                  className="rounded-full px-3 py-1 font-sans text-xs font-medium transition-opacity hover:opacity-80"
+                  style={{
+                    background: selectedMonth === null ? "var(--accent-soft)" : "var(--border)",
+                    color:      selectedMonth === null ? "var(--accent)"      : "var(--fg-muted)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {tr.filterRecent}
+                </button>
+                {allMonths.map((ym) => (
+                  <button
+                    key={ym}
+                    onClick={() => setSelectedMonth(ym === selectedMonth ? null : ym)}
+                    className="rounded-full px-3 py-1 font-sans text-xs font-medium transition-opacity hover:opacity-80"
+                    style={{
+                      background: selectedMonth === ym ? "var(--accent-soft)" : "var(--border)",
+                      color:      selectedMonth === ym ? "var(--accent)"      : "var(--fg-muted)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {monthChipLabel(ym, loc)}
+                  </button>
+                ))}
+                <div className="h-4 w-px flex-shrink-0" style={{ background: "var(--border)" }} />
+              </>
+            )}
+
+            {/* Compact tag filter chip */}
+            <div
+              className="flex items-center gap-1 rounded-full px-2.5 py-1 transition-colors"
               style={{
-                background: selectedMonth === null ? "var(--accent-soft)" : "var(--border)",
-                color:      selectedMonth === null ? "var(--accent)"      : "var(--fg-muted)",
+                background: searchQuery ? "var(--accent-soft)" : "var(--border)",
               }}
             >
-              {tr.filterRecent}
-            </button>
-            {allMonths.map((ym) => (
-              <button
-                key={ym}
-                onClick={() => setSelectedMonth(ym === selectedMonth ? null : ym)}
-                className="rounded-full px-3 py-1 font-sans text-xs font-medium transition-opacity hover:opacity-80"
-                style={{
-                  background: selectedMonth === ym ? "var(--accent-soft)" : "var(--border)",
-                  color:      selectedMonth === ym ? "var(--accent)"      : "var(--fg-muted)",
-                  whiteSpace: "nowrap",
-                }}
+              <span
+                className="font-sans text-xs font-semibold select-none flex-shrink-0"
+                style={{ color: "var(--accent)" }}
               >
-                {monthChipLabel(ym, loc)}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Tag filter chips */}
-      {!loadingHistory && !loadingMonth && availableTags.length > 0 && (
-        <div className="mb-5 -mx-5 px-5 overflow-x-auto">
-          <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
-            <button
-              onClick={() => setSelectedTag(null)}
-              className="rounded-full px-3 py-1 font-sans text-xs font-medium transition-opacity hover:opacity-80"
-              style={{
-                background: selectedTag === null ? "var(--accent-soft)" : "var(--border)",
-                color:      selectedTag === null ? "var(--accent)"      : "var(--fg-muted)",
-              }}
-            >
-              {tr.filterAllTags}
-            </button>
-            {availableTags.map((tag) => (
-              <button
-                key={tag}
-                onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
-                className="rounded-full px-3 py-1 font-sans text-xs font-medium transition-opacity hover:opacity-80"
+                #
+              </span>
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value.replace(/^#/, ""))}
+                placeholder="tag…"
+                className="bg-transparent font-sans text-xs outline-none"
                 style={{
-                  background: selectedTag === tag ? "var(--accent-soft)" : "var(--border)",
-                  color:      selectedTag === tag ? "var(--accent)"      : "var(--fg-muted)",
-                  whiteSpace: "nowrap",
+                  width: searchQuery ? `${Math.max(36, searchQuery.length * 7 + 4)}px` : "36px",
+                  minWidth: "36px",
+                  maxWidth: "120px",
+                  color: searchQuery ? "var(--accent)" : "var(--fg-muted)",
                 }}
-              >
-                #{tag}
-              </button>
-            ))}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="flex-shrink-0 font-sans text-xs leading-none transition-opacity hover:opacity-60"
+                  style={{ color: "var(--accent)" }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -335,7 +306,7 @@ export default function ReviewView({
         <div className="flex justify-center py-8"><Spinner /></div>
       ) : displayHistory.length === 0 ? (
         <p className="py-8 text-center font-serif italic" style={{ color: "var(--fg-muted)" }}>
-          {searchQuery || selectedTag ? tr.searchNoResults : tr.addFirstGoal}
+          {searchQuery ? tr.searchNoResults : tr.addFirstGoal}
         </p>
       ) : (
         <div className="flex flex-col gap-6">
