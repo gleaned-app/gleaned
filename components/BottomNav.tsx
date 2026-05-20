@@ -106,7 +106,7 @@ export default function BottomNav({ current, onChange, reviewCount = 0 }: Props)
               data-active={active}
               onClick={() => { haptic(); onChange(tab.id); }}
               className="btn-3d relative z-10 flex flex-col items-center gap-1 rounded-2xl px-3 py-2.5 font-sans sm:px-4"
-              style={{ color: active ? "var(--accent)" : "var(--fg-muted)", minWidth: 62 }}
+              style={{ color: active ? "var(--accent)" : "var(--fg-muted)" }}
             >
               <span className="relative">
                 {tab.icon}

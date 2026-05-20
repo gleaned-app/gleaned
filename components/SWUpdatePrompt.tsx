@@ -48,7 +48,7 @@ export default function SWUpdatePrompt() {
     <div
       className="fixed left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-2xl px-4 py-3"
       style={{
-        bottom: "calc(80px + env(safe-area-inset-bottom) + 12px)",
+        bottom: "calc(110px + env(safe-area-inset-bottom) + 8px)",
         background: "var(--bg-card)",
         border: "1px solid var(--border)",
         boxShadow: "var(--shadow-form)",
