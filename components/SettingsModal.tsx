@@ -54,6 +54,8 @@ export default function SettingsModal({ onClose }: Props) {
   const [couchdbInput, setCouchdbInput] = useState(settings.couchdbUrl);
   const [couchdbUser, setCouchdbUser] = useState(settings.couchdbUsername);
   const [couchdbPass, setCouchdbPass] = useState(settings.couchdbPassword);
+  const [syncSaved, setSyncSaved] = useState(false);
+  const [syncTestStatus, setSyncTestStatus] = useState<null | "testing" | "ok" | "error-auth" | "error-unreachable">(null);
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [tagMap, setTagMap] = useState<Map<string, number>>(new Map());
   const [showTags, setShowTags] = useState(false);
@@ -63,6 +65,27 @@ export default function SettingsModal({ onClose }: Props) {
 
   useEffect(() => { if (showTags) getAllTags().then(setTagMap); }, [showTags]);
   useEffect(() => { getPushStatus().then(setPushStatus); }, []);
+
+  function handleSyncSave() {
+    update({ couchdbUrl: couchdbInput.trim(), couchdbUsername: couchdbUser, couchdbPassword: couchdbPass });
+    setSyncSaved(true);
+    setSyncTestStatus(null);
+    setTimeout(() => setSyncSaved(false), 2000);
+  }
+
+  async function handleSyncTest() {
+    setSyncTestStatus("testing");
+    const url = couchdbInput.trim();
+    if (!url) { setSyncTestStatus("error-unreachable"); return; }
+    try {
+      const headers: Record<string, string> = {};
+      if (couchdbUser) headers["Authorization"] = "Basic " + btoa(`${couchdbUser}:${couchdbPass}`);
+      const res = await fetch(url, { method: "GET", headers, signal: AbortSignal.timeout(5000) });
+      setSyncTestStatus(res.ok ? "ok" : res.status === 401 ? "error-auth" : "error-unreachable");
+    } catch {
+      setSyncTestStatus("error-unreachable");
+    }
+  }
 
   async function handlePushToggle() {
     setPushLoading(true);
@@ -182,16 +205,64 @@ export default function SettingsModal({ onClose }: Props) {
             {t.syncDesc}
           </p>
           <Field label="URL">
-            <input value={couchdbInput} onChange={(e) => setCouchdbInput(e.target.value)} onBlur={() => { const t = couchdbInput.trim(); if (t !== settings.couchdbUrl) update({ couchdbUrl: t }); }} placeholder="http://localhost:5984/gleaned" className="journal-input w-full rounded-xl px-3 py-2.5 font-sans text-xs outline-none" style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--fg)" }} spellCheck={false} autoCapitalize="none" autoCorrect="off" />
+            <input
+              value={couchdbInput}
+              onChange={(e) => { setCouchdbInput(e.target.value); setSyncTestStatus(null); }}
+              placeholder="http://localhost:5984/gleaned"
+              className="journal-input w-full rounded-xl px-3 py-2.5 font-sans text-xs outline-none"
+              style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--fg)" }}
+              spellCheck={false} autoCapitalize="none" autoCorrect="off"
+            />
           </Field>
           <div className="grid grid-cols-2 gap-2">
             <Field label={t.username}>
-              <input value={couchdbUser} onChange={(e) => setCouchdbUser(e.target.value)} onBlur={() => { if (couchdbUser !== settings.couchdbUsername) update({ couchdbUsername: couchdbUser }); }} placeholder={t.username} className="journal-input w-full rounded-xl px-3 py-2.5 font-sans text-xs outline-none" style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--fg)" }} autoCapitalize="none" autoCorrect="off" spellCheck={false} />
+              <input
+                value={couchdbUser}
+                onChange={(e) => { setCouchdbUser(e.target.value); setSyncTestStatus(null); }}
+                placeholder={t.username}
+                className="journal-input w-full rounded-xl px-3 py-2.5 font-sans text-xs outline-none"
+                style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--fg)" }}
+                autoCapitalize="none" autoCorrect="off" spellCheck={false}
+              />
             </Field>
             <Field label={t.dbPassword}>
-              <input type="password" value={couchdbPass} onChange={(e) => setCouchdbPass(e.target.value)} onBlur={() => { if (couchdbPass !== settings.couchdbPassword) update({ couchdbPassword: couchdbPass }); }} placeholder="••••••••" className="journal-input w-full rounded-xl px-3 py-2.5 font-sans text-xs outline-none" style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--fg)" }} autoCapitalize="none" autoCorrect="off" />
+              <input
+                type="password"
+                value={couchdbPass}
+                onChange={(e) => { setCouchdbPass(e.target.value); setSyncTestStatus(null); }}
+                placeholder="••••••••"
+                className="journal-input w-full rounded-xl px-3 py-2.5 font-sans text-xs outline-none"
+                style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--fg)" }}
+                autoCapitalize="none" autoCorrect="off"
+              />
             </Field>
           </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleSyncSave}
+              className="btn-3d flex-1 rounded-xl py-2.5 font-sans text-sm font-medium"
+              style={{ color: syncSaved ? "var(--accent)" : "var(--fg-muted)" }}
+            >
+              {syncSaved ? "✓" : t.save}
+            </button>
+            <button
+              onClick={handleSyncTest}
+              disabled={syncTestStatus === "testing" || !couchdbInput.trim()}
+              className="btn-3d flex-1 rounded-xl py-2.5 font-sans text-sm font-medium transition-opacity disabled:opacity-40"
+              style={{ color: "var(--fg-muted)" }}
+            >
+              {syncTestStatus === "testing" ? "…" : t.syncTest}
+            </button>
+          </div>
+          {syncTestStatus && syncTestStatus !== "testing" && (
+            <p className="text-center font-sans text-xs" style={{
+              color: syncTestStatus === "ok" ? "var(--accent)" : "var(--due-overdue)",
+            }}>
+              {syncTestStatus === "ok" ? t.syncTestOk
+                : syncTestStatus === "error-auth" ? t.syncTestAuth
+                : t.syncTestFail}
+            </p>
+          )}
         </div>
       );
 
@@ -247,9 +318,9 @@ export default function SettingsModal({ onClose }: Props) {
       {/* Mobile: bottom sheet | Desktop: centered dialog */}
       <div
         className="scale-in fixed z-50 flex flex-col
-                   bottom-0 left-0 right-0 max-h-[88dvh] rounded-t-3xl
+                   bottom-0 left-0 right-0 h-[88dvh] rounded-t-3xl
                    sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-1/2
-                   sm:w-[600px] sm:max-h-[80dvh] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+                   sm:h-auto sm:w-[600px] sm:max-h-[80dvh] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
         style={{
           background: "var(--bg-card)",
           boxShadow: "0 -4px 40px oklch(0% 0 0 / 0.25), var(--shadow-form)",

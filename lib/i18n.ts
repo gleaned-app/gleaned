@@ -109,6 +109,10 @@ export interface Translations {
   monday: string;
   sunday: string;
   syncDesc: string;
+  syncTest: string;
+  syncTestOk: string;
+  syncTestFail: string;
+  syncTestAuth: string;
   username: string;
   dbPassword: string;
   exportImport: string;
@@ -239,6 +243,10 @@ const de: Translations = {
   monday: "Montag",
   sunday: "Sonntag",
   syncDesc: "Jeder Browser hat eine eigene lokale Datenbank. CouchDB synchronisiert sie — so teilst du Einträge und Passwort-Hash zwischen Chrome, Safari und deinem Handy.",
+  syncTest: "Testen",
+  syncTestOk: "Verbunden ✓",
+  syncTestFail: "Nicht erreichbar — CouchDB-CORS prüfen",
+  syncTestAuth: "Zugangsdaten falsch",
   username: "Benutzer",
   dbPassword: "Passwort",
   exportImport: "Export / Import",
@@ -367,6 +375,10 @@ const en: Translations = {
   monday: "Monday",
   sunday: "Sunday",
   syncDesc: "Each browser has its own local database. CouchDB syncs them — sharing entries and your password hash across Chrome, Safari and your phone.",
+  syncTest: "Test",
+  syncTestOk: "Connected ✓",
+  syncTestFail: "Unreachable — check CouchDB CORS config",
+  syncTestAuth: "Wrong credentials",
   username: "Username",
   dbPassword: "Password",
   exportImport: "Export / Import",
