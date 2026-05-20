@@ -226,7 +226,7 @@ export default function ReviewView({
       </div>
 
       {/* Month filter chips */}
-      {allMonths.length > 1 && (
+      {allMonths.length > 0 && (
         <div className="mb-5 -mx-5 px-5 overflow-x-auto">
           <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
             {/* "Recent" chip */}
@@ -259,7 +259,7 @@ export default function ReviewView({
       )}
 
       {/* Tag filter chips */}
-      {!loadingHistory && !loadingMonth && availableTags.length > 1 && (
+      {!loadingHistory && !loadingMonth && availableTags.length > 0 && (
         <div className="mb-5 -mx-5 px-5 overflow-x-auto">
           <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
             <button
