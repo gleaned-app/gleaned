@@ -66,7 +66,7 @@ function StreakBadge({ streak, lang }: { streak: number; lang: "de" | "en" }) {
   );
 }
 
-export default function JournalView() {
+export default function JournalView({ onEntryChange, onScrollTop }: { onEntryChange?: () => void; onScrollTop?: () => void }) {
   const { settings } = useSettings();
   const t = useT();
   const loc = locale(settings);
@@ -95,10 +95,12 @@ export default function JournalView() {
     setTimeout(() => {
       setNewIds((prev) => { const n = new Set(prev); n.delete(entry._id); return n; });
     }, 800);
+    onEntryChange?.();
   }
 
   function handleDelete(id: string) {
     setEntries((prev) => prev.filter((e) => e._id !== id));
+    onEntryChange?.();
   }
 
   function handleUpdate(updated: Entry) {
@@ -107,7 +109,7 @@ export default function JournalView() {
 
   function handleTagClick(tag: string) {
     setFilterTag(tag);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    onScrollTop?.();
   }
 
   const emptyLabel = filterTag ? t.noEntriesTag(filterTag) : t.nothingYetToday;

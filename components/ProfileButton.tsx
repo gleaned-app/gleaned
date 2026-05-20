@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { logout } from "@/lib/auth";
 import { useT } from "@/lib/i18n";
 
@@ -12,6 +12,15 @@ interface Props {
 export default function ProfileButton({ onLock, onSettings }: Props) {
   const [open, setOpen] = useState(false);
   const t = useT();
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
   function handleLock() {
     setOpen(false);
