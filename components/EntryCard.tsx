@@ -7,7 +7,7 @@ import { updateEntry, deleteEntry } from "@/lib/db";
 import { useT } from "@/lib/i18n";
 import { useSettings, locale } from "@/lib/settings-context";
 
-marked.use({ breaks: true, gfm: true });
+marked.use({ breaks: true, gfm: true, renderer: { html: () => "" } });
 
 const EXT_LANG: Record<string, string> = {
   js: "javascript", ts: "typescript", jsx: "javascript", tsx: "typescript",

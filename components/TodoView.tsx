@@ -83,7 +83,7 @@ function sortOpen(todos: Todo[]): Todo[] {
     const dr = rank(a) - rank(b);
     if (dr !== 0) return dr;
     if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
-    return a.createdAt.localeCompare(b.createdAt);
+    return b.createdAt.localeCompare(a.createdAt);
   });
 }
 

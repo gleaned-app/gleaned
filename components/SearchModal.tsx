@@ -32,9 +32,10 @@ function excerpt(content: string, query: string): string {
 
 interface Props {
   onClose: () => void;
+  onNavigate?: (date: string) => void;
 }
 
-export default function SearchModal({ onClose }: Props) {
+export default function SearchModal({ onClose, onNavigate }: Props) {
   const t = useT();
   const { settings } = useSettings();
   const loc = locale(settings);
@@ -162,6 +163,8 @@ export default function SearchModal({ onClose }: Props) {
                   <li
                     key={entry._id}
                     className="flex flex-col gap-1.5 px-5 py-3 transition-colors hover:bg-[var(--accent-soft)] sm:px-6"
+                    onClick={() => { onNavigate?.(entry.date); onClose(); }}
+                    style={{ cursor: "pointer" }}
                   >
                     <span
                       className="font-sans text-[10px] font-semibold uppercase tracking-[0.14em]"
