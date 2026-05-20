@@ -399,7 +399,20 @@ export async function deleteTodo(id: string): Promise<void> {
   throw new Error("gleaned: too many conflicts deleting todo");
 }
 
-// ─── Review (spaced repetition) ──────────────────────────────────────────────
+// ─── Review (spaced repetition + history) ────────────────────────────────────
+
+export async function getRecentEntries(limit = 50): Promise<Entry[]> {
+  const db = await getDB();
+  const result = await db.find({
+    selector: { type: "entry" },
+    sort: [{ type: "asc" }, { createdAt: "asc" }],
+    limit: 2000,
+  });
+  const sorted = (result.docs as unknown as Entry[])
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, limit);
+  return Promise.all(sorted.map(decryptEntry));
+}
 
 export async function getReviewDue(maxBackfill = 10): Promise<Entry[]> {
   const db = await getDB();

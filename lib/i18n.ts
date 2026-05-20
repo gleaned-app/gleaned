@@ -72,6 +72,10 @@ export interface Translations {
   reviewEmpty: string;
   reviewEmptyBody: string;
   reviewOf(done: number, total: number): string;
+  reviewHistory: string;
+  thisWeek: string;
+  lastWeek: string;
+  weeksAgo(n: number): string;
 
   // Nav + profile + header
   navCalendar: string;
@@ -196,6 +200,10 @@ const de: Translations = {
   reviewEmpty: "Alles wiederholt.",
   reviewEmptyBody: "Du investierst in dein Wissen. Das zeigt.",
   reviewOf: (done, total) => `${done} von ${total}`,
+  reviewHistory: "Verlauf",
+  thisWeek: "Diese Woche",
+  lastWeek: "Letzte Woche",
+  weeksAgo: (n) => `Vor ${n} Wochen`,
 
   navCalendar: "Kalender",
   navLearn: "Lernen",
@@ -317,6 +325,10 @@ const en: Translations = {
   reviewEmpty: "All caught up.",
   reviewEmptyBody: "You're investing in your knowledge. It shows.",
   reviewOf: (done, total) => `${done} of ${total}`,
+  reviewHistory: "History",
+  thisWeek: "This week",
+  lastWeek: "Last week",
+  weeksAgo: (n) => `${n} weeks ago`,
 
   navCalendar: "Calendar",
   navLearn: "Learn",
