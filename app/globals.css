@@ -41,6 +41,7 @@
   --btn-shadow:      oklch(30% 0.03 60 / 0.13);
   --btn-active-face: oklch(90% 0.022 73);
   --btn-inset:       oklch(74% 0.03 68 / 0.35);
+  --bg-glass:        oklch(97% 0.010 75);
   --code-kw:         oklch(50% 0.2   290);
   --code-str:        oklch(48% 0.17  145);
   --code-num:        oklch(55% 0.18   48);
@@ -82,6 +83,7 @@ html.theme-dark {
   --btn-shadow:      oklch(0% 0 0 / 0.45);
   --btn-active-face: oklch(15% 0.016 55);
   --btn-inset:       oklch(0% 0 0 / 0.5);
+  --bg-glass:        oklch(19% 0.012 55);
   --code-kw:         oklch(72% 0.2   290);
   --code-str:        oklch(68% 0.17  145);
   --code-num:        oklch(74% 0.18   48);
@@ -123,6 +125,7 @@ html.theme-sepia {
   --btn-shadow:      oklch(30% 0.05 65 / 0.15);
   --btn-active-face: oklch(86% 0.048 81);
   --btn-inset:       oklch(70% 0.05 76 / 0.38);
+  --bg-glass:        oklch(98% 0.005 72);
   --code-kw:         oklch(44% 0.18   42);
   --code-str:        oklch(44% 0.15  135);
   --code-num:        oklch(50% 0.16   58);
@@ -151,6 +154,7 @@ html.theme-sepia {
     --accent-light:    oklch(75% 0.13 60);
     --accent-soft:     oklch(68% 0.13 58 / 0.12);
     --shadow-card:     0 1px 2px oklch(0% 0 0 / 0.25), 0 3px 10px oklch(0% 0 0 / 0.18);
+    --bg-glass:        oklch(19% 0.012 55);
     --shadow-form:     0 2px 14px oklch(0% 0 0 / 0.3), 0 0 0 1px oklch(91% 0.022 76 / 0.05);
     --due-overdue:     oklch(68% 0.19 25);
     --due-overdue-bg:  oklch(68% 0.19 25 / 0.12);

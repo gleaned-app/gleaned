@@ -70,7 +70,7 @@ export default function BottomNav({ current, onChange, reviewCount = 0 }: Props)
       <div
         className="relative flex items-center gap-1 px-4 py-2 sm:gap-2 sm:px-5"
         style={{
-          background: "color-mix(in oklch, var(--bg-nav) 55%, transparent)",
+          background: "color-mix(in oklch, var(--bg-glass) 60%, transparent)",
           backdropFilter: "blur(40px) saturate(2.4) brightness(1.06)",
           WebkitBackdropFilter: "blur(40px) saturate(2.4) brightness(1.06)",
           borderRadius: "28px",
