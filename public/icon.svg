@@ -1,4 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#F3EDE3"/>
-  <text x="256" y="330" font-family="Georgia,serif" font-size="300" font-style="italic" text-anchor="middle" fill="#9B5F2E">g</text>
+  <style>
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #15100C; }
+      .g  { fill: #C8874A; }
+    }
+  </style>
+  <rect class="bg" width="512" height="512" rx="112" fill="#F3EDE3"/>
+  <text class="g" x="256" y="330" font-family="Georgia,serif" font-size="300" font-style="italic" text-anchor="middle" fill="#9B5F2E">g</text>
 </svg>
