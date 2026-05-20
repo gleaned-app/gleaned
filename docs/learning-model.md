@@ -121,9 +121,11 @@ Given that, a streak counter is not a gimmick. It is an acknowledgment that moti
 
 The streak in gleaned exists to serve this transition. It belongs to you — it is not reported anywhere, nobody else sees it, and you can technically break it without consequence because there is no authority watching. That is by design. A streak that creates anxiety or guilt has failed. A streak that quietly marks your consistency has done its job.
 
+**Sick days and missed days.** The current streak breaks after one missed day — that is honest and correct. But losing a 50-day streak because you were ill is the exact kind of guilt mechanic we reject. The solution is not a grace period (arbitrary) or a freeze (dishonest) — it is a second number: **your longest streak ever**. The current streak can break and restart. The longest streak never disappears. You did not lose those 50 days. You still did them. The record stays.
+
 What we draw the line at is **manipulative** gamification — mechanics that exist to serve the app's retention metrics rather than your growth:
 
-- No push notifications designed to guilt you back into the app
+- No push notifications designed to guilt you back into the app — the daily reminder only fires if you have not written anything that day yet
 - No points, badges, or leaderboards
 - No streak "freezes" you can buy
 

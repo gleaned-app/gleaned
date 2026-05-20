@@ -103,13 +103,14 @@ export async function getDB(): Promise<PouchDB.Database<AnyDoc>> {
 
 // ─── Tags ────────────────────────────────────────────────────────────────────
 
-export async function getStreakData(): Promise<{ streak: number; todayCount: number }> {
+export async function getStreakData(): Promise<{ streak: number; todayCount: number; longestStreak: number }> {
   const db = await getDB();
   const today = new Date().toISOString().split("T")[0];
   const result = await db.find({ selector: { type: "entry" }, fields: ["date"] });
   const dates = new Set(result.docs.map((d) => (d as Entry).date));
   const todayCount = result.docs.filter((d) => (d as Entry).date === today).length;
 
+  // Current streak — walk backwards from today (or yesterday if no entry yet today)
   let streak = 0;
   const cursor = new Date();
   if (!dates.has(today)) cursor.setDate(cursor.getDate() - 1);
@@ -120,7 +121,24 @@ export async function getStreakData(): Promise<{ streak: number; todayCount: num
     cursor.setDate(cursor.getDate() - 1);
   }
 
-  return { streak, todayCount };
+  // Longest streak ever — walk all entry dates in order
+  const sorted = [...dates].sort();
+  let longestStreak = 0;
+  let run = 0;
+  let prev: Date | null = null;
+  for (const ds of sorted) {
+    const d = new Date(ds + "T00:00:00");
+    if (prev) {
+      const gap = Math.round((d.getTime() - prev.getTime()) / 86_400_000);
+      run = gap === 1 ? run + 1 : 1;
+    } else {
+      run = 1;
+    }
+    if (run > longestStreak) longestStreak = run;
+    prev = d;
+  }
+
+  return { streak, todayCount, longestStreak };
 }
 
 export async function getAllTags(): Promise<Map<string, number>> {

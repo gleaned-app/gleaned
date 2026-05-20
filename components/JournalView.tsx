@@ -45,23 +45,35 @@ function FlameIcon() {
   );
 }
 
-function StreakBadge({ streak, lang }: { streak: number; lang: "de" | "en" }) {
+function StreakBadge({ streak, longestStreak, lang }: { streak: number; longestStreak: number; lang: "de" | "en" }) {
   const level = streakLevel(streak);
-  if (level === 0) return null;
-  const h = HEAT[level];
-  const cv = `var(--streak-${level})`;
+  if (level === 0 && longestStreak === 0) return null;
+  const displayLevel = level === 0 ? 1 : level;
+  const h = HEAT[displayLevel];
+  const cv = `var(--streak-${displayLevel})`;
+  const showBest = longestStreak > streak && longestStreak > 1;
+  const title = lang === "de"
+    ? `${streak} Tage in Folge${showBest ? ` · Bester: ${longestStreak}` : ""}`
+    : `${streak} day streak${showBest ? ` · Best: ${longestStreak}` : ""}`;
   return (
     <span
       className={`flex items-center gap-1.5 rounded-full px-3 py-1 font-sans text-sm font-semibold transition-all duration-500${h.pulse ? " streak-pulse" : ""}`}
       style={{
-        color: cv,
-        background: `color-mix(in oklch, ${cv}, transparent 84%)`,
-        boxShadow: h.shadow,
+        color: level === 0 ? "var(--fg-muted)" : cv,
+        background: level === 0
+          ? "transparent"
+          : `color-mix(in oklch, ${cv}, transparent 84%)`,
+        boxShadow: level === 0 ? "none" : h.shadow,
       }}
-      title={lang === "de" ? `${streak} Tage in Folge` : `${streak} day streak`}
+      title={title}
     >
       <FlameIcon />
       {streak}
+      {showBest && (
+        <span className="font-normal opacity-60" style={{ fontSize: "10px" }}>
+          · {lang === "de" ? "best" : "best"} {longestStreak}
+        </span>
+      )}
     </span>
   );
 }
@@ -75,12 +87,16 @@ export default function JournalView({ onEntryChange, onScrollTop }: { onEntryCha
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
   const [filterTag, setFilterTag] = useState<string | null>(null);
   const [streak, setStreak] = useState(0);
+  const [longestStreak, setLongestStreak] = useState(0);
 
   const today = todayDate();
   const { weekday, full } = formatDate(today, loc);
 
   useEffect(() => {
-    getStreakData().then(({ streak }) => setStreak(streak));
+    getStreakData().then(({ streak, longestStreak }) => {
+      setStreak(streak);
+      setLongestStreak(longestStreak);
+    });
   }, [entries]);
 
   useEffect(() => {
@@ -151,7 +167,7 @@ export default function JournalView({ onEntryChange, onScrollTop }: { onEntryCha
                 <p className="font-sans text-sm" style={{ color: "var(--fg-muted)" }}>
                   {full}
                 </p>
-                <StreakBadge streak={streak} lang={settings.language} />
+                <StreakBadge streak={streak} longestStreak={longestStreak} lang={settings.language} />
               </div>
             </>
           )}
