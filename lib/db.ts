@@ -558,7 +558,6 @@ export interface Settings {
   _id: "gleaned_settings";
   _rev?: string;
   type: "settings";
-  passwordHash?: string;
   encryptionSalt?: string;
   encryptionVerification?: string;
   language?: "de" | "en";
