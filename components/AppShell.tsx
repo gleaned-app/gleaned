@@ -222,8 +222,10 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
   return (
     <div className="flex flex-col" style={{ background: "var(--bg)", height: "100dvh" }}>
       <header
-        className="sticky top-0 z-40 flex items-center justify-between px-5 py-3"
+        className="sticky top-0 z-40 flex items-center justify-between px-5"
         style={{
+          paddingTop: "max(12px, env(safe-area-inset-top))",
+          paddingBottom: "12px",
           background: "color-mix(in oklch, var(--bg) 82%, transparent)",
           backdropFilter: "blur(20px) saturate(1.5)",
           WebkitBackdropFilter: "blur(20px) saturate(1.5)",
