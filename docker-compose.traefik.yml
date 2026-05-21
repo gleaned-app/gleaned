@@ -1,0 +1,99 @@
+# Production deployment with Traefik reverse proxy.
+#
+# Prerequisites on the VPS:
+#   - Traefik running with an external "frontend" network
+#   - A cert resolver named "ionos" configured in Traefik
+#   - A .env file (see .env.example)
+#   - The couchdb/local.ini file present (for CORS config)
+#
+# Usage:
+#   docker compose -f docker-compose.traefik.yml pull
+#   docker compose -f docker-compose.traefik.yml up -d
+
+services:
+  app:
+    image: ghcr.io/gleaned-app/gleaned:latest
+    restart: unless-stopped
+    depends_on:
+      couchdb:
+        condition: service_healthy
+      pusher:
+        condition: service_healthy
+    networks:
+      - frontend
+      - internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=frontend"
+      # Main domain
+      - "traefik.http.routers.gleaned.rule=Host(`gleaned.dev`)"
+      - "traefik.http.routers.gleaned.entrypoints=websecure"
+      - "traefik.http.routers.gleaned.tls.certresolver=ionos"
+      - "traefik.http.services.gleaned.loadbalancer.server.port=80"
+      # www → non-www redirect
+      - "traefik.http.routers.gleaned-www.rule=Host(`www.gleaned.dev`)"
+      - "traefik.http.routers.gleaned-www.entrypoints=websecure"
+      - "traefik.http.routers.gleaned-www.tls.certresolver=ionos"
+      - "traefik.http.routers.gleaned-www.middlewares=gleaned-redirect-www"
+      - "traefik.http.middlewares.gleaned-redirect-www.redirectregex.regex=^https://www\\.gleaned\\.dev/(.*)"
+      - "traefik.http.middlewares.gleaned-redirect-www.redirectregex.replacement=https://gleaned.dev/$${1}"
+      - "traefik.http.middlewares.gleaned-redirect-www.redirectregex.permanent=true"
+
+  pusher:
+    image: ghcr.io/gleaned-app/gleaned-pusher:latest
+    restart: unless-stopped
+    environment:
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@gleaned.dev}
+      COUCHDB_URL: http://${COUCHDB_USER:-admin}:${COUCHDB_PASSWORD:-changeme}@couchdb:5984
+      PUSH_HOUR: ${PUSH_HOUR:-20}
+      PUSH_MINUTE: ${PUSH_MINUTE:-0}
+      DUE_HOUR: ${DUE_HOUR:-9}
+      DUE_MINUTE: ${DUE_MINUTE:-0}
+    depends_on:
+      couchdb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  couchdb:
+    image: couchdb:3
+    restart: unless-stopped
+    environment:
+      COUCHDB_USER: ${COUCHDB_USER:-admin}
+      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:-changeme}
+    volumes:
+      - couchdb_data:/opt/couchdb/data
+      - ./couchdb/local.ini:/opt/couchdb/etc/local.d/local.ini:ro
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:5984/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - frontend
+      - internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=frontend"
+      # CouchDB admin UI + sync endpoint — needed for multi-device sync
+      - "traefik.http.routers.gleaned-db.rule=Host(`db.gleaned.dev`)"
+      - "traefik.http.routers.gleaned-db.entrypoints=websecure"
+      - "traefik.http.routers.gleaned-db.tls.certresolver=ionos"
+      - "traefik.http.services.gleaned-db.loadbalancer.server.port=5984"
+
+networks:
+  frontend:
+    external: true
+  internal:
+    internal: true
+
+volumes:
+  couchdb_data:
