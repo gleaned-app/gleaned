@@ -1,4 +1,4 @@
-const CACHE = "gleaned-v2";
+const CACHE = "gleaned-v3";
 
 let swLang = "en";
 
@@ -54,19 +54,37 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // Same-origin assets: stale-while-revalidate
-  if (url.origin === self.location.origin) {
+  if (url.origin !== self.location.origin) return;
+
+  // Next.js immutable chunks (content-hashed): cache-first, never stale
+  if (url.pathname.startsWith("/_next/static/")) {
     e.respondWith(
       caches.open(CACHE).then(async (cache) => {
         const cached = await cache.match(request);
-        const fetchPromise = fetch(request).then((r) => {
-          if (r.ok) cache.put(request, r.clone());
-          return r;
-        }).catch(() => cached);
-        return cached ?? fetchPromise;
+        if (cached) return cached;
+        const res = await fetch(request);
+        if (res.ok) cache.put(request, res.clone());
+        return res;
       })
     );
+    return;
   }
+
+  // Other /_next/ paths (dev-mode Turbopack chunks, HMR): never cache —
+  // these change without URL changes and cause stale module errors if cached.
+  if (url.pathname.startsWith("/_next/")) return;
+
+  // Other same-origin assets (icons, manifest): stale-while-revalidate
+  e.respondWith(
+    caches.open(CACHE).then(async (cache) => {
+      const cached = await cache.match(request);
+      const fetchPromise = fetch(request).then((r) => {
+        if (r.ok) cache.put(request, r.clone());
+        return r;
+      }).catch(() => cached);
+      return cached ?? fetchPromise;
+    })
+  );
 });
 
 // ── Push notifications ───────────────────────────────────────────────────────
