@@ -1,4 +1,5 @@
 "use strict";
+const { timingSafeEqual } = require("node:crypto");
 const express  = require("express");
 const webpush  = require("web-push");
 const cron     = require("node-cron");
@@ -193,7 +194,11 @@ app.delete("/subscribe", async (req, res) => {
 
 // Manual send (protected by SEND_SECRET if set)
 app.post("/send", async (req, res) => {
-  if (req.headers["x-send-secret"] !== SEND_SECRET) {
+  const provided = String(req.headers["x-send-secret"] ?? "");
+  const authorized =
+    provided.length === SEND_SECRET.length &&
+    timingSafeEqual(Buffer.from(provided), Buffer.from(SEND_SECRET));
+  if (!authorized) {
     return res.status(401).json({ error: "unauthorized" });
   }
   const override = req.body ?? {};

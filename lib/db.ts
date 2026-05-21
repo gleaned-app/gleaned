@@ -829,9 +829,21 @@ export async function importData(json: string): Promise<{ imported: number; skip
       skipped++;
     } catch (e) {
       if ((e as { status?: number }).status === 404) {
-        const { _rev, ...toInsert } = doc;
-        void _rev;
-        await db.put(toInsert as unknown as AnyDoc);
+        if (type === "entry") {
+          // Re-encrypt under the current key so imported entries are not stored
+          // in plaintext alongside encrypted native entries. encryptEntry is a
+          // no-op when no key is loaded (password-less install).
+          const mutable = { ...(doc as Record<string, unknown>) };
+          delete mutable._rev;
+          delete mutable.encrypted;
+          delete mutable.enc;
+          const toStore = await encryptEntry(mutable as Omit<Entry, "_rev" | "encrypted" | "enc">);
+          await db.put(toStore as unknown as AnyDoc);
+        } else {
+          const { _rev, ...toInsert } = doc;
+          void _rev;
+          await db.put(toInsert as unknown as AnyDoc);
+        }
         imported++;
       } else {
         skipped++;

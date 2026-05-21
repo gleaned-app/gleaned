@@ -27,6 +27,10 @@ export interface Translations {
   back: string;
   passwordMismatch: string;
   passwordTooShort: string;
+  pwWeak: string;
+  pwFair: string;
+  pwStrong: string;
+  acceptShortPw: string;
   wrongPassword: string;
   noLocalAccount: string;
   tooManyAttempts(secs: number): string;
@@ -168,12 +172,16 @@ const de: Translations = {
   choosePassword: "Passwort wählen",
   password: "Passwort",
   confirm: "Bestätigen",
-  minChars: "mindestens 4 Zeichen",
+  minChars: "mindestens 10 Zeichen",
   getStarted: "Loslegen",
   unlock: "Entsperren",
   back: "← Zurück",
   passwordMismatch: "Passwörter stimmen nicht überein.",
-  passwordTooShort: "Mindestens 4 Zeichen.",
+  passwordTooShort: "Mindestens 10 Zeichen.",
+  pwWeak: "Schwach",
+  pwFair: "Mittel",
+  pwStrong: "Stark",
+  acceptShortPw: "Kurzes Passwort akzeptieren — ich verstehe das erhöhte Risiko.",
   wrongPassword: "Falsches Passwort.",
   noLocalAccount: "Kein Konto in diesem Browser. CouchDB-Sync einrichten oder Registrieren.",
   tooManyAttempts: (secs) => `Zu viele Versuche — bitte ${secs}s warten.`,
@@ -308,12 +316,16 @@ const en: Translations = {
   choosePassword: "Choose a password",
   password: "Password",
   confirm: "Confirm",
-  minChars: "at least 4 characters",
+  minChars: "at least 10 characters",
   getStarted: "Get started",
   unlock: "Unlock",
   back: "← Back",
   passwordMismatch: "Passwords don't match.",
-  passwordTooShort: "At least 4 characters.",
+  passwordTooShort: "At least 10 characters.",
+  pwWeak: "Weak",
+  pwFair: "Fair",
+  pwStrong: "Strong",
+  acceptShortPw: "Accept short password — I understand the increased risk.",
   wrongPassword: "Wrong password.",
   noLocalAccount: "No account in this browser. Set up CouchDB sync or register.",
   tooManyAttempts: (secs) => `Too many attempts — please wait ${secs}s.`,
