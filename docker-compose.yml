@@ -11,7 +11,7 @@ services:
         condition: service_healthy
 
   pusher:
-    build: ./pusher
+    image: ghcr.io/gleaned-app/gleaned-pusher:latest
     restart: unless-stopped
     environment:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}

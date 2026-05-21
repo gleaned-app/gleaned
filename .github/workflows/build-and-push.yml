@@ -54,7 +54,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push
+      - name: Build and push app
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -62,5 +62,16 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=app
+          cache-to: type=gha,mode=max,scope=app
+
+      - name: Build and push pusher
+        uses: docker/build-push-action@v6
+        with:
+          context: ./pusher
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}-pusher:latest
+            ghcr.io/${{ github.repository }}-pusher:${{ github.sha }}
+          cache-from: type=gha,scope=pusher
+          cache-to: type=gha,mode=max,scope=pusher
