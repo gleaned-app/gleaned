@@ -10,6 +10,12 @@ const QUERY_METADATA_LIMIT = 5000;
 // Upper bound for queries that decrypt entry content.
 const QUERY_DECRYPT_LIMIT = 2000;
 
+// ─── Search cache ─────────────────────────────────────────────────────────────
+// All decrypted entries in memory so searchEntries never re-decrypts on each
+// query. Cleared on lock, updated incrementally on save/update/delete.
+let _searchCache: Entry[] | null = null;
+function invalidateSearchCache() { _searchCache = null; }
+
 function toLocalDateStr(d: Date = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
@@ -95,6 +101,8 @@ let _dbAuthState: DbAuthState = "pending";
 
 export function setDbAuthenticated(authenticated: boolean): void {
   _dbAuthState = authenticated ? "authenticated" : "locked";
+  if (!authenticated) invalidateSearchCache();
+  if (authenticated) migrateTodosEncryption().catch(() => {});
 }
 
 function requireAuth(): void {
@@ -233,6 +241,7 @@ export async function deleteTag(tag: string): Promise<void> {
     }
   }
   invalidateTagsCache();
+  invalidateSearchCache();
 }
 
 // ─── Entry encryption helpers ────────────────────────────────────────────────
@@ -274,6 +283,67 @@ async function decryptEntry(entry: Entry): Promise<Entry> {
   }
 }
 
+// ─── Todo encryption helpers ─────────────────────────────────────────────────
+
+async function encryptTodo(
+  doc: Omit<Todo, "_rev" | "encrypted" | "textEnc">,
+): Promise<Omit<Todo, "_rev">> {
+  const key = await loadKey();
+  if (!key) return doc;
+  const textEnc = await encryptText(key, doc.text);
+  return {
+    _id: doc._id, type: "todo",
+    text: "", done: doc.done, createdAt: doc.createdAt,
+    encrypted: true, textEnc,
+    ...(doc.dueDate ? { dueDate: doc.dueDate } : {}),
+    ...(doc.color  ? { color:  doc.color  } : {}),
+  };
+}
+
+async function decryptTodo(todo: Todo): Promise<Todo> {
+  if (!todo.encrypted || !todo.textEnc) return todo;
+  const key = await loadKey();
+  if (!key) return todo;
+  try {
+    return { ...todo, text: await decryptText(key, todo.textEnc) };
+  } catch {
+    return todo;
+  }
+}
+
+// Strips plaintext from a decrypted todo before writing back to the DB.
+// Needed when non-text fields (done/dueDate/color) are updated: the in-memory
+// todo has both the decrypted text and the enc fields; we must not persist the
+// plaintext alongside the ciphertext.
+function withoutPlaintext(todo: Todo): Todo {
+  return todo.encrypted ? { ...todo, text: "" } : todo;
+}
+
+// One-shot migration: re-encrypts any todos that were created before encryption
+// was added. Runs fire-and-forget in the background after every login.
+async function migrateTodosEncryption(): Promise<void> {
+  const key = await loadKey();
+  if (!key) return;
+  const db = await getDB();
+  const result = await db.find({ selector: { type: "todo" } });
+  const plain = (result.docs as Todo[]).filter((t) => !t.encrypted && t.text);
+  for (const todo of plain) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const latest = attempt === 0 ? todo : (await db.get(todo._id)) as unknown as Todo;
+        if ((latest as { encrypted?: boolean }).encrypted) break;
+        const { _rev, ...base } = latest as Todo & { _rev?: string };
+        void _rev;
+        const enc = await encryptTodo(base as Omit<Todo, "_rev" | "encrypted" | "textEnc">);
+        await db.put({ ...enc, _rev: latest._rev } as unknown as AnyDoc);
+        break;
+      } catch (err) {
+        if ((err as { status?: number }).status !== 409) break;
+      }
+    }
+  }
+}
+
 // ─── Entries ────────────────────────────────────────────────────────────────
 
 export async function saveEntry(content: string, tags: string[], attachments?: Attachment[]): Promise<Entry> {
@@ -295,7 +365,9 @@ export async function saveEntry(content: string, tags: string[], attachments?: A
   const doc = await encryptEntry(base);
   await db.put(doc as unknown as AnyDoc);
   invalidateTagsCache();
-  return { ...doc, content, tags, ...(attachments?.length ? { attachments } : {}) } as Entry;
+  const saved: Entry = { ...doc, content, tags, ...(attachments?.length ? { attachments } : {}) } as Entry;
+  if (_searchCache !== null) _searchCache = [saved, ..._searchCache];
+  return saved;
 }
 
 export async function getEntriesByDate(date: string): Promise<Entry[]> {
@@ -344,18 +416,23 @@ export async function getEntryCountsByDate(): Promise<Map<string, number>> {
   return counts;
 }
 
-export async function searchEntries(query: string): Promise<Entry[]> {
-  requireAuth();
+async function buildSearchCache(): Promise<Entry[]> {
   const db = await getDB();
-  const q = query.toLowerCase();
   const result = await db.find({ selector: { type: "entry" }, limit: QUERY_DECRYPT_LIMIT });
   const decrypted = await Promise.all((result.docs as unknown[]).filter(isEntry).map(decryptEntry));
-  return decrypted
+  _searchCache = decrypted.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return _searchCache;
+}
+
+export async function searchEntries(query: string): Promise<Entry[]> {
+  requireAuth();
+  const q = query.toLowerCase();
+  const all = _searchCache ?? await buildSearchCache();
+  return all
     .filter((e) =>
       e.content?.toLowerCase().includes(q) ||
       e.tags?.some((t) => t.toLowerCase().includes(q))
     )
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 20);
 }
 
@@ -375,7 +452,11 @@ export async function updateEntry(entry: Entry, content: string, tags: string[])
       const enc = await encryptEntry(base);
       const res = await db.put({ ...enc, _rev: latest._rev } as unknown as AnyDoc);
       invalidateTagsCache();
-      return { ...enc, _rev: res.rev, content, tags } as Entry;
+      const updated = { ...enc, _rev: res.rev, content, tags } as Entry;
+      if (_searchCache !== null) {
+        _searchCache = _searchCache.map((e) => e._id === updated._id ? updated : e);
+      }
+      return updated;
     } catch (err) {
       if ((err as { status?: number }).status !== 409) throw err;
     }
@@ -390,6 +471,7 @@ export async function deleteEntry(id: string): Promise<void> {
     try {
       const doc = await db.get(id);
       await db.remove(doc);
+      if (_searchCache !== null) _searchCache = _searchCache.filter((e) => e._id !== id);
       return;
     } catch (err) {
       if ((err as { status?: number }).status === 404) return;
@@ -405,7 +487,7 @@ export async function saveTodo(text: string, dueDate?: string, color?: string): 
   requireAuth();
   const db = await getDB();
   const now = new Date();
-  const doc: Omit<Todo, "_rev"> = {
+  const base: Omit<Todo, "_rev" | "encrypted" | "textEnc"> = {
     _id: `todo_${now.getTime()}_${Math.random().toString(36).slice(2, 7)}`,
     type: "todo",
     text,
@@ -414,8 +496,9 @@ export async function saveTodo(text: string, dueDate?: string, color?: string): 
     ...(dueDate ? { dueDate } : {}),
     ...(color ? { color } : {}),
   };
-  await db.put(doc);
-  return doc as Todo;
+  const doc = await encryptTodo(base);
+  await db.put(doc as unknown as AnyDoc);
+  return { ...doc, text } as Todo;
 }
 
 export async function getTodos(): Promise<Todo[]> {
@@ -425,7 +508,7 @@ export async function getTodos(): Promise<Todo[]> {
     selector: { type: "todo" },
     sort: [{ type: "asc" }, { createdAt: "asc" }],
   });
-  return result.docs as Todo[];
+  return Promise.all((result.docs as Todo[]).map(decryptTodo));
 }
 
 export async function updateTodoDoc(todo: Todo): Promise<Todo> {
@@ -435,9 +518,9 @@ export async function updateTodoDoc(todo: Todo): Promise<Todo> {
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const latest = attempt === 0 ? todo : (await db.get(todo._id)) as unknown as Todo;
-      const updated = { ...latest, done: targetDone };
-      const res = await db.put(updated);
-      return { ...updated, _rev: res.rev };
+      const updated = { ...withoutPlaintext(latest), done: targetDone };
+      const res = await db.put(updated as unknown as AnyDoc);
+      return { ...updated, _rev: res.rev, text: todo.text } as Todo;
     } catch (err) {
       if ((err as { status?: number }).status !== 409) throw err;
     }
@@ -451,11 +534,11 @@ export async function updateTodoDueDate(todo: Todo, dueDate: string | undefined)
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const latest = attempt === 0 ? todo : (await db.get(todo._id)) as unknown as Todo;
-      const updated: Todo = { ...latest };
+      const updated: Todo = { ...withoutPlaintext(latest) };
       if (dueDate) updated.dueDate = dueDate;
       else delete updated.dueDate;
-      const res = await db.put(updated);
-      return { ...updated, _rev: res.rev };
+      const res = await db.put(updated as unknown as AnyDoc);
+      return { ...updated, _rev: res.rev, text: todo.text } as Todo;
     } catch (err) {
       if ((err as { status?: number }).status !== 409) throw err;
     }
@@ -469,11 +552,11 @@ export async function updateTodoColor(todo: Todo, color: string | undefined): Pr
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const latest = attempt === 0 ? todo : (await db.get(todo._id)) as unknown as Todo;
-      const updated: Todo = { ...latest };
+      const updated: Todo = { ...withoutPlaintext(latest) };
       if (color) updated.color = color;
       else delete updated.color;
-      const res = await db.put(updated);
-      return { ...updated, _rev: res.rev };
+      const res = await db.put(updated as unknown as AnyDoc);
+      return { ...updated, _rev: res.rev, text: todo.text } as Todo;
     } catch (err) {
       if ((err as { status?: number }).status !== 409) throw err;
     }
@@ -487,9 +570,11 @@ export async function updateTodoText(todo: Todo, text: string): Promise<Todo> {
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const latest = attempt === 0 ? todo : (await db.get(todo._id)) as unknown as Todo;
-      const updated = { ...latest, text };
-      const res = await db.put(updated);
-      return { ...updated, _rev: res.rev };
+      const { _rev, encrypted: _e, textEnc: _t, ...rest } = latest as Todo & { _rev?: string; encrypted?: boolean; textEnc?: string };
+      void _rev; void _e; void _t;
+      const enc = await encryptTodo({ ...rest, text } as Omit<Todo, "_rev" | "encrypted" | "textEnc">);
+      const res = await db.put({ ...enc, _rev: latest._rev } as unknown as AnyDoc);
+      return { ...enc, _rev: res.rev, text } as Todo;
     } catch (err) {
       if ((err as { status?: number }).status !== 409) throw err;
     }
@@ -766,11 +851,18 @@ export async function exportData(): Promise<string> {
       .map(async (r) => {
         const { _rev, ...doc } = r.doc as AnyDoc & { _rev?: string };
         void _rev;
-        if ((doc as Entry & { encrypted?: boolean }).encrypted) {
+        if (doc.type === "entry" && (doc as Entry & { encrypted?: boolean }).encrypted) {
           const decrypted = await decryptEntry(doc as Entry);
           const { encrypted: _e, enc: _enc, ...plain } =
             decrypted as Entry & { encrypted?: boolean; enc?: string };
           void _e; void _enc;
+          return plain;
+        }
+        if (doc.type === "todo" && (doc as Todo & { encrypted?: boolean }).encrypted) {
+          const decrypted = await decryptTodo(doc as Todo);
+          const { encrypted: _e, textEnc: _t, ...plain } =
+            decrypted as Todo & { encrypted?: boolean; textEnc?: string };
+          void _e; void _t;
           return plain;
         }
         return doc;
@@ -840,9 +932,13 @@ export async function importData(json: string): Promise<{ imported: number; skip
           const toStore = await encryptEntry(mutable as Omit<Entry, "_rev" | "encrypted" | "enc">);
           await db.put(toStore as unknown as AnyDoc);
         } else {
-          const { _rev, ...toInsert } = doc;
-          void _rev;
-          await db.put(toInsert as unknown as AnyDoc);
+          // Re-encrypt under the current key — same rationale as entries.
+          const mutable = { ...(doc as Record<string, unknown>) };
+          delete mutable._rev;
+          delete mutable.encrypted;
+          delete mutable.textEnc;
+          const toStore = await encryptTodo(mutable as Omit<Todo, "_rev" | "encrypted" | "textEnc">);
+          await db.put(toStore as unknown as AnyDoc);
         }
         imported++;
       } else {

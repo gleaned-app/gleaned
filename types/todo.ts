@@ -5,6 +5,8 @@ export interface Todo {
   text: string;
   done: boolean;
   createdAt: string;
-  dueDate?: string; // "YYYY-MM-DD"
-  color?: string;   // hex color
+  dueDate?: string;   // "YYYY-MM-DD"
+  color?: string;     // hex color
+  encrypted?: boolean;
+  textEnc?: string;   // AES-GCM ciphertext of text
 }

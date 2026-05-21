@@ -104,11 +104,9 @@ async function broadcast(buildPayload) {
 }
 
 // ── Due-date reminder ─────────────────────────────────────────────────────────
-// Threat model: todos are NOT end-to-end encrypted. The pusher reads todo text
-// directly from CouchDB to compose meaningful notification bodies. This is an
-// intentional design trade-off — the server must know what is due to name it in
-// the notification. Users who consider todo text sensitive can disable due-date
-// notifications in Settings.
+// Todos are end-to-end encrypted: the pusher can see dueDate/done (plaintext)
+// but not the text ciphertext. When todos are encrypted, notification bodies
+// fall back to count-based summaries ("2 due today") instead of naming them.
 async function sendDueReminders() {
   // Gracefully skip if the gleaned DB doesn't exist yet (CouchDB sync not set up)
   let db;
@@ -124,7 +122,7 @@ async function sendDueReminders() {
   // Fetch all todos — filter in JS to avoid needing a dueDate index
   const result = await db.find({
     selector: { type: "todo" },
-    fields: ["_id", "text", "dueDate", "done"],
+    fields: ["_id", "text", "dueDate", "done", "encrypted"],
     limit: 1000,
   });
 
@@ -136,10 +134,15 @@ async function sendDueReminders() {
   const overdue  = due.filter((d) => d.dueDate < today);
   const dueToday = due.filter((d) => d.dueDate === today);
 
+  const anyEncrypted = due.some((d) => d.encrypted);
+
   const buildPayload = (lang) => {
     const m = MSG[lang] ?? MSG.en;
     let body;
-    if (dueToday.length === 1 && overdue.length === 0) {
+    if (anyEncrypted) {
+      // Text is encrypted — fall back to counts only.
+      body = m.mixed(dueToday.length || null, overdue.length || null);
+    } else if (dueToday.length === 1 && overdue.length === 0) {
       body = m.dueToday1(dueToday[0].text);
     } else if (dueToday.length > 0 && overdue.length === 0) {
       body = m.dueTodayN(dueToday.length);
