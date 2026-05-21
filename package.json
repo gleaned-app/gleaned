@@ -18,8 +18,8 @@
     "next": "16.2.6",
     "pouchdb": "^9.0.0",
     "pouchdb-find": "^9.0.0",
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
   },
   "pnpm": {
     "onlyBuiltDependencies": ["leveldown", "sharp", "unrs-resolver"],
