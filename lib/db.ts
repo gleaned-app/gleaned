@@ -82,14 +82,23 @@ export async function startSync(url: string, username?: string, password?: strin
 // throw when accessed unauthenticated (e.g. from the browser console). No
 // circular import: auth.ts already imports db.ts; db.ts never imports auth.ts.
 
-let _dbAuthenticated = false;
+// Three-state guard:
+//   "pending"       — initial state and after HMR module reset; requireAuth passes
+//                     because no DB-using component is mounted before auth completes.
+//   "authenticated" — set by auth.ts after successful login / setupPassword.
+//   "locked"        — set by auth.ts on logout; requireAuth throws to block console access.
+// Using "pending" instead of a boolean means an HMR reset of this module never
+// produces false-positives: the page was already behind the LockScreen at the
+// time of the reset, so no DB calls reach requireAuth until login runs again.
+type DbAuthState = "pending" | "authenticated" | "locked";
+let _dbAuthState: DbAuthState = "pending";
 
 export function setDbAuthenticated(authenticated: boolean): void {
-  _dbAuthenticated = authenticated;
+  _dbAuthState = authenticated ? "authenticated" : "locked";
 }
 
 function requireAuth(): void {
-  if (!_dbAuthenticated) throw new Error("gleaned: not authenticated");
+  if (_dbAuthState === "locked") throw new Error("gleaned: not authenticated");
 }
 
 // ─── Tags cache ──────────────────────────────────────────────────────────────
