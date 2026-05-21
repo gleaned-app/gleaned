@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useSettings } from "@/lib/settings-context";
-import type { AppSettings, Theme, BodyFont } from "@/lib/settings-context";
+import type { AppSettings, Theme, BodyFont, AppView } from "@/lib/settings-context";
 import { useT } from "@/lib/i18n";
 import { exportData, importData, getAllTags, deleteTag } from "@/lib/db";
 import { getPushStatus, subscribeToPush, unsubscribeFromPush } from "@/lib/notifications";
@@ -210,6 +210,18 @@ export default function SettingsModal({ onClose }: Props) {
           </Field>
           <Field label={t.weekStartLabel}>
             <SegmentedControl<AppSettings["weekStart"]> value={settings.weekStart} options={[{ value: "monday", label: t.monday }, { value: "sunday", label: t.sunday }]} onChange={(v) => update({ weekStart: v })} />
+          </Field>
+          <Field label={t.defaultViewLabel}>
+            <SegmentedControl<AppView>
+              value={settings.defaultView}
+              options={[
+                { value: "journal",  label: t.navJournal },
+                { value: "calendar", label: t.navCalendar },
+                { value: "todos",    label: t.navLearn },
+                { value: "review",   label: t.navReview },
+              ]}
+              onChange={(v) => update({ defaultView: v })}
+            />
           </Field>
         </div>
       );
