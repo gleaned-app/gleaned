@@ -64,12 +64,18 @@ export default function BottomNav({ current, onChange, reviewCount = 0 }: Props)
         paddingBottom: "max(14px, env(safe-area-inset-bottom))",
         paddingTop: "8px",
         paddingInline: "20px",
+        // Lass Touch/Click durch den transparenten Wrapper hindurch — sonst
+        // blockiert Chrome's PWA Hit-Testing das Scrollen überall, wo das
+        // nav-Rechteck liegt (auch links/rechts neben der Glas-Insel).
+        pointerEvents: "none",
       }}
     >
       {/* Liquid glass island — wider than button group, deep 3D shadow */}
       <div
         className="relative flex items-center gap-1 px-4 py-2 sm:gap-2 sm:px-5"
         style={{
+          // Pointer-Events nur auf der sichtbaren Insel reaktivieren.
+          pointerEvents: "auto",
           background: "color-mix(in oklch, var(--bg-glass) 60%, transparent)",
           backdropFilter: "blur(40px) saturate(2.4) brightness(1.06)",
           WebkitBackdropFilter: "blur(40px) saturate(2.4) brightness(1.06)",
