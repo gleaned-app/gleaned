@@ -29,6 +29,7 @@ export interface Translations {
   passwordTooShort: string;
   wrongPassword: string;
   noLocalAccount: string;
+  tooManyAttempts(secs: number): string;
 
   // Journal
   filterBack: string;
@@ -132,6 +133,9 @@ export interface Translations {
   swUpdateAvailable: string;
   swUpdateReload: string;
 
+  defaultViewLabel: string;
+  genericError: string;
+
   // Search
   search: string;
   searchPlaceholder: string;
@@ -172,6 +176,7 @@ const de: Translations = {
   passwordTooShort: "Mindestens 4 Zeichen.",
   wrongPassword: "Falsches Passwort.",
   noLocalAccount: "Kein Konto in diesem Browser. CouchDB-Sync einrichten oder Registrieren.",
+  tooManyAttempts: (secs) => `Zu viele Versuche — bitte ${secs}s warten.`,
 
   filterBack: "zurück",
   noEntriesTag: (tag) => `Keine Einträge für #${tag}`,
@@ -270,6 +275,9 @@ const de: Translations = {
   swUpdateAvailable: "Neue Version verfügbar",
   swUpdateReload: "Neu laden",
 
+  defaultViewLabel: "Standard-Ansicht",
+  genericError: "Fehler — Seite neu laden.",
+
   search: "Suchen",
   searchPlaceholder: "Einträge durchsuchen…",
   searchNoResults: "Nichts gefunden.",
@@ -308,6 +316,7 @@ const en: Translations = {
   passwordTooShort: "At least 4 characters.",
   wrongPassword: "Wrong password.",
   noLocalAccount: "No account in this browser. Set up CouchDB sync or register.",
+  tooManyAttempts: (secs) => `Too many attempts — please wait ${secs}s.`,
 
   filterBack: "back",
   noEntriesTag: (tag) => `No entries for #${tag}`,
@@ -405,6 +414,9 @@ const en: Translations = {
 
   swUpdateAvailable: "New version available",
   swUpdateReload: "Reload",
+
+  defaultViewLabel: "Default view",
+  genericError: "Error — reload the page.",
 
   search: "Search",
   searchPlaceholder: "Search your entries…",

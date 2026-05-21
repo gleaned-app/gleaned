@@ -195,6 +195,9 @@ export default function LockScreen({ onAuth }: Props) {
   const [error,    setError]    = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [focused,  setFocused]  = useState<"pw" | "confirm" | null>(null);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockUntil, setLockUntil] = useState<number | null>(null);
+  const [lockSecsLeft, setLockSecsLeft] = useState(0);
 
   const t = useT();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -208,8 +211,24 @@ export default function LockScreen({ onAuth }: Props) {
     });
   }, []);
 
+  useEffect(() => {
+    if (!lockUntil) return;
+    const id = setInterval(() => {
+      const left = Math.ceil((lockUntil - Date.now()) / 1000);
+      if (left <= 0) {
+        setLockUntil(null);
+        setLockSecsLeft(0);
+        setError("");
+      } else {
+        setLockSecsLeft(left);
+      }
+    }, 250);
+    return () => clearInterval(id);
+  }, [lockUntil]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (lockUntil) return;
     setError("");
     if (!password.trim()) return;
     if (mode === "setup") {
@@ -220,6 +239,8 @@ export default function LockScreen({ onAuth }: Props) {
         await setupPassword(password);
         onAuth();
       } catch {
+        setError(t.genericError);
+      } finally {
         setSubmitting(false);
       }
     } else {
@@ -229,12 +250,19 @@ export default function LockScreen({ onAuth }: Props) {
         if (ok) {
           onAuth();
         } else {
-          const msg = hasLocalAccount ? t.wrongPassword : t.noLocalAccount;
-          setError(msg);
+          const attempts = failedAttempts + 1;
+          setFailedAttempts(attempts);
+          // Exponential backoff: 2^(n-1) seconds, capped at 30 s
+          const delaySecs = Math.min(Math.pow(2, attempts - 1), 30);
+          const until = Date.now() + delaySecs * 1000;
+          setLockUntil(until);
+          setLockSecsLeft(delaySecs);
+          setError(t.tooManyAttempts(delaySecs));
           setPassword("");
-          setSubmitting(false);
         }
       } catch {
+        setError(t.genericError);
+      } finally {
         setSubmitting(false);
       }
     }
@@ -471,16 +499,16 @@ export default function LockScreen({ onAuth }: Props) {
             </span>
             <button
               type="submit"
-              disabled={submitting || !password.trim()}
+              disabled={submitting || !password.trim() || !!lockUntil}
               className="rounded-full px-6 py-2.5 font-sans text-sm font-medium tracking-wide transition-all"
               style={{
-                background: password.trim() ? "var(--fg)" : "transparent",
-                color: password.trim() ? "var(--bg)" : "var(--fg-muted)",
-                border: `1.5px solid ${password.trim() ? "var(--fg)" : "var(--border-focus)"}`,
-                opacity: submitting ? 0.6 : 1,
+                background: (password.trim() && !lockUntil) ? "var(--fg)" : "transparent",
+                color: (password.trim() && !lockUntil) ? "var(--bg)" : "var(--fg-muted)",
+                border: `1.5px solid ${(password.trim() && !lockUntil) ? "var(--fg)" : "var(--border-focus)"}`,
+                opacity: (submitting || !!lockUntil) ? 0.6 : 1,
               }}
             >
-              {submitting ? "…" : mode === "setup" ? t.getStarted : t.unlock}
+              {submitting ? "…" : lockUntil ? `${lockSecsLeft}s` : mode === "setup" ? t.getStarted : t.unlock}
             </button>
           </div>
 

@@ -31,6 +31,8 @@ The following are **out of scope**:
 
 ## Encryption model
 
-gleaned uses PBKDF2 (100,000 iterations, SHA-256) to derive an AES-GCM-256 key from the user's password. Entry content and tags are encrypted before being written to IndexedDB. The derived key is cached in `sessionStorage` as a JWK for the duration of the browser session and is never persisted to disk.
+gleaned uses PBKDF2 (200,000 iterations, SHA-256) to derive an AES-GCM-256 key from the user's password. Entry content, tags, and the CouchDB sync password are encrypted before being written to IndexedDB. The derived key is held only in the JavaScript module cache for the lifetime of the page — it is never written to `sessionStorage`, `localStorage`, or any other persistent store. A page reload requires re-authentication; this is intentional.
 
-The password hash stored in the database uses SHA-256 and is used only for login verification — it is separate from the encryption key derivation.
+The login verification token stored in the database is an AES-GCM ciphertext of a known plaintext, encrypted under the derived key. Successful decryption proves knowledge of the password without storing anything reversible.
+
+Brute-force protection is applied on the lock screen: each failed login attempt increases the lockout delay exponentially (1 s, 2 s, 4 s … up to 30 s).
