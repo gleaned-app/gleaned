@@ -4,6 +4,12 @@ import { loadKey, encryptText, decryptText } from "./crypto";
 
 type AnyDoc = Entry | Todo;
 
+// Upper bound for metadata-only queries (IDs + dates, no enc blobs).
+// A journal with 5 entries/day reaches this after ~2.7 years.
+const QUERY_METADATA_LIMIT = 5000;
+// Upper bound for queries that decrypt entry content.
+const QUERY_DECRYPT_LIMIT = 2000;
+
 function toLocalDateStr(d: Date = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
@@ -71,6 +77,21 @@ export async function startSync(url: string, username?: string, password?: strin
     .on("denied",  () => setSyncStatus("error")) as PouchDB.Replication.Sync<AnyDoc>;
 }
 
+// ─── Auth guard ──────────────────────────────────────────────────────────────
+// auth.ts calls setDbAuthenticated on every login/logout so all data functions
+// throw when accessed unauthenticated (e.g. from the browser console). No
+// circular import: auth.ts already imports db.ts; db.ts never imports auth.ts.
+
+let _dbAuthenticated = false;
+
+export function setDbAuthenticated(authenticated: boolean): void {
+  _dbAuthenticated = authenticated;
+}
+
+function requireAuth(): void {
+  if (!_dbAuthenticated) throw new Error("gleaned: not authenticated");
+}
+
 // ─── Tags cache ──────────────────────────────────────────────────────────────
 
 let _tagsCache: Map<string, number> | null = null;
@@ -108,6 +129,7 @@ export async function getDB(): Promise<PouchDB.Database<AnyDoc>> {
 // ─── Tags ────────────────────────────────────────────────────────────────────
 
 export async function getStreakData(): Promise<{ streak: number; todayCount: number; longestStreak: number }> {
+  requireAuth();
   const db = await getDB();
   const today = toLocalDateStr();
   const result = await db.find({ selector: { type: "entry" }, fields: ["date"] });
@@ -146,6 +168,7 @@ export async function getStreakData(): Promise<{ streak: number; todayCount: num
 }
 
 export async function getAllTags(): Promise<Map<string, number>> {
+  requireAuth();
   const now = Date.now();
   if (_tagsCache && now - _tagsCacheTime < TAGS_CACHE_TTL) return _tagsCache;
   const db = await getDB();
@@ -163,6 +186,7 @@ export async function getAllTags(): Promise<Map<string, number>> {
 }
 
 export async function getEntriesByTag(tag: string): Promise<Entry[]> {
+  requireAuth();
   const db = await getDB();
   const result = await db.find({
     selector: { type: "entry" },
@@ -173,6 +197,7 @@ export async function getEntriesByTag(tag: string): Promise<Entry[]> {
 }
 
 export async function deleteTag(tag: string): Promise<void> {
+  requireAuth();
   const db = await getDB();
   const result = await db.find({ selector: { type: "entry" } });
   for (const raw of result.docs as Entry[]) {
@@ -243,6 +268,7 @@ async function decryptEntry(entry: Entry): Promise<Entry> {
 // ─── Entries ────────────────────────────────────────────────────────────────
 
 export async function saveEntry(content: string, tags: string[], attachments?: Attachment[]): Promise<Entry> {
+  requireAuth();
   const db = await getDB();
   const now = new Date();
   const tomorrow = toLocalDateStr(new Date(now.getTime() + 86_400_000));
@@ -264,6 +290,7 @@ export async function saveEntry(content: string, tags: string[], attachments?: A
 }
 
 export async function getEntriesByDate(date: string): Promise<Entry[]> {
+  requireAuth();
   const db = await getDB();
   const result = await db.find({
     selector: { type: "entry", date },
@@ -273,8 +300,9 @@ export async function getEntriesByDate(date: string): Promise<Entry[]> {
 }
 
 export async function getEntryMonths(): Promise<string[]> {
+  requireAuth();
   const db = await getDB();
-  const result = await db.find({ selector: { type: "entry" }, fields: ["date"], limit: 5000 });
+  const result = await db.find({ selector: { type: "entry" }, fields: ["date"], limit: QUERY_METADATA_LIMIT });
   const months = new Set<string>();
   for (const doc of result.docs as { date?: string }[]) {
     if (doc.date) months.add(doc.date.slice(0, 7));
@@ -283,6 +311,7 @@ export async function getEntryMonths(): Promise<string[]> {
 }
 
 export async function getEntriesForMonth(year: number, month: number): Promise<Entry[]> {
+  requireAuth();
   const db = await getDB();
   const pad = (n: number) => String(n).padStart(2, "0");
   const prefix = `${year}-${pad(month + 1)}`;
@@ -295,6 +324,7 @@ export async function getEntriesForMonth(year: number, month: number): Promise<E
 }
 
 export async function getEntryCountsByDate(): Promise<Map<string, number>> {
+  requireAuth();
   const db = await getDB();
   const result = await db.find({ selector: { type: "entry" }, fields: ["date"] });
   const counts = new Map<string, number>();
@@ -306,9 +336,10 @@ export async function getEntryCountsByDate(): Promise<Map<string, number>> {
 }
 
 export async function searchEntries(query: string): Promise<Entry[]> {
+  requireAuth();
   const db = await getDB();
   const q = query.toLowerCase();
-  const result = await db.find({ selector: { type: "entry" }, limit: 2000 });
+  const result = await db.find({ selector: { type: "entry" }, limit: QUERY_DECRYPT_LIMIT });
   const decrypted = await Promise.all((result.docs as unknown[]).filter(isEntry).map(decryptEntry));
   return decrypted
     .filter((e) =>
@@ -320,6 +351,7 @@ export async function searchEntries(query: string): Promise<Entry[]> {
 }
 
 export async function updateEntry(entry: Entry, content: string, tags: string[]): Promise<Entry> {
+  requireAuth();
   const db = await getDB();
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
@@ -343,6 +375,7 @@ export async function updateEntry(entry: Entry, content: string, tags: string[])
 }
 
 export async function deleteEntry(id: string): Promise<void> {
+  requireAuth();
   const db = await getDB();
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
@@ -360,6 +393,7 @@ export async function deleteEntry(id: string): Promise<void> {
 // ─── Todos ───────────────────────────────────────────────────────────────────
 
 export async function saveTodo(text: string, dueDate?: string, color?: string): Promise<Todo> {
+  requireAuth();
   const db = await getDB();
   const now = new Date();
   const doc: Omit<Todo, "_rev"> = {
@@ -376,6 +410,7 @@ export async function saveTodo(text: string, dueDate?: string, color?: string): 
 }
 
 export async function getTodos(): Promise<Todo[]> {
+  requireAuth();
   const db = await getDB();
   const result = await db.find({
     selector: { type: "todo" },
@@ -385,6 +420,7 @@ export async function getTodos(): Promise<Todo[]> {
 }
 
 export async function updateTodoDoc(todo: Todo): Promise<Todo> {
+  requireAuth();
   const db = await getDB();
   const targetDone = !todo.done;
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -401,6 +437,7 @@ export async function updateTodoDoc(todo: Todo): Promise<Todo> {
 }
 
 export async function updateTodoDueDate(todo: Todo, dueDate: string | undefined): Promise<Todo> {
+  requireAuth();
   const db = await getDB();
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
@@ -418,6 +455,7 @@ export async function updateTodoDueDate(todo: Todo, dueDate: string | undefined)
 }
 
 export async function updateTodoColor(todo: Todo, color: string | undefined): Promise<Todo> {
+  requireAuth();
   const db = await getDB();
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
@@ -435,6 +473,7 @@ export async function updateTodoColor(todo: Todo, color: string | undefined): Pr
 }
 
 export async function updateTodoText(todo: Todo, text: string): Promise<Todo> {
+  requireAuth();
   const db = await getDB();
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
@@ -450,6 +489,7 @@ export async function updateTodoText(todo: Todo, text: string): Promise<Todo> {
 }
 
 export async function deleteTodo(id: string): Promise<void> {
+  requireAuth();
   const db = await getDB();
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
@@ -467,12 +507,13 @@ export async function deleteTodo(id: string): Promise<void> {
 // ─── Review (spaced repetition + history) ────────────────────────────────────
 
 export async function getRecentEntries(limit = 50): Promise<Entry[]> {
+  requireAuth();
   const db = await getDB();
   // Pass 1: fetch only metadata (no enc blob) to sort and slice
   const result = await db.find({
     selector: { type: "entry" },
     fields: ["_id", "createdAt"],
-    limit: 5000,
+    limit: QUERY_METADATA_LIMIT,
   });
   const ids = (result.docs as unknown as Pick<Entry, "_id" | "createdAt">[])
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
@@ -486,6 +527,7 @@ export async function getRecentEntries(limit = 50): Promise<Entry[]> {
 }
 
 export async function getReviewDue(maxBackfill = 10): Promise<Entry[]> {
+  requireAuth();
   const db = await getDB();
   const today = toLocalDateStr();
 
@@ -493,7 +535,7 @@ export async function getReviewDue(maxBackfill = 10): Promise<Entry[]> {
   const result = await db.find({
     selector: { type: "entry" },
     fields: ["_id", "date", "createdAt", "nextReview"],
-    limit: 5000,
+    limit: QUERY_METADATA_LIMIT,
   });
   const all = result.docs as unknown as Pick<Entry, "_id" | "date" | "createdAt" | "nextReview">[];
 
@@ -520,13 +562,14 @@ export async function getReviewDue(maxBackfill = 10): Promise<Entry[]> {
 }
 
 export async function getReviewCount(): Promise<number> {
+  requireAuth();
   const db = await getDB();
   const today = toLocalDateStr();
 
   const result = await db.find({
     selector: { type: "entry" },
     fields: ["_id", "nextReview", "date"],
-    limit: 2000,
+    limit: QUERY_METADATA_LIMIT,
   });
   const all = result.docs as unknown as Pick<Entry, "_id" | "nextReview" | "date">[];
 
@@ -536,6 +579,7 @@ export async function getReviewCount(): Promise<number> {
 }
 
 export async function markReviewed(entry: Entry, remembered: boolean): Promise<Entry> {
+  requireAuth();
   const db = await getDB();
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
@@ -582,6 +626,7 @@ export interface ConflictDoc {
 }
 
 export async function getConflicts(): Promise<ConflictDoc[]> {
+  requireAuth();
   const db = await getDB();
   const result = await db.allDocs({
     include_docs: true,
@@ -620,6 +665,7 @@ export async function resolveConflict(
   keepRev: string,
   discardRevs: string[]
 ): Promise<void> {
+  requireAuth();
   const db = await getDB();
   const current = (await db.get(id)) as Entry;
 
@@ -701,19 +747,31 @@ export async function saveSettings(data: Partial<Settings>): Promise<void> {
 // ─── Export / Import ─────────────────────────────────────────────────────────
 
 export async function exportData(): Promise<string> {
+  requireAuth();
   const db = await getDB();
   const result = await db.allDocs({ include_docs: true });
-  const docs = result.rows
-    .filter((r) => r.doc && (r.doc.type === "entry" || r.doc.type === "todo"))
-    .map((r) => {
-      const { _rev, ...doc } = r.doc as AnyDoc & { _rev?: string };
-      void _rev;
-      return doc;
-    });
+  // Decrypt entries so the export is portable across devices and passwords.
+  const docs = await Promise.all(
+    result.rows
+      .filter((r) => r.doc && (r.doc.type === "entry" || r.doc.type === "todo"))
+      .map(async (r) => {
+        const { _rev, ...doc } = r.doc as AnyDoc & { _rev?: string };
+        void _rev;
+        if ((doc as Entry & { encrypted?: boolean }).encrypted) {
+          const decrypted = await decryptEntry(doc as Entry);
+          const { encrypted: _e, enc: _enc, ...plain } =
+            decrypted as Entry & { encrypted?: boolean; enc?: string };
+          void _e; void _enc;
+          return plain;
+        }
+        return doc;
+      })
+  );
   return JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), docs }, null, 2);
 }
 
 export async function importData(json: string): Promise<{ imported: number; skipped: number }> {
+  requireAuth();
   const db = await getDB();
   const parsed = JSON.parse(json) as { docs?: unknown[] } | unknown[];
   const rawDocs: unknown[] = Array.isArray(parsed) ? parsed : ((parsed as { docs?: unknown[] }).docs ?? []);
@@ -725,12 +783,38 @@ export async function importData(json: string): Promise<{ imported: number; skip
   // Blocks _design/*, _local/*, gleaned_settings, and any other internal docs.
   const VALID_ID = /^(entry|todo)_\d+_[a-z0-9]+$/;
   const IMPORTABLE_TYPES = new Set(["entry", "todo"]);
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
   for (const raw of rawDocs) {
     const doc = raw as Record<string, unknown>;
     const id = doc._id as string;
     const type = doc.type as string;
     if (!id || !type || !IMPORTABLE_TYPES.has(type) || !VALID_ID.test(id)) { skipped++; continue; }
+
+    // Skip entries that are still encrypted — they cannot be decrypted without the
+    // original password and would import as blank entries.
+    if (doc.encrypted === true) { skipped++; continue; }
+
+    if (type === "entry") {
+      const valid =
+        typeof doc.content === "string" &&
+        Array.isArray(doc.tags) &&
+        (doc.tags as unknown[]).every((t) => typeof t === "string") &&
+        typeof doc.date === "string" && DATE_RE.test(doc.date) &&
+        typeof doc.createdAt === "string" && !isNaN(Date.parse(doc.createdAt as string));
+      if (!valid) { skipped++; continue; }
+    }
+
+    if (type === "todo") {
+      const valid =
+        typeof doc.text === "string" &&
+        typeof doc.done === "boolean" &&
+        typeof doc.createdAt === "string" && !isNaN(Date.parse(doc.createdAt as string)) &&
+        (doc.dueDate === undefined ||
+          (typeof doc.dueDate === "string" && DATE_RE.test(doc.dueDate)));
+      if (!valid) { skipped++; continue; }
+    }
+
     try {
       await db.get(id);
       skipped++;

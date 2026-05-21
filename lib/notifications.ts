@@ -48,7 +48,7 @@ export async function subscribeToPush(lang: "de" | "en" = "en"): Promise<boolean
     const res = await fetch(`${PUSH_BASE}/subscribe`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...sub.toJSON(), lang }),
+      body: JSON.stringify({ ...sub.toJSON(), lang, tz: Intl.DateTimeFormat().resolvedOptions().timeZone }),
     });
     return res.ok;
   } catch {

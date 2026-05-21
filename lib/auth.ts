@@ -1,4 +1,4 @@
-import { getSettings, saveSettings } from "./db";
+import { getSettings, saveSettings, setDbAuthenticated } from "./db";
 import {
   deriveKey, generateSalt, saltToBase64, base64ToSalt,
   encryptText, decryptText, storeKey, clearKey,
@@ -9,6 +9,11 @@ const VERIFICATION_PLAINTEXT = "gleaned-v1";
 // Auth state lives only in memory — a page reload requires re-authentication.
 // This is intentional: persisting auth state in sessionStorage would keep the
 // session alive after a tab restore, which defeats the purpose of a lock screen.
+//
+// Threat model: this design protects against remote/network access and cross-origin
+// JS. It does NOT protect against physical access to an unlocked device with an open
+// tab — the AES key is in JS heap and the session is live. That is an accepted
+// trade-off for a local-first app; users should lock (⌘L) before stepping away.
 let _authenticated = false;
 
 export async function hasPassword(): Promise<boolean> {
@@ -26,6 +31,7 @@ export async function setupPassword(password: string): Promise<void> {
   });
   await storeKey(key);
   _authenticated = true;
+  setDbAuthenticated(true);
 }
 
 export async function login(password: string): Promise<boolean> {
@@ -43,12 +49,14 @@ export async function login(password: string): Promise<boolean> {
   }
 
   _authenticated = true;
+  setDbAuthenticated(true);
   return true;
 }
 
 export function logout(): void {
   _authenticated = false;
   clearKey();
+  setDbAuthenticated(false);
 }
 
 export function isAuthenticated(): boolean {

@@ -17,6 +17,7 @@ const {
   GLEANED_DB      = "gleaned",
   PORT            = "3001",
   SEND_SECRET     = "",
+  PUSH_TZ         = Intl.DateTimeFormat().resolvedOptions().timeZone,
 } = process.env;
 
 if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
@@ -30,6 +31,13 @@ if (!SEND_SECRET) {
   console.error("allowing anyone who discovers the endpoint to broadcast push notifications.");
   console.error("Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"");
   process.exit(1);
+}
+
+// Returns YYYY-MM-DD in the configured timezone (PUSH_TZ env var, defaults to
+// server system locale). Using toISOString() gives UTC and misidentifies "today"
+// for users in UTC+ zones when crons fire near midnight.
+function localDateStr() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: PUSH_TZ }).format(new Date());
 }
 
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
@@ -95,6 +103,11 @@ async function broadcast(buildPayload) {
 }
 
 // ── Due-date reminder ─────────────────────────────────────────────────────────
+// Threat model: todos are NOT end-to-end encrypted. The pusher reads todo text
+// directly from CouchDB to compose meaningful notification bodies. This is an
+// intentional design trade-off — the server must know what is due to name it in
+// the notification. Users who consider todo text sensitive can disable due-date
+// notifications in Settings.
 async function sendDueReminders() {
   // Gracefully skip if the gleaned DB doesn't exist yet (CouchDB sync not set up)
   let db;
@@ -105,7 +118,7 @@ async function sendDueReminders() {
     return;
   }
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = localDateStr();
 
   // Fetch all todos — filter in JS to avoid needing a dueDate index
   const result = await db.find({
@@ -158,7 +171,7 @@ app.post("/subscribe", async (req, res) => {
     const db = await getSubsDb();
     const id = Buffer.from(sub.endpoint).toString("base64url").slice(0, 64);
     try { const existing = await db.get(id); await db.destroy(id, existing._rev); } catch {}
-    await db.insert({ endpoint: sub.endpoint, keys: sub.keys, lang: sub.lang || "en", createdAt: new Date().toISOString() }, id);
+    await db.insert({ endpoint: sub.endpoint, keys: sub.keys, lang: sub.lang || "en", tz: sub.tz || PUSH_TZ, createdAt: new Date().toISOString() }, id);
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -201,7 +214,7 @@ async function hasEntryToday() {
   try {
     const db = couch.db.use(GLEANED_DB);
     await db.info();
-    const today = new Date().toISOString().split("T")[0];
+    const today = localDateStr();
     const result = await db.find({
       selector: { type: "entry", date: today },
       fields: ["_id"],
@@ -225,13 +238,13 @@ cron.schedule(`${PUSH_MINUTE} ${PUSH_HOUR} * * *`, async () => {
     url:   "/",
   }));
   console.log(`Sent: ${result.sent} ok, ${result.failed} failed`);
-});
+}, { timezone: PUSH_TZ });
 
 // ── Due-date reminder (runs once daily, default 09:00) ────────────────────────
 cron.schedule(`${DUE_MINUTE} ${DUE_HOUR} * * *`, async () => {
   console.log(`[${new Date().toISOString()}] Checking due todos...`);
   await sendDueReminders().catch((e) => console.error("Due reminders failed:", e.message));
-});
+}, { timezone: PUSH_TZ });
 
 app.listen(Number(PORT), () => {
   console.log(`gleaned pusher running on :${PORT}`);
