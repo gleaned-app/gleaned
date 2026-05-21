@@ -1,8 +1,8 @@
 # Production deployment with Traefik reverse proxy.
 #
 # Prerequisites on the VPS:
-#   - Traefik running with an external "frontend" network
-#   - A cert resolver named "ionos" configured in Traefik
+#   - Traefik running with an external Docker network
+#   - A cert resolver configured in Traefik
 #   - A .env file (see .env.example)
 #   - The couchdb/local.ini file present (for CORS config)
 #
@@ -20,23 +20,23 @@ services:
       pusher:
         condition: service_healthy
     networks:
-      - frontend
+      - traefik
       - internal
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=frontend"
+      - "traefik.docker.network=${TRAEFIK_NETWORK:-frontend}"
       # Main domain
-      - "traefik.http.routers.gleaned.rule=Host(`gleaned.dev`)"
+      - "traefik.http.routers.gleaned.rule=Host(`${DOMAIN}`)"
       - "traefik.http.routers.gleaned.entrypoints=websecure"
-      - "traefik.http.routers.gleaned.tls.certresolver=ionos"
+      - "traefik.http.routers.gleaned.tls.certresolver=${CERT_RESOLVER:-letsencrypt}"
       - "traefik.http.services.gleaned.loadbalancer.server.port=80"
       # www → non-www redirect
-      - "traefik.http.routers.gleaned-www.rule=Host(`www.gleaned.dev`)"
+      - "traefik.http.routers.gleaned-www.rule=Host(`www.${DOMAIN}`)"
       - "traefik.http.routers.gleaned-www.entrypoints=websecure"
-      - "traefik.http.routers.gleaned-www.tls.certresolver=ionos"
+      - "traefik.http.routers.gleaned-www.tls.certresolver=${CERT_RESOLVER:-letsencrypt}"
       - "traefik.http.routers.gleaned-www.middlewares=gleaned-redirect-www"
-      - "traefik.http.middlewares.gleaned-redirect-www.redirectregex.regex=^https://www\\.gleaned\\.dev/(.*)"
-      - "traefik.http.middlewares.gleaned-redirect-www.redirectregex.replacement=https://gleaned.dev/$${1}"
+      - "traefik.http.middlewares.gleaned-redirect-www.redirectregex.regex=^https://www\\.${DOMAIN}/(.*)"
+      - "traefik.http.middlewares.gleaned-redirect-www.redirectregex.replacement=https://${DOMAIN}/$${1}"
       - "traefik.http.middlewares.gleaned-redirect-www.redirectregex.permanent=true"
 
   pusher:
@@ -45,7 +45,7 @@ services:
     environment:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
-      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@gleaned.dev}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@${DOMAIN}}
       COUCHDB_URL: http://${COUCHDB_USER:-admin}:${COUCHDB_PASSWORD:-changeme}@couchdb:5984
       PUSH_HOUR: ${PUSH_HOUR:-20}
       PUSH_MINUTE: ${PUSH_MINUTE:-0}
@@ -78,20 +78,22 @@ services:
       retries: 10
       start_period: 15s
     networks:
-      - frontend
+      - traefik
       - internal
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=frontend"
-      # CouchDB admin UI + sync endpoint — needed for multi-device sync
-      - "traefik.http.routers.gleaned-db.rule=Host(`db.gleaned.dev`)"
+      - "traefik.docker.network=${TRAEFIK_NETWORK:-frontend}"
+      # CouchDB — needed for multi-device sync
+      # Configure in app settings: https://db.${DOMAIN}/gleaned
+      - "traefik.http.routers.gleaned-db.rule=Host(`db.${DOMAIN}`)"
       - "traefik.http.routers.gleaned-db.entrypoints=websecure"
-      - "traefik.http.routers.gleaned-db.tls.certresolver=ionos"
+      - "traefik.http.routers.gleaned-db.tls.certresolver=${CERT_RESOLVER:-letsencrypt}"
       - "traefik.http.services.gleaned-db.loadbalancer.server.port=5984"
 
 networks:
-  frontend:
+  traefik:
     external: true
+    name: ${TRAEFIK_NETWORK:-frontend}
   internal:
     internal: true
 
