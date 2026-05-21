@@ -4,8 +4,12 @@ import {
   encryptText, decryptText, storeKey, clearKey,
 } from "./crypto";
 
-const SESSION_KEY = "gleaned_session";
 const VERIFICATION_PLAINTEXT = "gleaned-v1";
+
+// Auth state lives only in memory — a page reload requires re-authentication.
+// This is intentional: persisting auth state in sessionStorage would keep the
+// session alive after a tab restore, which defeats the purpose of a lock screen.
+let _authenticated = false;
 
 export async function hasPassword(): Promise<boolean> {
   const settings = await getSettings();
@@ -21,7 +25,7 @@ export async function setupPassword(password: string): Promise<void> {
     encryptionVerification: verification,
   });
   await storeKey(key);
-  sessionStorage.setItem(SESSION_KEY, "1");
+  _authenticated = true;
 }
 
 export async function login(password: string): Promise<boolean> {
@@ -38,15 +42,15 @@ export async function login(password: string): Promise<boolean> {
     return false;
   }
 
-  sessionStorage.setItem(SESSION_KEY, "1");
+  _authenticated = true;
   return true;
 }
 
 export function logout(): void {
-  sessionStorage.removeItem(SESSION_KEY);
+  _authenticated = false;
   clearKey();
 }
 
 export function isAuthenticated(): boolean {
-  return sessionStorage.getItem(SESSION_KEY) === "1";
+  return _authenticated;
 }

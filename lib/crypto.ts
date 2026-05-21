@@ -1,8 +1,8 @@
 // AES-GCM encryption with PBKDF2 key derivation.
-// The derived key is exported as JWK and kept in sessionStorage so it survives
-// page reloads within the same tab session but is cleared when the tab closes.
-
-const SESSION_KEY = "gleaned_enc_key";
+// The derived key is kept only in the module-level cache for the lifetime of the
+// JS process. It is never written to sessionStorage or any persistent store —
+// meaning a page reload requires re-authentication. This is intentional: storing
+// the JWK in sessionStorage exposes it to any same-origin JS (extensions, XSS).
 
 let _keyCache: CryptoKey | null = null;
 
@@ -60,30 +60,12 @@ export async function decryptText(key: CryptoKey, ciphertext: string): Promise<s
 
 export async function storeKey(key: CryptoKey): Promise<void> {
   _keyCache = key;
-  const jwk = await crypto.subtle.exportKey("jwk", key);
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify(jwk));
 }
 
 export async function loadKey(): Promise<CryptoKey | null> {
-  if (_keyCache) return _keyCache;
-  const raw = sessionStorage.getItem(SESSION_KEY);
-  if (!raw) return null;
-  try {
-    const jwk = JSON.parse(raw) as JsonWebKey;
-    _keyCache = await crypto.subtle.importKey(
-      "jwk",
-      jwk,
-      { name: "AES-GCM", length: 256 },
-      true,
-      ["encrypt", "decrypt"],
-    );
-    return _keyCache;
-  } catch {
-    return null;
-  }
+  return _keyCache;
 }
 
 export function clearKey(): void {
   _keyCache = null;
-  sessionStorage.removeItem(SESSION_KEY);
 }

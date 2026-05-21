@@ -16,11 +16,19 @@ const {
   DUE_MINUTE      = "0",
   GLEANED_DB      = "gleaned",
   PORT            = "3001",
+  SEND_SECRET     = "",
 } = process.env;
 
 if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
   console.error("VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY are required.");
   console.error("Generate them with: node -e \"console.log(require('web-push').generateVAPIDKeys())\"");
+  process.exit(1);
+}
+
+if (!SEND_SECRET) {
+  console.error("SEND_SECRET is required — an empty secret disables auth on POST /send,");
+  console.error("allowing anyone who discovers the endpoint to broadcast push notifications.");
+  console.error("Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"");
   process.exit(1);
 }
 
@@ -170,8 +178,11 @@ app.delete("/subscribe", async (req, res) => {
   res.json({ ok: true });
 });
 
-// Manual send (for testing: POST /send with optional JSON body)
+// Manual send (protected by SEND_SECRET if set)
 app.post("/send", async (req, res) => {
+  if (req.headers["x-send-secret"] !== SEND_SECRET) {
+    return res.status(401).json({ error: "unauthorized" });
+  }
   const override = req.body ?? {};
   const buildPayload = (lang) => ({
     title: MSG[lang]?.dailyTitle ?? "gleaned",

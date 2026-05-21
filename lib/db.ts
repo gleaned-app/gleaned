@@ -4,6 +4,10 @@ import { loadKey, encryptText, decryptText } from "./crypto";
 
 type AnyDoc = Entry | Todo;
 
+function toLocalDateStr(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 // ─── Type guards ─────────────────────────────────────────────────────────────
 // Protects against corrupted DB documents instead of crashing the whole Promise.all
 
@@ -105,7 +109,7 @@ export async function getDB(): Promise<PouchDB.Database<AnyDoc>> {
 
 export async function getStreakData(): Promise<{ streak: number; todayCount: number; longestStreak: number }> {
   const db = await getDB();
-  const today = new Date().toISOString().split("T")[0];
+  const today = toLocalDateStr();
   const result = await db.find({ selector: { type: "entry" }, fields: ["date"] });
   const dates = new Set(result.docs.map((d) => (d as Entry).date));
   const todayCount = result.docs.filter((d) => (d as Entry).date === today).length;
@@ -115,7 +119,7 @@ export async function getStreakData(): Promise<{ streak: number; todayCount: num
   const cursor = new Date();
   if (!dates.has(today)) cursor.setDate(cursor.getDate() - 1);
   while (true) {
-    const ds = cursor.toISOString().split("T")[0];
+    const ds = toLocalDateStr(cursor);
     if (!dates.has(ds)) break;
     streak++;
     cursor.setDate(cursor.getDate() - 1);
@@ -241,13 +245,13 @@ async function decryptEntry(entry: Entry): Promise<Entry> {
 export async function saveEntry(content: string, tags: string[], attachments?: Attachment[]): Promise<Entry> {
   const db = await getDB();
   const now = new Date();
-  const tomorrow = new Date(now.getTime() + 86_400_000).toISOString().split("T")[0];
+  const tomorrow = toLocalDateStr(new Date(now.getTime() + 86_400_000));
   const base: Omit<Entry, "_rev" | "encrypted" | "enc"> = {
     _id: `entry_${now.getTime()}_${Math.random().toString(36).slice(2, 7)}`,
     type: "entry",
     content,
     tags,
-    date: now.toISOString().split("T")[0],
+    date: toLocalDateStr(now),
     createdAt: now.toISOString(),
     nextReview: tomorrow,
     reviewInterval: 1,
@@ -483,7 +487,7 @@ export async function getRecentEntries(limit = 50): Promise<Entry[]> {
 
 export async function getReviewDue(maxBackfill = 10): Promise<Entry[]> {
   const db = await getDB();
-  const today = new Date().toISOString().split("T")[0];
+  const today = toLocalDateStr();
 
   // Pass 1: metadata only — filter without loading enc blobs
   const result = await db.find({
@@ -517,7 +521,7 @@ export async function getReviewDue(maxBackfill = 10): Promise<Entry[]> {
 
 export async function getReviewCount(): Promise<number> {
   const db = await getDB();
-  const today = new Date().toISOString().split("T")[0];
+  const today = toLocalDateStr();
 
   const result = await db.find({
     selector: { type: "entry" },
@@ -540,8 +544,7 @@ export async function markReviewed(entry: Entry, remembered: boolean): Promise<E
         : (await db.get(entry._id)) as unknown as Entry;
       const currentInterval = latest.reviewInterval ?? 1;
       const newInterval = remembered ? Math.min(currentInterval * 2, 60) : 1;
-      const nextReview = new Date(Date.now() + newInterval * 86_400_000)
-        .toISOString().split("T")[0];
+      const nextReview = toLocalDateStr(new Date(Date.now() + newInterval * 86_400_000));
       const updated = { ...latest, reviewInterval: newInterval, nextReview };
       const res = await db.put(updated as unknown as AnyDoc);
       return { ...updated, _rev: res.rev };
@@ -566,7 +569,9 @@ export interface Settings {
   bodyFont?: "sans" | "serif" | "playfair" | "handwriting";
   couchdbUrl?: string;
   couchdbUsername?: string;
-  couchdbPassword?: string;
+  couchdbPassword?: string;    // never stored — ephemeral, only returned by getSettings
+  couchdbPasswordEnc?: string; // AES-GCM ciphertext stored in DB
+  defaultView?: "journal" | "calendar" | "todos" | "review";
 }
 
 // ─── Conflicts ───────────────────────────────────────────────────────────────
@@ -638,7 +643,16 @@ export async function resolveConflict(
 export async function getSettings(): Promise<Settings | null> {
   const db = await getDB();
   try {
-    return (await db.get("gleaned_settings")) as unknown as Settings;
+    const raw = (await db.get("gleaned_settings")) as unknown as Settings;
+    if (raw.couchdbPasswordEnc) {
+      const key = await loadKey();
+      if (key) {
+        try {
+          raw.couchdbPassword = await decryptText(key, raw.couchdbPasswordEnc);
+        } catch { /* corrupted or wrong key — omit password */ }
+      }
+    }
+    return raw;
   } catch {
     return null;
   }
@@ -646,20 +660,39 @@ export async function getSettings(): Promise<Settings | null> {
 
 export async function saveSettings(data: Partial<Settings>): Promise<void> {
   const db = await getDB();
+
+  // Encrypt couchdbPassword before storing — never write plaintext to IndexedDB.
+  const toStore: Partial<Settings> = { ...data };
+  if ("couchdbPassword" in toStore) {
+    const key = await loadKey();
+    if (key && toStore.couchdbPassword) {
+      toStore.couchdbPasswordEnc = await encryptText(key, toStore.couchdbPassword);
+    }
+    delete toStore.couchdbPassword;
+  }
+
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
-      const existing = await getSettings();
+      // Read the raw doc directly to avoid re-introducing the decrypted plaintext
+      // password that getSettings() would surface. Destructure out any legacy
+      // plaintext field before merging (one-time migration on next save).
+      let rawExisting: Record<string, unknown> | undefined;
+      try {
+        rawExisting = (await db.get("gleaned_settings")) as unknown as Record<string, unknown>;
+      } catch { /* not found — first save */ }
+
+      const { couchdbPassword: _legacy, ...safeExisting } = rawExisting ?? {};
+      void _legacy;
+
       await db.put({
         _id: "gleaned_settings",
-        _rev: existing?._rev,
         type: "settings",
-        ...existing,
-        ...data,
+        ...safeExisting,
+        ...toStore,
       } as unknown as AnyDoc);
       return;
     } catch (err) {
       if ((err as { status?: number }).status !== 409) throw err;
-      // 409 conflict — re-fetch latest rev and retry
     }
   }
   throw new Error("gleaned: too many conflicts saving settings");
@@ -688,10 +721,16 @@ export async function importData(json: string): Promise<{ imported: number; skip
   let imported = 0;
   let skipped = 0;
 
+  // Allow only IDs that match gleaned's own generation pattern.
+  // Blocks _design/*, _local/*, gleaned_settings, and any other internal docs.
+  const VALID_ID = /^(entry|todo)_\d+_[a-z0-9]+$/;
+  const IMPORTABLE_TYPES = new Set(["entry", "todo"]);
+
   for (const raw of rawDocs) {
     const doc = raw as Record<string, unknown>;
     const id = doc._id as string;
-    if (!id || !doc.type) { skipped++; continue; }
+    const type = doc.type as string;
+    if (!id || !type || !IMPORTABLE_TYPES.has(type) || !VALID_ID.test(id)) { skipped++; continue; }
     try {
       await db.get(id);
       skipped++;

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { marked } from "marked";
+import DOMPurify from "dompurify";
 import type { Entry, Attachment } from "@/types/entry";
 import { updateEntry, deleteEntry } from "@/lib/db";
 import { useT } from "@/lib/i18n";
@@ -56,7 +57,7 @@ function CodeBlock({ att }: { att: Attachment }) {
         lang && hljs.getLanguage(lang)
           ? hljs.highlight(text, { language: lang })
           : hljs.highlightAuto(text);
-      setHtml(result.value);
+      setHtml(DOMPurify.sanitize(result.value));
     });
   }, [att.data, lang]);
 
@@ -237,7 +238,9 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
   }
 
   const mdHtml = useMemo(
-    () => (entry.content ? (marked.parse(entry.content) as string) : ""),
+    () => entry.content
+      ? DOMPurify.sanitize(marked.parse(entry.content) as string)
+      : "",
     [entry.content]
   );
 
@@ -319,6 +322,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
     <div
       className={`group relative ${cardClass}`}
       style={cardStyle}
+      onMouseLeave={() => setPendingDelete(false)}
     >
       {/* Action buttons — always on mobile, hover on desktop */}
       <div className="absolute right-3 top-3 flex gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
