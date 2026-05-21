@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Lora, DM_Sans, Playfair_Display, Caveat } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const lora = Lora({
@@ -56,15 +57,13 @@ export default function RootLayout({
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
         <link rel="apple-touch-icon" href="/icon-apple.png" />
-        {/* Apply theme class before React hydrates to prevent flash */}
-        <script dangerouslySetInnerHTML={{ __html:
+        {/* Apply theme/font/lang before React hydrates to prevent flash */}
+        <Script id="gleaned-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html:
           `try{var t=localStorage.getItem("gleaned-theme")||"system";if(t!=="system"){document.documentElement.classList.add("theme-"+t)}else if(window.matchMedia("(prefers-color-scheme: dark)").matches){document.documentElement.classList.add("theme-dark")}var f=localStorage.getItem("gleaned-font")||"sans";var fm={"sans":"var(--font-dm-sans),ui-sans-serif,system-ui,sans-serif","serif":"var(--font-lora),Georgia,serif","playfair":"var(--font-playfair),Georgia,serif","handwriting":"var(--font-caveat),cursive"};document.documentElement.style.setProperty("--font-body",fm[f]||fm.sans);var l=localStorage.getItem("gleaned-lang")||"de";document.documentElement.lang=l}catch(e){}`
         }} />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `if("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js")`,
-          }}
-        />
+        <Script id="gleaned-sw" strategy="afterInteractive" dangerouslySetInnerHTML={{
+          __html: `if("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js")`,
+        }} />
       </head>
       <body>{children}</body>
     </html>
