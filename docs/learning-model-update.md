@@ -1,6 +1,8 @@
 # The gleaned Learning Model
 
 > Version 2.0 — methodology, grounded.
+>
+> **Internal document.** This is the target state — what gleaned is designed to become, not a description of what is currently built. Where the current implementation diverges from the methodology, the methodology is correct and the implementation is the debt. See *Implementation status* for the explicit map between vision and code.
 
 ---
 
@@ -215,7 +217,7 @@ A methodology is defined as much by what it rejects as by what it includes. The 
 
 A single number tracks consecutive days with at least one entry. A second number tracks the longest such streak ever. The current streak resets after a missed day. The longest streak does not.
 
-That is the design. There is no further explanation needed in a methodology document.
+The streak is not an engagement mechanic because it tracks a behavior that is intrinsically the goal — daily encoding — rather than a proxy behavior designed to retain users. It does not reward quantity, frequency within a day, or review completion. A streak of one entry per day is identical to a streak of ten. The distinction from engagement mechanics is that the metric cannot be gamed without doing the actual thing.
 
 ---
 
@@ -251,6 +253,38 @@ These are the questions whose answers would change the methodology, not the UI.
 
 ---
 
+## Implementation status
+
+The table below maps every methodological element in this document to its current state in the codebase. The three states are:
+
+- **✓ built** — exists and works as described
+- **~ partial** — exists in a simplified or incomplete form
+- **○ not built** — planned; implementation is future work
+
+| Element | Status | Notes |
+|---|---|---|
+| Entry writing (own words, one sentence bar) | ✓ built | No required fields, fast capture |
+| Tags | ✓ built | Optional, multi-tag |
+| Streak counter (current + longest) | ✓ built | Both numbers tracked |
+| Basic spaced repetition (review queue, intervals) | ~ partial | Interval doubles on success, resets to 1 on failure. No quality scale, no forgetting model. Effectively simplified SM-2 without ratings. |
+| Review queue (scheduled + backfill) | ~ partial | Works. Not interleaved — no mixing across types or recency. |
+| **Gap field** | **○ not built** | The central mechanism. Not in the data model yet. |
+| Source field | ○ not built | — |
+| Stake / Anchor field | ○ not built | Elaborative interrogation mechanic |
+| Entry types (Insight / Technique / Framework / Fact / Observation) | ○ not built | Not in data model. All entries are untyped. |
+| Type-specific review prompts | ○ not built | Depends on entry types |
+| Gap-based scheduling priority | ○ not built | Depends on Gap field |
+| FSRS or Option C scheduler | ○ not built | Current interval logic is a placeholder |
+| Interleaved review queue | ○ not built | Current queue is date-sorted |
+| "Still holds / needs revision / superseded" review states | ○ not built | Current review is binary (Again / Got it) |
+| Calibration score (open question 4) | ○ not built | Would be derivable from review history once richer states exist |
+
+**The current implementation covers the encode pillar well and the confront pillar at a basic functional level. The anchor pillar (Source, Stake) and the full Gap mechanism do not exist yet. The scheduling layer is a placeholder that works but does not reflect the methodology.**
+
+The priority order implied by the methodology: Gap field → entry types → type-specific prompts → FSRS/Option C → interleaving → calibration. Each depends on the one before it.
+
+---
+
 ## What this document does not cover
 
-UI patterns, color choices, navigation structure, sync behavior, encryption decisions, and platform-specific behaviors are not methodology. They live in design and architecture documents. If a question can be answered without changing what the system claims about human learning, it does not belong here.
+UI patterns, color choices, navigation structure, sync behavior, encryption decisions, and platform-specific behaviors are not methodology. They live in design and architecture documents. If a question can be answered without changing what the system claims about how learning works, it does not belong here.
