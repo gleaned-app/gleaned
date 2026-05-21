@@ -8,8 +8,9 @@ import { decryptText, storeKey, clearKey } from "./crypto";
 // Both are mocked so tests stay pure and fast.
 
 vi.mock("./db", () => ({
-  getSettings: vi.fn(),
-  saveSettings: vi.fn(),
+  getSettings:         vi.fn(),
+  saveSettings:        vi.fn(),
+  setDbAuthenticated:  vi.fn(),
 }));
 
 vi.mock("./crypto", () => ({
