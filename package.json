@@ -22,7 +22,10 @@
     "react-dom": "19.2.4"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["leveldown", "sharp", "unrs-resolver"]
+    "onlyBuiltDependencies": ["leveldown", "sharp", "unrs-resolver"],
+    "overrides": {
+      "postcss": ">=8.5.10"
+    }
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
