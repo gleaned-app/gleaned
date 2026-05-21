@@ -5,6 +5,7 @@ import { getSettings, saveSettings, startSync, stopSync } from "./db";
 
 export type Theme = "system" | "light" | "dark" | "sepia";
 export type BodyFont = "sans" | "serif" | "playfair" | "handwriting";
+export type AppView = "journal" | "calendar" | "todos" | "review";
 
 export interface AppSettings {
   language: "de" | "en";
@@ -14,6 +15,7 @@ export interface AppSettings {
   couchdbUrl: string;
   couchdbUsername: string;
   couchdbPassword: string;
+  defaultView: AppView;
 }
 
 const ENV_URL = process.env.NEXT_PUBLIC_COUCHDB_URL ?? "";
@@ -26,6 +28,7 @@ export const DEFAULTS: AppSettings = {
   couchdbUrl: ENV_URL,
   couchdbUsername: "",
   couchdbPassword: "",
+  defaultView: "journal",
 };
 
 const FONT_MAP: Record<BodyFont, string> = {
@@ -125,11 +128,13 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         couchdbUrl: s?.couchdbUrl ?? ENV_URL,
         couchdbUsername: s?.couchdbUsername ?? "",
         couchdbPassword: s?.couchdbPassword ?? "",
+        defaultView: (s?.defaultView as AppView | undefined) ?? DEFAULTS.defaultView,
       };
       setSettings(next);
       applyTheme(next.theme);
       applyBodyFont(next.bodyFont);
       applyLanguage(next.language);
+      try { localStorage.setItem("gleaned-view", next.defaultView); } catch {}
       if (next.couchdbUrl) startSync(next.couchdbUrl, next.couchdbUsername, next.couchdbPassword);
     });
   }, []);
@@ -140,6 +145,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     if (patch.theme) applyTheme(patch.theme);
     if (patch.bodyFont) applyBodyFont(patch.bodyFont);
     if (patch.language) applyLanguage(patch.language);
+    if (patch.defaultView) { try { localStorage.setItem("gleaned-view", patch.defaultView); } catch {} }
     const syncChanged = "couchdbUrl" in patch || "couchdbUsername" in patch || "couchdbPassword" in patch;
     if (syncChanged) {
       if (next.couchdbUrl) startSync(next.couchdbUrl, next.couchdbUsername, next.couchdbPassword);
