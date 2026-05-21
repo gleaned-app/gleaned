@@ -13,6 +13,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "dompurify": "^3.4.5",
     "highlight.js": "^11.11.1",
     "marked": "^18.0.4",
     "next": "16.2.6",
@@ -33,6 +34,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/dompurify": "^3.2.0",
     "@types/node": "^25.9.1",
     "@types/pouchdb": "^6.4.2",
     "@types/pouchdb-find": "^7.3.3",
