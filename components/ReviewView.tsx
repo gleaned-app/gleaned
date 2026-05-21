@@ -13,7 +13,8 @@ import type { View } from "./BottomNav";
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function todayStr(): string {
-  return new Date().toISOString().split("T")[0];
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function daysAgoCount(dateStr: string): number {
@@ -212,10 +213,10 @@ export default function ReviewView({
             className="mb-4 select-none"
             style={{
               touchAction: "pan-y",
-              transform: `translateX(${dragTranslate}px) rotate(${dragRotate}deg) scale(${dragScale})`,
+              transform: (slide || activeDrag) ? `translateX(${dragTranslate}px) rotate(${dragRotate}deg) scale(${dragScale})` : undefined,
               opacity: slide ? 0 : 1,
               transition: slide ? "transform 0.28s cubic-bezier(0.4,0,1,1), opacity 0.22s ease" : "none",
-              willChange: "transform",
+              willChange: (slide || activeDrag) ? "transform" : "auto",
               transformOrigin: "50% 110%",
             }}
           >
