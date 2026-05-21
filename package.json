@@ -22,24 +22,28 @@
     "react-dom": "19.2.6"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["leveldown", "sharp", "unrs-resolver"],
+    "onlyBuiltDependencies": [
+      "leveldown",
+      "sharp",
+      "unrs-resolver"
+    ],
     "overrides": {
       "postcss": ">=8.5.10"
     }
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^25.9.1",
     "@types/pouchdb": "^6.4.2",
     "@types/pouchdb-find": "^7.3.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitest/coverage-v8": "^4.1.7",
-    "eslint": "^9",
+    "eslint": "^9.39.4",
     "eslint-config-next": "16.2.6",
     "sharp": "^0.34.5",
     "tailwindcss": "^4",
-    "typescript": "^5",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.7"
   }
 }
