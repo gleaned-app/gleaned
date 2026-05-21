@@ -188,6 +188,7 @@ export default function EntryForm({ onSaved }: Props) {
             const cat = fileCategory(att);
             return cat === "image" ? (
               <div key={i} className="group relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={att.data}
                   alt={att.name}

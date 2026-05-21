@@ -70,6 +70,7 @@ export default function SearchModal({ onClose, onNavigate }: Props) {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const q = query.trim();
