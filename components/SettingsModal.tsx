@@ -133,6 +133,11 @@ export default function SettingsModal({ onClose }: Props) {
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setImportMsg(t.fileTooLarge(file.name));
+      if (importRef.current) importRef.current.value = "";
+      return;
+    }
     try {
       const text = await file.text();
       const { imported, skipped } = await importData(text);

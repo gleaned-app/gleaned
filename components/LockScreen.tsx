@@ -6,7 +6,23 @@ import { useT } from "@/lib/i18n";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+const MIN_PASSWORD_LENGTH = 10;
+
 function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
+
+// Returns 0 (below minimum), 1 (weak), 2 (fair), 3 (strong).
+function getPasswordStrength(pw: string): 0 | 1 | 2 | 3 {
+  if (pw.length === 0) return 0;
+  if (pw.length < MIN_PASSWORD_LENGTH) return 1;
+  let classes = 0;
+  if (/[a-z]/.test(pw)) classes++;
+  if (/[A-Z]/.test(pw)) classes++;
+  if (/[0-9]/.test(pw)) classes++;
+  if (/[^a-zA-Z0-9]/.test(pw)) classes++;
+  if (pw.length >= 14 && classes >= 3) return 3;
+  if (classes >= 2) return 2;
+  return 1;
+}
 
 // ─── Wheat field on canvas ────────────────────────────────────────────────────
 
@@ -198,6 +214,7 @@ export default function LockScreen({ onAuth }: Props) {
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockUntil, setLockUntil] = useState<number | null>(null);
   const [lockSecsLeft, setLockSecsLeft] = useState(0);
+  const [acceptShortPw, setAcceptShortPw] = useState(false);
 
   const t = useT();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -233,7 +250,7 @@ export default function LockScreen({ onAuth }: Props) {
     if (!password.trim()) return;
     if (mode === "setup") {
       if (password !== confirm) { setError(t.passwordMismatch); return; }
-      if (password.length < 4)  { setError(t.passwordTooShort); return; }
+      if (password.length < MIN_PASSWORD_LENGTH && !acceptShortPw) { setError(t.passwordTooShort); return; }
       setSubmitting(true);
       try {
         await setupPassword(password);
@@ -452,7 +469,11 @@ export default function LockScreen({ onAuth }: Props) {
               <input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setPassword(v);
+                  if (v.length >= MIN_PASSWORD_LENGTH) setAcceptShortPw(false);
+                }}
                 onFocus={() => setFocused("pw")}
                 onBlur={() => setFocused(null)}
                 autoFocus
@@ -461,6 +482,54 @@ export default function LockScreen({ onAuth }: Props) {
               />
             </div>
           </div>
+
+          {mode === "setup" && password.length > 0 && (() => {
+            const strength = getPasswordStrength(password);
+            const strengthColor =
+              strength === 3 ? "oklch(62% 0.17 145)" :
+              strength === 2 ? "oklch(72% 0.18 55)" :
+                               "oklch(62% 0.18 25)";
+            const strengthLabel =
+              strength === 3 ? t.pwStrong :
+              strength === 2 ? t.pwFair :
+                               t.pwWeak;
+            return (
+              <div className="flex flex-col gap-1.5">
+                <div className="flex gap-1">
+                  {([1, 2, 3] as const).map((seg) => (
+                    <div
+                      key={seg}
+                      className="h-0.5 flex-1 rounded-full transition-all duration-300"
+                      style={{ background: strength >= seg ? strengthColor : "var(--border-focus)" }}
+                    />
+                  ))}
+                </div>
+                {strength > 0 && (
+                  <span className="font-sans text-[10px]" style={{ color: strengthColor }}>
+                    {strengthLabel}
+                  </span>
+                )}
+              </div>
+            );
+          })()}
+
+          {mode === "setup" && password.length > 0 && password.length < MIN_PASSWORD_LENGTH && (
+            <label
+              className="flex cursor-pointer items-start gap-2.5"
+              style={{ animation: "def-fade 0.25s ease both" }}
+            >
+              <input
+                type="checkbox"
+                checked={acceptShortPw}
+                onChange={(e) => setAcceptShortPw(e.target.checked)}
+                className="mt-0.5 flex-shrink-0"
+                style={{ accentColor: "var(--accent)", width: 13, height: 13 }}
+              />
+              <span className="font-sans text-[11px] leading-relaxed" style={{ color: "var(--fg-muted)" }}>
+                {t.acceptShortPw}
+              </span>
+            </label>
+          )}
 
           {mode === "setup" && (
             <div>
@@ -493,24 +562,30 @@ export default function LockScreen({ onAuth }: Props) {
             </p>
           )}
 
-          <div className="flex items-center justify-between pt-1">
-            <span className="font-serif text-sm italic" style={{ color: "var(--fg-muted)", opacity: 0.4 }}>
-              {mode === "setup" ? t.minChars : ""}
-            </span>
-            <button
-              type="submit"
-              disabled={submitting || !password.trim() || !!lockUntil}
-              className="rounded-full px-6 py-2.5 font-sans text-sm font-medium tracking-wide transition-all"
-              style={{
-                background: (password.trim() && !lockUntil) ? "var(--fg)" : "transparent",
-                color: (password.trim() && !lockUntil) ? "var(--bg)" : "var(--fg-muted)",
-                border: `1.5px solid ${(password.trim() && !lockUntil) ? "var(--fg)" : "var(--border-focus)"}`,
-                opacity: (submitting || !!lockUntil) ? 0.6 : 1,
-              }}
-            >
-              {submitting ? "…" : lockUntil ? `${lockSecsLeft}s` : mode === "setup" ? t.getStarted : t.unlock}
-            </button>
-          </div>
+          {(() => {
+            const shortBlocked = mode === "setup" && password.length > 0 && password.length < MIN_PASSWORD_LENGTH && !acceptShortPw;
+            const btnActive = !!password.trim() && !lockUntil && !shortBlocked;
+            return (
+              <div className="flex items-center justify-between pt-1">
+                <span className="font-serif text-sm italic" style={{ color: "var(--fg-muted)", opacity: 0.4 }}>
+                  {mode === "setup" ? t.minChars : ""}
+                </span>
+                <button
+                  type="submit"
+                  disabled={submitting || !password.trim() || !!lockUntil || shortBlocked}
+                  className="rounded-full px-6 py-2.5 font-sans text-sm font-medium tracking-wide transition-all"
+                  style={{
+                    background: btnActive ? "var(--fg)" : "transparent",
+                    color: btnActive ? "var(--bg)" : "var(--fg-muted)",
+                    border: `1.5px solid ${btnActive ? "var(--fg)" : "var(--border-focus)"}`,
+                    opacity: (submitting || !!lockUntil) ? 0.6 : 1,
+                  }}
+                >
+                  {submitting ? "…" : lockUntil ? `${lockSecsLeft}s` : mode === "setup" ? t.getStarted : t.unlock}
+                </button>
+              </div>
+            );
+          })()}
 
           {!hasLocalAccount && (
             <button
