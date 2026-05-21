@@ -5,7 +5,7 @@
   "main": "index.js",
   "engines": { "node": ">=20" },
   "dependencies": {
-    "express": "^4.19.2",
+    "express": "^5.2.1",
     "nano": "^10.1.4",
     "node-cron": "^3.0.3",
     "web-push": "^3.6.7"
