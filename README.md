@@ -103,10 +103,17 @@ docker compose up -d
 # → http://localhost:5984/_utils  (CouchDB admin)
 ```
 
-Then open Settings → Sync and enter your CouchDB URL:
+Then open Settings → Sync and enter your CouchDB URL.
+In production the app proxies CouchDB through nginx — no extra port needed:
 
 ```
-http://admin:password@localhost:5984/gleaned
+http://localhost:3000/db/gleaned
+```
+
+Enter username and password in the separate fields. For local development with `docker-compose.dev.yml`, CouchDB is accessible directly on port 5984:
+
+```
+http://localhost:5984/gleaned
 ```
 
 ---
