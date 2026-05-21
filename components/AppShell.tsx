@@ -92,7 +92,13 @@ function useInstallPrompt() {
 const VIEWS: View[] = ["journal", "calendar", "todos", "review"];
 
 function AppContentWithLock({ onLock }: { onLock: () => void }) {
-  const [view, setView] = useState<View>("journal");
+  const [view, setView] = useState<View>(() => {
+    try {
+      const saved = localStorage.getItem("gleaned-view") as View;
+      if (VIEWS.includes(saved)) return saved;
+    } catch {}
+    return "journal";
+  });
   const [calendarJumpDate, setCalendarJumpDate] = useState<string | undefined>();
   const [showSettings, setShowSettings] = useState(false);
   const [showConflicts, setShowConflicts] = useState(false);
@@ -106,17 +112,31 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
   const mainRef = useRef<HTMLElement>(null);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
+  const viewRef = useRef<View>(view);
   // Lazy-mount: View bleibt im DOM sobald sie einmal besucht wurde → kein Skeleton-Flash bei Rückkehr
   const [visited, setVisited] = useState<Set<View>>(new Set([view]));
 
   useEffect(() => {
     getReviewCount().then(setReviewCount);
+  }, [entryVersion]);
+
+  useEffect(() => {
     function onVisible() {
       if (document.visibilityState === "visible") getReviewCount().then(setReviewCount);
     }
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
+
+  useEffect(() => {
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+  }, []);
+
+  useEffect(() => { viewRef.current = view; }, [view]);
+
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0 });
+  }, [view]);
 
   useEffect(() => {
     const el = mainRef.current;
@@ -126,23 +146,41 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Passive touch listeners — React's onTouchStart/End sind non-passive und blockieren
+  // Chromes Compositor-Scroll. Passive Listener lassen den Compositor scrollen ohne zu warten.
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    function onStart(e: TouchEvent) {
+      touchStartX.current = e.touches[0].clientX;
+      touchStartY.current = e.touches[0].clientY;
+    }
+    function onEnd(e: TouchEvent) {
+      const v = viewRef.current;
+      if (v === "review") return;
+      const dx = e.changedTouches[0].clientX - touchStartX.current;
+      const dy = e.changedTouches[0].clientY - touchStartY.current;
+      if (Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
+      const idx = VIEWS.indexOf(v);
+      let next: View | null = null;
+      if (dx < 0 && idx < VIEWS.length - 1) next = VIEWS[idx + 1];
+      if (dx > 0 && idx > 0) next = VIEWS[idx - 1];
+      if (!next) return;
+      setVisited(prev => { const s = new Set(prev); s.add(next!); return s; });
+      setCalendarJumpDate(undefined);
+      mainRef.current?.scrollTo({ top: 0 });
+      setView(next);
+    }
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchend", onEnd, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchend", onEnd);
+    };
+  }, []);
+
   function mount(v: View) {
     setVisited((prev) => { const s = new Set(prev); s.add(v); return s; });
-  }
-
-  function handleTouchStart(e: React.TouchEvent) {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-  }
-
-  function handleTouchEnd(e: React.TouchEvent) {
-    if (view === "review") return; // ReviewView handles its own card swipe
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    const dy = e.changedTouches[0].clientY - touchStartY.current;
-    if (Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
-    const idx = VIEWS.indexOf(view);
-    if (dx < 0 && idx < VIEWS.length - 1) handleViewChange(VIEWS[idx + 1]);
-    if (dx > 0 && idx > 0) handleViewChange(VIEWS[idx - 1]);
   }
 
   // Nav-tab click: gleichen Tab → scroll nach oben; anderer Tab → wechseln
@@ -182,7 +220,7 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
   }, [onLock]);
 
   return (
-    <div className="flex min-h-screen flex-col" style={{ background: "var(--bg)" }}>
+    <div className="flex flex-col" style={{ background: "var(--bg)", height: "100dvh" }}>
       <header
         className="sticky top-0 z-40 flex items-center justify-between px-5 py-3"
         style={{
@@ -253,13 +291,13 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
 
       <main
         ref={mainRef}
-        className="flex-1 overflow-y-auto"
+        className="flex-1 min-h-0 overflow-y-auto"
         style={{
           paddingBottom: "calc(100px + env(safe-area-inset-bottom))",
           overscrollBehavior: "contain",
+          overflowAnchor: "none",
+          touchAction: "pan-y",
         }}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
       >
         {/* Views bleiben im DOM sobald erstmalig besucht — kein Re-fetch, kein Skeleton-Flash */}
         <div style={{ display: view === "journal" ? "block" : "none" }}>

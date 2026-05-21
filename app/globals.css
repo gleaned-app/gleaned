@@ -185,12 +185,25 @@ html.theme-sepia {
 /* ── Reset & base ────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 
+html {
+  /* `100%` schlägt in Chrome PWA (Standalone) fehl, sobald die Geste-Inset-
+     Bar unten sichtbar wird — der Layout-Viewport schrumpft, der visuelle
+     Viewport bleibt groß und der Scroll-Container endet unter der unteren
+     Chrome-Leiste. `100dvh` folgt dem visuellen Viewport korrekt. */
+  height: 100dvh;
+}
+
 body {
+  height: 100dvh;
+  overflow: clip;
   background-color: var(--bg);
   color: var(--fg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  touch-action: manipulation;
+  /* `manipulation` deaktiviert Double-Tap-Zoom, kann aber in Chrome PWA das
+     Hit-Testing für vertikales Scrollen stören wenn fixed-positionierte
+     Elemente darüberliegen. `pan-y` erlaubt explizit vertikales Panning. */
+  touch-action: pan-y;
 }
 
 .journal-input::placeholder { color: var(--fg-placeholder); }
@@ -236,7 +249,6 @@ body {
     inset 0 1px 0 var(--btn-top),
     0 1.5px 0 var(--btn-bottom),
     0 2px 5px var(--btn-shadow);
-  transform: translateY(0);
   transition: transform 70ms ease, box-shadow 70ms ease, background 70ms ease;
   user-select: none;
   cursor: pointer;
