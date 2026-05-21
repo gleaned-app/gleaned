@@ -285,7 +285,8 @@ async function decryptEntry(entry: Entry): Promise<Entry> {
 
 // ─── Todo encryption helpers ─────────────────────────────────────────────────
 
-async function encryptTodo(
+/* @internal — exported for unit tests only, not part of the public db API */
+export async function encryptTodo(
   doc: Omit<Todo, "_rev" | "encrypted" | "textEnc">,
 ): Promise<Omit<Todo, "_rev">> {
   const key = await loadKey();
@@ -300,7 +301,7 @@ async function encryptTodo(
   };
 }
 
-async function decryptTodo(todo: Todo): Promise<Todo> {
+/* @internal */ export async function decryptTodo(todo: Todo): Promise<Todo> {
   if (!todo.encrypted || !todo.textEnc) return todo;
   const key = await loadKey();
   if (!key) return todo;
@@ -315,7 +316,7 @@ async function decryptTodo(todo: Todo): Promise<Todo> {
 // Needed when non-text fields (done/dueDate/color) are updated: the in-memory
 // todo has both the decrypted text and the enc fields; we must not persist the
 // plaintext alongside the ciphertext.
-function withoutPlaintext(todo: Todo): Todo {
+/* @internal */ export function withoutPlaintext(todo: Todo): Todo {
   return todo.encrypted ? { ...todo, text: "" } : todo;
 }
 
