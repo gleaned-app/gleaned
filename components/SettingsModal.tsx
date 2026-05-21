@@ -64,6 +64,7 @@ export default function SettingsModal({ onClose }: Props) {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [couchdbInput, setCouchdbInput] = useState(settings.couchdbUrl);
   const [couchdbUser, setCouchdbUser] = useState(settings.couchdbUsername);

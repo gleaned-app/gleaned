@@ -97,6 +97,7 @@ function AttachmentView({ att }: { att: Attachment }) {
 
   if (cat === "image") {
     return (
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={att.data}
         alt={att.name}

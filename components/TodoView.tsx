@@ -92,7 +92,6 @@ function sortOpen(todos: Todo[]): Todo[] {
 export default function TodoView() {
   const t = useT();
   const { settings } = useSettings();
-  const loc = locale(settings);
   const [todos, setTodos] = useState<Todo[]>([]);
   const [input, setInput] = useState("");
   const [dueDate, setDueDate] = useState("");
