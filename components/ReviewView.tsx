@@ -6,6 +6,7 @@ import {
   getRecentEntries, getEntriesForMonth, getEntryMonths,
 } from "@/lib/db";
 import type { Entry, ReviewOutcome } from "@/types/entry";
+import { AttachmentView } from "./AttachmentView";
 import { useT } from "@/lib/i18n";
 import { useSettings, locale } from "@/lib/settings-context";
 import type { View } from "./BottomNav";
@@ -443,9 +444,16 @@ function ReviewCard({ entry, tr, dragX = 0 }: { entry: Entry; tr: ReturnType<typ
         {contextLabel(entry.date, tr)}
       </span>
       <p className="mb-4 font-serif leading-relaxed"
-        style={{ color: "var(--fg)", fontSize: "1rem", maxHeight: "38vh", overflowY: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+        style={{ color: "var(--fg)", fontSize: "1rem", maxHeight: "32vh", overflowY: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
         {entry.content}
       </p>
+      {entry.attachments && entry.attachments.length > 0 && (
+        <div className="mb-4 flex flex-col gap-2">
+          {entry.attachments.map((att, i) => (
+            <AttachmentView key={i} att={att} />
+          ))}
+        </div>
+      )}
       {entry.tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {entry.tags.map((tag) => (
