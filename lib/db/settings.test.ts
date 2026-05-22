@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { getSettings, saveSettings } from "./settings";
+import type { AnyDoc } from "./client";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -21,8 +22,8 @@ const mockLoadKey  = vi.mocked(loadKey);
 const mockDecrypt  = vi.mocked(decryptText);
 
 function makeDB(overrides: {
-  get?: (id: string) => Promise<unknown>;
-  put?: (doc: unknown) => Promise<void>;
+  get?: Mock;
+  put?: Mock;
 } = {}) {
   return {
     get: vi.fn().mockRejectedValue({ status: 404 }),
@@ -47,14 +48,14 @@ beforeEach(() => {
 describe("getSettings", () => {
   it("returns null when no settings doc exists", async () => {
     const db = makeDB({ get: vi.fn().mockRejectedValue({ status: 404 }) });
-    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database);
+    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database<AnyDoc>);
 
     expect(await getSettings()).toBeNull();
   });
 
   it("returns the settings doc when it exists", async () => {
     const db = makeDB({ get: vi.fn().mockResolvedValue(BASE_SETTINGS) });
-    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database);
+    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database<AnyDoc>);
 
     const result = await getSettings();
     expect(result?.language).toBe("de");
@@ -62,7 +63,7 @@ describe("getSettings", () => {
 
   it("does not attempt decryption when couchdbPasswordEnc is absent", async () => {
     const db = makeDB({ get: vi.fn().mockResolvedValue(BASE_SETTINGS) });
-    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database);
+    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database<AnyDoc>);
 
     await getSettings();
     expect(mockDecrypt).not.toHaveBeenCalled();
@@ -75,7 +76,7 @@ describe("getSettings", () => {
 
     const doc = { ...BASE_SETTINGS, couchdbPasswordEnc: "enc-blob" };
     const db = makeDB({ get: vi.fn().mockResolvedValue(doc) });
-    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database);
+    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database<AnyDoc>);
 
     const result = await getSettings();
     expect(result?.couchdbPassword).toBe("my-couch-password");
@@ -88,7 +89,7 @@ describe("getSettings", () => {
 
     const doc = { ...BASE_SETTINGS, couchdbPasswordEnc: "corrupt-blob" };
     const db = makeDB({ get: vi.fn().mockResolvedValue(doc) });
-    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database);
+    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database<AnyDoc>);
 
     const result = await getSettings();
     expect(result?.couchdbPassword).toBeUndefined();
@@ -99,7 +100,7 @@ describe("getSettings", () => {
 
     const doc = { ...BASE_SETTINGS, couchdbPasswordEnc: "enc-blob" };
     const db = makeDB({ get: vi.fn().mockResolvedValue(doc) });
-    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database);
+    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database<AnyDoc>);
 
     const result = await getSettings();
     expect(result?.couchdbPassword).toBeUndefined();
@@ -112,7 +113,7 @@ describe("getSettings", () => {
 describe("saveSettings", () => {
   it("writes the provided fields to the DB", async () => {
     const db = makeDB();
-    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database);
+    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database<AnyDoc>);
 
     await saveSettings({ language: "en", theme: "dark" });
 
@@ -127,7 +128,7 @@ describe("saveSettings", () => {
     mockLoadKey.mockResolvedValue(fakeKey);
 
     const db = makeDB();
-    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database);
+    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database<AnyDoc>);
 
     await saveSettings({ couchdbPassword: "secret123" } as Parameters<typeof saveSettings>[0]);
 
@@ -140,7 +141,7 @@ describe("saveSettings", () => {
     mockLoadKey.mockResolvedValue(fakeKey);
 
     const db = makeDB();
-    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database);
+    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database<AnyDoc>);
 
     await saveSettings({ couchdbPassword: "secret123" } as Parameters<typeof saveSettings>[0]);
 
@@ -151,7 +152,7 @@ describe("saveSettings", () => {
   it("merges new fields onto the existing doc (read-modify-write)", async () => {
     const existing = { _id: "gleaned_settings", _rev: "2-xyz", type: "settings", language: "de" };
     const db = makeDB({ get: vi.fn().mockResolvedValue(existing) });
-    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database);
+    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database<AnyDoc>);
 
     await saveSettings({ theme: "sepia" });
 
@@ -165,7 +166,7 @@ describe("saveSettings", () => {
     const db = makeDB({
       put: vi.fn().mockRejectedValue({ status: 409 }),
     });
-    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database);
+    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database<AnyDoc>);
 
     await expect(saveSettings({ language: "en" })).rejects.toThrow("too many conflicts");
     expect(db.put).toHaveBeenCalledTimes(5);
@@ -175,7 +176,7 @@ describe("saveSettings", () => {
     const db = makeDB({
       put: vi.fn().mockRejectedValue({ status: 500, message: "internal error" }),
     });
-    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database);
+    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database<AnyDoc>);
 
     await expect(saveSettings({ language: "en" })).rejects.toMatchObject({ status: 500 });
     expect(db.put).toHaveBeenCalledTimes(1);

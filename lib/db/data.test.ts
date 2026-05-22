@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { importData } from "./data";
-import { setAuthState } from "./client";
+import { setAuthState, type AnyDoc } from "./client";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 // data.ts calls getDB() (PouchDB) and encrypt/decrypt helpers.
@@ -56,7 +56,7 @@ describe("importData (auth guard)", () => {
 
 describe("importData — ID and type validation", () => {
   beforeEach(() => {
-    mockGetDB.mockResolvedValue(makeFakeDb() as unknown as ReturnType<typeof makeFakeDb> & PouchDB.Database);
+    mockGetDB.mockResolvedValue(makeFakeDb() as unknown as PouchDB.Database<AnyDoc>);
   });
 
   it("skips docs with invalid ID pattern (e.g. gleaned_settings)", async () => {
@@ -109,7 +109,7 @@ describe("importData — ID and type validation", () => {
 
 describe("importData — entry field validation", () => {
   beforeEach(() => {
-    mockGetDB.mockResolvedValue(makeFakeDb() as unknown as ReturnType<typeof makeFakeDb> & PouchDB.Database);
+    mockGetDB.mockResolvedValue(makeFakeDb() as unknown as PouchDB.Database<AnyDoc>);
   });
 
   const validEntry = {
@@ -163,7 +163,7 @@ describe("importData — entry field validation", () => {
 
 describe("importData — todo field validation", () => {
   beforeEach(() => {
-    mockGetDB.mockResolvedValue(makeFakeDb() as unknown as ReturnType<typeof makeFakeDb> & PouchDB.Database);
+    mockGetDB.mockResolvedValue(makeFakeDb() as unknown as PouchDB.Database<AnyDoc>);
   });
 
   const validTodo = {
@@ -213,7 +213,7 @@ describe("importData — duplicate detection", () => {
       // get resolves → doc already exists
       get: vi.fn().mockResolvedValue({ _id: "entry_1000_abcde", _rev: "1-abc" }),
     });
-    mockGetDB.mockResolvedValue(db as unknown as ReturnType<typeof makeFakeDb> & PouchDB.Database);
+    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database<AnyDoc>);
 
     const json = JSON.stringify([{
       _id: "entry_1000_abcde",
@@ -234,7 +234,7 @@ describe("importData — duplicate detection", () => {
 
 describe("importData — input format variants", () => {
   beforeEach(() => {
-    mockGetDB.mockResolvedValue(makeFakeDb() as unknown as ReturnType<typeof makeFakeDb> & PouchDB.Database);
+    mockGetDB.mockResolvedValue(makeFakeDb() as unknown as PouchDB.Database<AnyDoc>);
   });
 
   const validEntry = {
