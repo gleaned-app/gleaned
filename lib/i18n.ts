@@ -81,6 +81,19 @@ export interface Translations {
   reviewSuperseded: string;
   calibrationLabel: string;
   calibrationNotEnoughData: string;
+
+  // Type-specific review prompts
+  reviewPromptInsight: string;
+  reviewPromptTechnique: string;
+  reviewPromptFramework: string;
+  reviewPromptObservation: string;
+  reviewReveal: string;
+
+  // Gap review mode
+  reviewGapPrompt: string;
+  reviewGapResolved: string;
+  reviewGapStillOpen: string;
+  reviewGapArchive: string;
   filterRecent: string;
   filterAllTags: string;
   filterByTag: string;
@@ -246,6 +259,17 @@ const de: Translations = {
   reviewSuperseded: "Überholt",
   calibrationLabel: "Kalibrierung",
   calibrationNotEnoughData: "noch zu wenig Daten",
+
+  reviewPromptInsight: "Gilt das noch für dich — heute, wer du bist?",
+  reviewPromptTechnique: "Kannst du es durchgehen, ohne nachzuschauen?",
+  reviewPromptFramework: "Kannst du die Struktur rekonstruieren?",
+  reviewPromptObservation: "Hat sich das verändert? Hast du das Gegenteil gesehen?",
+  reviewReveal: "Inhalt zeigen",
+
+  reviewGapPrompt: "Du hast hier etwas Offenes notiert. Hat es sich geklärt?",
+  reviewGapResolved: "Geklärt",
+  reviewGapStillOpen: "Noch offen",
+  reviewGapArchive: "Nicht mehr relevant",
   filterRecent: "Neueste",
   filterAllTags: "Alle",
   filterByTag: "tag filtern…",
@@ -406,6 +430,17 @@ const en: Translations = {
   reviewSuperseded: "Superseded",
   calibrationLabel: "Calibration",
   calibrationNotEnoughData: "not enough data yet",
+
+  reviewPromptInsight: "Is this still true for who you are now?",
+  reviewPromptTechnique: "Can you walk through it without looking?",
+  reviewPromptFramework: "Can you reconstruct the structure?",
+  reviewPromptObservation: "Has this changed? Have you seen the opposite?",
+  reviewReveal: "Reveal",
+
+  reviewGapPrompt: "You flagged something unresolved here. Has it resolved?",
+  reviewGapResolved: "Resolved",
+  reviewGapStillOpen: "Still open",
+  reviewGapArchive: "No longer relevant",
   filterRecent: "Recent",
   filterAllTags: "All",
   filterByTag: "filter by tag…",

@@ -6,7 +6,7 @@ import {
   getRecentEntries, getEntriesForMonth, getEntryMonths,
   getCalibrationData,
 } from "@/lib/db";
-import type { Entry, ReviewOutcome } from "@/types/entry";
+import type { Entry, ReviewOutcome, GapStatus } from "@/types/entry";
 import { computeCalibration } from "@/lib/review-scheduler";
 import { AttachmentView } from "./AttachmentView";
 import { useT } from "@/lib/i18n";
@@ -136,12 +136,13 @@ export default function ReviewView({
     : sourceEntries;
   const weeks = groupByWeek(displayHistory, tr, loc);
 
+  const isGapMode = current?.gapStatus === "open";
+
   const handleReview = useCallback(
-    async (outcome: ReviewOutcome) => {
+    async (outcome: ReviewOutcome, gapUpdate?: GapStatus) => {
       if (!current || slide) return;
-      // still_holds → swipe right, anything else → swipe left
       setSlide(outcome === "still_holds" ? "right" : "left");
-      await markReviewed(current, outcome);
+      await markReviewed(current, outcome, gapUpdate);
       setTimeout(() => {
         setSlide(null);
         const next = index + 1;
@@ -165,8 +166,14 @@ export default function ReviewView({
     const diff = e.changedTouches[0].clientX - touchStartX;
     setTouchStartX(null);
     setDragX(0);
-    // Swipe right = still_holds, swipe left = needs_revision
-    if (Math.abs(diff) > 56) { navigator.vibrate?.(8); handleReview(diff > 0 ? "still_holds" : "needs_revision"); }
+    if (Math.abs(diff) > 56) {
+      navigator.vibrate?.(8);
+      if (isGapMode) {
+        handleReview(diff > 0 ? "still_holds" : "needs_revision", diff > 0 ? "resolved" : "open");
+      } else {
+        handleReview(diff > 0 ? "still_holds" : "needs_revision");
+      }
+    }
   }
 
   return (
@@ -229,30 +236,67 @@ export default function ReviewView({
               transformOrigin: "50% 110%",
             }}
           >
-            {current && <ReviewCard entry={current} tr={tr} dragX={activeDrag ? dragX : 0} />}
+            {current && (
+              <ReviewCard
+                key={current._id}
+                entry={current}
+                tr={tr}
+                dragX={activeDrag ? dragX : 0}
+                isGapMode={isGapMode}
+              />
+            )}
           </div>
-          {/* Secondary row: needs_revision + superseded */}
-          <div className="mb-2 flex gap-2">
-            <button onClick={() => handleReview("needs_revision")} disabled={!!slide}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 font-sans text-xs font-medium transition-opacity active:opacity-70 disabled:opacity-40"
-              style={{ background: "var(--due-overdue-bg)", color: "var(--due-overdue)" }}>
-              <IconAgain /> {tr.reviewAgain}
-            </button>
-            <button onClick={() => handleReview("superseded")} disabled={!!slide}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 font-sans text-xs font-medium transition-opacity active:opacity-70 disabled:opacity-40"
-              style={{ background: "var(--border)", color: "var(--fg-muted)" }}>
-              <IconSuperseded /> {tr.reviewSuperseded}
-            </button>
-          </div>
-          {/* Primary action: still holds — full width */}
-          <button onClick={() => handleReview("still_holds")} disabled={!!slide}
-            className="btn-3d mb-2 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 font-sans text-sm font-semibold disabled:opacity-40"
-            style={{ minHeight: "3rem" }}>
-            <IconCheck /> {tr.reviewGotIt}
-          </button>
-          <p className="mb-6 text-center font-sans text-[11px]" style={{ color: "var(--fg-muted)", opacity: 0.45 }}>
-            ← {tr.reviewAgain} &nbsp;·&nbsp; {tr.reviewGotIt} →
-          </p>
+          {isGapMode ? (
+            <>
+              {/* Gap mode: secondary row — still open + archive */}
+              <div className="mb-2 flex gap-2">
+                <button onClick={() => handleReview("needs_revision", "open")} disabled={!!slide}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 font-sans text-xs font-medium transition-opacity active:opacity-70 disabled:opacity-40"
+                  style={{ background: "var(--due-overdue-bg)", color: "var(--due-overdue)" }}>
+                  <IconGapOpen /> {tr.reviewGapStillOpen}
+                </button>
+                <button onClick={() => handleReview("superseded", "archived")} disabled={!!slide}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 font-sans text-xs font-medium transition-opacity active:opacity-70 disabled:opacity-40"
+                  style={{ background: "var(--border)", color: "var(--fg-muted)" }}>
+                  <IconSuperseded /> {tr.reviewGapArchive}
+                </button>
+              </div>
+              {/* Gap mode: primary — resolved */}
+              <button onClick={() => handleReview("still_holds", "resolved")} disabled={!!slide}
+                className="btn-3d mb-2 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 font-sans text-sm font-semibold disabled:opacity-40"
+                style={{ minHeight: "3rem" }}>
+                <IconCheck /> {tr.reviewGapResolved}
+              </button>
+              <p className="mb-6 text-center font-sans text-[11px]" style={{ color: "var(--fg-muted)", opacity: 0.45 }}>
+                ← {tr.reviewGapStillOpen} &nbsp;·&nbsp; {tr.reviewGapResolved} →
+              </p>
+            </>
+          ) : (
+            <>
+              {/* Normal mode: secondary row — needs_revision + superseded */}
+              <div className="mb-2 flex gap-2">
+                <button onClick={() => handleReview("needs_revision")} disabled={!!slide}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 font-sans text-xs font-medium transition-opacity active:opacity-70 disabled:opacity-40"
+                  style={{ background: "var(--due-overdue-bg)", color: "var(--due-overdue)" }}>
+                  <IconAgain /> {tr.reviewAgain}
+                </button>
+                <button onClick={() => handleReview("superseded")} disabled={!!slide}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 font-sans text-xs font-medium transition-opacity active:opacity-70 disabled:opacity-40"
+                  style={{ background: "var(--border)", color: "var(--fg-muted)" }}>
+                  <IconSuperseded /> {tr.reviewSuperseded}
+                </button>
+              </div>
+              {/* Normal mode: primary — still holds */}
+              <button onClick={() => handleReview("still_holds")} disabled={!!slide}
+                className="btn-3d mb-2 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 font-sans text-sm font-semibold disabled:opacity-40"
+                style={{ minHeight: "3rem" }}>
+                <IconCheck /> {tr.reviewGotIt}
+              </button>
+              <p className="mb-6 text-center font-sans text-[11px]" style={{ color: "var(--fg-muted)", opacity: 0.45 }}>
+                ← {tr.reviewAgain} &nbsp;·&nbsp; {tr.reviewGotIt} →
+              </p>
+            </>
+          )}
         </>
       )}
 
@@ -381,14 +425,42 @@ export default function ReviewView({
 
 // ─── Review card ──────────────────────────────────────────────────────────────
 
-function ReviewCard({ entry, tr, dragX = 0 }: { entry: Entry; tr: ReturnType<typeof useT>; dragX?: number }) {
+// Type → prompt text lookup. Fact uses a reveal mechanism instead of text.
+const REVIEW_PROMPTS: Partial<Record<string, (tr: ReturnType<typeof useT>) => string>> = {
+  insight:     (tr) => tr.reviewPromptInsight,
+  technique:   (tr) => tr.reviewPromptTechnique,
+  framework:   (tr) => tr.reviewPromptFramework,
+  observation: (tr) => tr.reviewPromptObservation,
+};
+
+function ReviewCard({
+  entry,
+  tr,
+  dragX = 0,
+  isGapMode = false,
+}: {
+  entry: Entry;
+  tr: ReturnType<typeof useT>;
+  dragX?: number;
+  isGapMode?: boolean;
+}) {
+  const [revealed, setRevealed] = useState(false);
+
+  const isFact = entry.entryType === "fact";
+  const showBlurred = isFact && !revealed;
+
   const abs = Math.abs(dragX);
   const isRight = dragX > 0;
   const overlayOpacity = Math.min(abs / 180, 0.42);
   const labelOpacity = Math.max(0, Math.min(1, (abs - 28) / 55));
-
   const overlayPos = isRight ? "75% 20%" : "25% 20%";
   const overlayVar = isRight ? "var(--accent)" : "var(--due-overdue)";
+
+  // Stamp label depends on mode: gap resolving vs normal review
+  const stampRight = isGapMode ? tr.reviewGapResolved  : tr.reviewGotIt;
+  const stampLeft  = isGapMode ? tr.reviewGapStillOpen : tr.reviewAgain;
+
+  const typePrompt = !isGapMode && entry.entryType ? REVIEW_PROMPTS[entry.entryType]?.(tr) : undefined;
 
   return (
     <div
@@ -401,66 +473,110 @@ function ReviewCard({ entry, tr, dragX = 0 }: { entry: Entry; tr: ReturnType<typ
         overflow: "hidden",
       }}
     >
-      {/* Directional tint overlay — opacity on element so color stays CSS-var */}
+      {/* Directional tint overlay */}
       {dragX !== 0 && (
         <div
           style={{
-            position: "absolute",
-            inset: 0,
-            borderRadius: "inherit",
-            pointerEvents: "none",
+            position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none",
             opacity: overlayOpacity,
             background: `radial-gradient(ellipse at ${overlayPos}, ${overlayVar}, transparent 62%)`,
           }}
         />
       )}
 
-      {/* Stamp label */}
+      {/* Stamp */}
       {dragX !== 0 && (
         <div
           style={{
-            position: "absolute",
-            top: 18,
+            position: "absolute", top: 18, zIndex: 10, pointerEvents: "none",
             ...(isRight ? { right: 18 } : { left: 18 }),
             opacity: labelOpacity,
             transform: isRight ? "rotate(12deg)" : "rotate(-12deg)",
-            pointerEvents: "none",
-            zIndex: 10,
           }}
         >
-          <span
-            style={{
-              fontFamily: "var(--font-caveat), cursive",
-              fontSize: "1.05rem",
-              fontWeight: 700,
-              letterSpacing: "0.06em",
-              color: isRight ? "var(--accent)" : "var(--due-overdue)",
-              border: `2px solid ${isRight ? "var(--accent)" : "var(--due-overdue)"}`,
-              borderRadius: 6,
-              padding: "2px 9px",
-              display: "block",
-            }}
-          >
-            {isRight ? tr.reviewGotIt : tr.reviewAgain}
+          <span style={{
+            fontFamily: "var(--font-caveat), cursive", fontSize: "1.05rem",
+            fontWeight: 700, letterSpacing: "0.06em", display: "block",
+            color: isRight ? "var(--accent)" : "var(--due-overdue)",
+            border: `2px solid ${isRight ? "var(--accent)" : "var(--due-overdue)"}`,
+            borderRadius: 6, padding: "2px 9px",
+          }}>
+            {isRight ? stampRight : stampLeft}
           </span>
         </div>
       )}
 
-      <span className="mb-3 inline-block rounded-full px-3 py-0.5 font-sans text-sm"
+      {/* Date chip */}
+      <span className="mb-3 inline-block rounded-full px-3 py-0.5 font-sans"
         style={{ background: "var(--border)", color: "var(--fg-muted)", fontFamily: "var(--font-caveat), cursive", fontSize: "0.95rem" }}>
         {contextLabel(entry.date, tr)}
       </span>
-      <p className="mb-4 font-serif leading-relaxed"
-        style={{ color: "var(--fg)", fontSize: "1rem", maxHeight: "32vh", overflowY: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-        {entry.content}
-      </p>
-      {entry.attachments && entry.attachments.length > 0 && (
+
+      {/* Content — blurred for facts until revealed */}
+      <div className="relative">
+        <p className="mb-4 font-serif leading-relaxed"
+          style={{
+            color: "var(--fg)", fontSize: "1rem", whiteSpace: "pre-wrap", wordBreak: "break-word",
+            maxHeight: showBlurred ? "24vh" : "32vh",
+            overflowY: showBlurred ? "hidden" : "auto",
+            filter: showBlurred ? "blur(5px)" : "none",
+            transition: "filter 280ms ease",
+            userSelect: showBlurred ? "none" : "text",
+            pointerEvents: showBlurred ? "none" : "auto",
+          }}>
+          {entry.content}
+        </p>
+        {showBlurred && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <button
+              onClick={() => setRevealed(true)}
+              className="btn-3d rounded-xl px-5 py-2.5 font-sans text-sm font-semibold"
+            >
+              {tr.reviewReveal}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Attachments — only after fact reveal or for non-fact entries */}
+      {(!showBlurred) && entry.attachments && entry.attachments.length > 0 && (
         <div className="mb-4 flex flex-col gap-2">
           {entry.attachments.map((att, i) => (
             <AttachmentView key={i} att={att} />
           ))}
         </div>
       )}
+
+      {/* Gap section — replaces type prompt when gap is open */}
+      {isGapMode && entry.gap && (
+        <div
+          className="mb-3 rounded-2xl px-4 py-3"
+          style={{
+            background: "color-mix(in oklch, var(--due-today) 12%, transparent)",
+            border: "1px solid color-mix(in oklch, var(--due-today) 35%, transparent)",
+          }}
+        >
+          <p className="mb-1 font-sans text-[10px] font-medium uppercase tracking-wider"
+            style={{ color: "var(--due-today)" }}>
+            {tr.gapLabel}
+          </p>
+          <p className="mb-2 font-sans text-sm leading-relaxed" style={{ color: "var(--fg)" }}>
+            {entry.gap}
+          </p>
+          <p className="font-serif text-xs italic" style={{ color: "var(--fg-muted)" }}>
+            {tr.reviewGapPrompt}
+          </p>
+        </div>
+      )}
+
+      {/* Type-specific prompt — shown in normal mode for non-fact types */}
+      {typePrompt && !showBlurred && (
+        <p className="mb-3 font-serif text-[13px] italic" style={{ color: "var(--fg-muted)", opacity: 0.75 }}>
+          {typePrompt}
+        </p>
+      )}
+
+      {/* Tags */}
       {entry.tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {entry.tags.map((tag) => (
@@ -581,6 +697,14 @@ function IconSuperseded() {
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+    </svg>
+  );
+}
+
+function IconGapOpen() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/>
     </svg>
   );
 }

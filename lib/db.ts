@@ -1,4 +1,4 @@
-import type { Entry, Attachment, EntryDraft, EntryUpdate, ReviewOutcome, ReviewEvent } from "@/types/entry";
+import type { Entry, Attachment, EntryDraft, EntryUpdate, ReviewOutcome, ReviewEvent, GapStatus } from "@/types/entry";
 import type { Todo } from "@/types/todo";
 import { loadKey, encryptText, decryptText, encryptBytes, decryptBytes, bytesToBase64 } from "./crypto";
 import { computeNextInterval, interleaveQueue } from "./review-scheduler";
@@ -834,7 +834,12 @@ export async function getCalibrationData(): Promise<Pick<Entry, "_id" | "reviewH
   return result.docs as unknown as Pick<Entry, "_id" | "reviewHistory">[];
 }
 
-export async function markReviewed(entry: Entry, outcome: ReviewOutcome): Promise<Entry> {
+// gapUpdate is set when the review also resolves/archives/keeps the open gap.
+export async function markReviewed(
+  entry: Entry,
+  outcome: ReviewOutcome,
+  gapUpdate?: GapStatus,
+): Promise<Entry> {
   requireAuth();
   const db = await getDB();
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -846,7 +851,14 @@ export async function markReviewed(entry: Entry, outcome: ReviewOutcome): Promis
       const nextReview = toLocalDateStr(new Date(Date.now() + newInterval * 86_400_000));
       const event: ReviewEvent = { date: toLocalDateStr(), outcome };
       const reviewHistory = [...(latest.reviewHistory ?? []), event];
-      const updated = { ...latest, reviewInterval: newInterval, nextReview, lastReviewOutcome: outcome, reviewHistory };
+      const updated = {
+        ...latest,
+        reviewInterval: newInterval,
+        nextReview,
+        lastReviewOutcome: outcome,
+        reviewHistory,
+        ...(gapUpdate !== undefined ? { gapStatus: gapUpdate } : {}),
+      };
       const res = await db.put(updated as unknown as AnyDoc);
       return { ...updated, _rev: res.rev };
     } catch (err) {
