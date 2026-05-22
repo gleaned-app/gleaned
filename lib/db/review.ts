@@ -87,6 +87,36 @@ export async function getCalibrationData(): Promise<Pick<Entry, "_id" | "reviewH
   return result.docs as unknown as Pick<Entry, "_id" | "reviewHistory">[];
 }
 
+// Reverts a markReviewed call by restoring the scheduling fields to their
+// pre-review state. Fetches the latest rev so concurrent edits are safe.
+export async function undoMarkReviewed(prev: Entry): Promise<void> {
+  requireAuth();
+  const db = await getDB();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const latest = (await db.get(prev._id)) as unknown as Entry;
+      const reverted: Entry = {
+        ...latest,
+        reviewInterval:    prev.reviewInterval,
+        nextReview:        prev.nextReview,
+        lastReviewOutcome: prev.lastReviewOutcome,
+        reviewHistory:     prev.reviewHistory,
+        gapStatus:         prev.gapStatus,
+      };
+      if (prev.reviewInterval    === undefined) delete reverted.reviewInterval;
+      if (prev.nextReview        === undefined) delete reverted.nextReview;
+      if (prev.lastReviewOutcome === undefined) delete reverted.lastReviewOutcome;
+      if (prev.reviewHistory     === undefined) delete reverted.reviewHistory;
+      if (prev.gapStatus         === undefined) delete reverted.gapStatus;
+      await db.put(reverted as unknown as AnyDoc);
+      return;
+    } catch (err) {
+      if ((err as { status?: number }).status !== 409) throw err;
+    }
+  }
+  throw new Error("gleaned: too many conflicts undoing review");
+}
+
 // gapUpdate is set when the review also resolves/archives/keeps the open gap.
 export async function markReviewed(
   entry: Entry,

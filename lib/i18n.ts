@@ -74,6 +74,7 @@ export interface Translations {
   reviewDaysAgo(n: number): string;
   reviewAgain: string;
   reviewGotIt: string;
+  reviewUndo: string;
   reviewEmpty: string;
   reviewEmptyBody: string;
   reviewOf(done: number, total: number): string;
@@ -252,6 +253,7 @@ const de: Translations = {
   reviewDaysAgo: (n) => n === 1 ? "vor 1 Tag" : `vor ${n} Tagen`,
   reviewAgain: "Nochmal",
   reviewGotIt: "Sitzt noch!",
+  reviewUndo: "Rückgängig",
   reviewEmpty: "Alles wiederholt.",
   reviewEmptyBody: "Du investierst in dein Wissen. Das zeigt.",
   reviewOf: (done, total) => `${done} von ${total}`,
@@ -423,6 +425,7 @@ const en: Translations = {
   reviewDaysAgo: (n) => n === 1 ? "1 day ago" : `${n} days ago`,
   reviewAgain: "Again",
   reviewGotIt: "Got it!",
+  reviewUndo: "Undo",
   reviewEmpty: "All caught up.",
   reviewEmptyBody: "You're investing in your knowledge. It shows.",
   reviewOf: (done, total) => `${done} of ${total}`,
