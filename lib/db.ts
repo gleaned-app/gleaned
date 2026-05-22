@@ -1,4 +1,4 @@
-import type { Entry, Attachment } from "@/types/entry";
+import type { Entry, Attachment, EntryDraft, EntryUpdate } from "@/types/entry";
 import type { Todo } from "@/types/todo";
 import { loadKey, encryptText, decryptText, encryptBytes, decryptBytes, bytesToBase64 } from "./crypto";
 
@@ -222,9 +222,17 @@ export async function deleteTag(tag: string): Promise<void> {
           _id: latest._id, type: "entry",
           content: doc.content, tags: newTags,
           date: latest.date, createdAt: latest.createdAt,
-          ...(latest.nextReview !== undefined ? { nextReview: latest.nextReview } : {}),
-          ...(latest.reviewInterval !== undefined ? { reviewInterval: latest.reviewInterval } : {}),
+          ...(latest.nextReview        !== undefined ? { nextReview:        latest.nextReview        } : {}),
+          ...(latest.reviewInterval    !== undefined ? { reviewInterval:    latest.reviewInterval    } : {}),
           ...(attMeta?.length ? { attachments: attMeta } : {}),
+          // v2 unencrypted metadata from the raw DB doc
+          ...(latest.entryType         !== undefined ? { entryType:         latest.entryType         } : {}),
+          ...(latest.gapStatus         !== undefined ? { gapStatus:         latest.gapStatus         } : {}),
+          ...(latest.lastReviewOutcome !== undefined ? { lastReviewOutcome: latest.lastReviewOutcome } : {}),
+          // v2 encrypted content from the decrypted doc
+          ...(doc.source !== undefined ? { source: doc.source } : {}),
+          ...(doc.stake  !== undefined ? { stake:  doc.stake  } : {}),
+          ...(doc.gap    !== undefined ? { gap:    doc.gap    } : {}),
         };
         const enc = await encryptEntry(base);
         await db.put({
@@ -256,13 +264,18 @@ interface EncPayload {
   content: string;
   tags: string[];
   attachments?: AttachmentMeta[];
+  // v2: personal content fields encrypted alongside content
+  source?: string;
+  stake?: string;
+  gap?: string;
 }
 
 type PouchAttachmentInline = { content_type: string; data: string };
 type PouchAttachmentStub   = { content_type: string; stub: true; digest?: string; length?: number; revpos?: number };
 type PouchAttachments = Record<string, PouchAttachmentInline | PouchAttachmentStub>;
 
-async function encryptEntry(
+/* @internal — exported for unit tests only */
+export async function encryptEntry(
   doc: Omit<Entry, "_rev" | "encrypted" | "enc">,
 ): Promise<Omit<Entry, "_rev">> {
   const key = await loadKey();
@@ -275,6 +288,10 @@ async function encryptEntry(
     content: doc.content,
     tags: doc.tags,
     ...(attMeta?.length ? { attachments: attMeta } : {}),
+    // v2 personal content: encrypted alongside body content
+    ...(doc.source !== undefined ? { source: doc.source } : {}),
+    ...(doc.stake  !== undefined ? { stake:  doc.stake  } : {}),
+    ...(doc.gap    !== undefined ? { gap:    doc.gap    } : {}),
   };
   const enc = await encryptText(key, JSON.stringify(payload));
 
@@ -298,11 +315,16 @@ async function encryptEntry(
     content: "", tags: [], encrypted: true, enc,
     ...(doc.nextReview !== undefined ? { nextReview: doc.nextReview } : {}),
     ...(doc.reviewInterval !== undefined ? { reviewInterval: doc.reviewInterval } : {}),
+    // v2 unencrypted metadata — preserved in DB for scheduling/filtering without decryption
+    ...(doc.entryType         !== undefined ? { entryType:         doc.entryType         } : {}),
+    ...(doc.gapStatus         !== undefined ? { gapStatus:         doc.gapStatus         } : {}),
+    ...(doc.lastReviewOutcome !== undefined ? { lastReviewOutcome: doc.lastReviewOutcome } : {}),
     ...(Object.keys(pouchAtts).length ? { _attachments: pouchAtts } : {}),
   } as unknown as Omit<Entry, "_rev">;
 }
 
-async function decryptEntry(entry: Entry): Promise<Entry> {
+/* @internal — exported for unit tests only */
+export async function decryptEntry(entry: Entry): Promise<Entry> {
   if (!entry.encrypted || !entry.enc) return entry;
   const key = await loadKey();
   if (!key) return entry;
@@ -330,6 +352,11 @@ async function decryptEntry(entry: Entry): Promise<Entry> {
       content: payload.content,
       tags: payload.tags,
       ...(attachments?.length ? { attachments } : {}),
+      // v2 personal content — restored from payload; omit key entirely when absent
+      // so downstream code can use `field !== undefined` safely
+      ...(payload.source !== undefined ? { source: payload.source } : {}),
+      ...(payload.stake  !== undefined ? { stake:  payload.stake  } : {}),
+      ...(payload.gap    !== undefined ? { gap:    payload.gap    } : {}),
     };
   } catch {
     return entry;
@@ -404,9 +431,10 @@ async function migrateTodosEncryption(): Promise<void> {
 
 // ─── Entries ────────────────────────────────────────────────────────────────
 
-export async function saveEntry(content: string, tags: string[], attachments?: Attachment[]): Promise<Entry> {
+export async function saveEntry(draft: EntryDraft): Promise<Entry> {
   requireAuth();
   const db = await getDB();
+  const { content, tags, attachments, entryType, source, stake, gap, gapStatus } = draft;
   const now = new Date();
   const tomorrow = toLocalDateStr(new Date(now.getTime() + 86_400_000));
   const base: Omit<Entry, "_rev" | "encrypted" | "enc"> = {
@@ -419,10 +447,22 @@ export async function saveEntry(content: string, tags: string[], attachments?: A
     nextReview: tomorrow,
     reviewInterval: 1,
     ...(attachments?.length ? { attachments } : {}),
+    ...(entryType !== undefined ? { entryType } : {}),
+    ...(source    !== undefined ? { source    } : {}),
+    ...(stake     !== undefined ? { stake     } : {}),
+    ...(gap       !== undefined ? { gap       } : {}),
+    ...(gapStatus !== undefined ? { gapStatus } : {}),
   };
   const doc = await encryptEntry(base);
   await db.put(doc as unknown as AnyDoc);
-  const saved: Entry = { ...doc, content, tags, ...(attachments?.length ? { attachments } : {}) } as Entry;
+  // Return in-memory entry with decrypted fields so the caller can display immediately
+  const saved: Entry = {
+    ...doc, content, tags,
+    ...(attachments?.length ? { attachments } : {}),
+    ...(source !== undefined ? { source } : {}),
+    ...(stake  !== undefined ? { stake  } : {}),
+    ...(gap    !== undefined ? { gap    } : {}),
+  } as Entry;
   if (_searchCache !== null) _searchCache = [saved, ..._searchCache];
   return saved;
 }
@@ -502,9 +542,18 @@ export async function searchEntries(query: string): Promise<Entry[]> {
     .slice(0, 20);
 }
 
-export async function updateEntry(entry: Entry, content: string, tags: string[]): Promise<Entry> {
+export async function updateEntry(entry: Entry, update: EntryUpdate): Promise<Entry> {
   requireAuth();
   const db = await getDB();
+  const { content, tags } = update;
+  // Merge update with existing entry: undefined in update → keep current value from entry.
+  // Callers that only touch content/tags never accidentally clear v2 fields.
+  const source    = update.source    !== undefined ? update.source    : entry.source;
+  const stake     = update.stake     !== undefined ? update.stake     : entry.stake;
+  const gap       = update.gap       !== undefined ? update.gap       : entry.gap;
+  const gapStatus = update.gapStatus !== undefined ? update.gapStatus : entry.gapStatus;
+  const entryType = update.entryType !== undefined ? update.entryType : entry.entryType;
+
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       // Always fetch fresh — needed for the correct _rev and for _attachments stubs
@@ -516,9 +565,17 @@ export async function updateEntry(entry: Entry, content: string, tags: string[])
       const base: Omit<Entry, "_rev" | "encrypted" | "enc"> = {
         _id: latest._id, type: "entry",
         content, tags, date: latest.date, createdAt: latest.createdAt,
-        ...(latest.nextReview !== undefined ? { nextReview: latest.nextReview } : {}),
+        ...(latest.nextReview     !== undefined ? { nextReview:     latest.nextReview     } : {}),
         ...(latest.reviewInterval !== undefined ? { reviewInterval: latest.reviewInterval } : {}),
         ...(attMeta?.length ? { attachments: attMeta } : {}),
+        // v2 unencrypted metadata — latest from DB takes precedence for outcome; others from merge
+        ...(latest.lastReviewOutcome !== undefined ? { lastReviewOutcome: latest.lastReviewOutcome } : {}),
+        ...(entryType !== undefined ? { entryType } : {}),
+        ...(gapStatus !== undefined ? { gapStatus } : {}),
+        // v2 encrypted content — merged values
+        ...(source !== undefined ? { source } : {}),
+        ...(stake  !== undefined ? { stake  } : {}),
+        ...(gap    !== undefined ? { gap    } : {}),
       };
       const enc = await encryptEntry(base);
       const res = await db.put({
@@ -526,7 +583,13 @@ export async function updateEntry(entry: Entry, content: string, tags: string[])
         _rev: latest._rev,
         ...(latest._attachments ? { _attachments: latest._attachments } : {}),
       } as unknown as AnyDoc);
-      const updated = { ...enc, _rev: res.rev, content, tags, ...(entry.attachments?.length ? { attachments: entry.attachments } : {}) } as Entry;
+      const updated: Entry = {
+        ...enc, _rev: res.rev, content, tags,
+        ...(entry.attachments?.length ? { attachments: entry.attachments } : {}),
+        ...(source !== undefined ? { source } : {}),
+        ...(stake  !== undefined ? { stake  } : {}),
+        ...(gap    !== undefined ? { gap    } : {}),
+      } as Entry;
       if (_searchCache !== null) {
         _searchCache = _searchCache.map((e) => e._id === updated._id ? updated : e);
       }
@@ -849,6 +912,13 @@ export async function resolveConflict(
       content: keep.content, tags: keep.tags,
       date: keep.date, createdAt: keep.createdAt,
       ...(attMeta?.length ? { attachments: attMeta } : {}),
+      // v2 fields — taken from the chosen revision (keep is fully decrypted)
+      ...(keep.entryType         !== undefined ? { entryType:         keep.entryType         } : {}),
+      ...(keep.gapStatus         !== undefined ? { gapStatus:         keep.gapStatus         } : {}),
+      ...(keep.lastReviewOutcome !== undefined ? { lastReviewOutcome: keep.lastReviewOutcome } : {}),
+      ...(keep.source !== undefined ? { source: keep.source } : {}),
+      ...(keep.stake  !== undefined ? { stake:  keep.stake  } : {}),
+      ...(keep.gap    !== undefined ? { gap:    keep.gap    } : {}),
     };
     const enc = await encryptEntry(base);
     await db.put({
