@@ -36,6 +36,8 @@ export interface Entry {
   // spaced repetition (unencrypted — queried without decryption for scheduling)
   nextReview?: string;      // YYYY-MM-DD
   reviewInterval?: number;  // days until next review
+  stability?: number;       // FSRS stability S: days at which retrievability = 0.9
+  difficulty?: number;      // FSRS difficulty D ∈ [1, 10]
   // learning model v2 — unencrypted metadata (queryable for scheduling/filtering)
   entryType?: string;
   gapStatus?: GapStatus;

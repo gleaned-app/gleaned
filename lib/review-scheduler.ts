@@ -1,33 +1,147 @@
 import type { Entry, ReviewOutcome } from "@/types/entry";
 
-/**
- * Computes the next review interval in days.
- *
- * Outcomes:
- *   still_holds    — exponential growth (×2.1, max 60 days)
- *   needs_revision — partial decay (×0.5, min 1 day); stays in queue soon
- *   superseded     — pushed to 180 days; effectively archived for active review
- *
- * Gap pressure (region-of-proximal-learning principle):
- * An open gap halves the interval. Entries at the boundary of understanding
- * need more frequent confrontation than settled knowledge.
- */
-export function computeNextInterval(
-  currentInterval: number,
-  outcome: ReviewOutcome,
-  hasOpenGap: boolean,
-): number {
-  let base: number;
-  if (outcome === "still_holds") {
-    base = Math.max(Math.min(Math.round(currentInterval * 2.1), 60), 1);
-  } else if (outcome === "needs_revision") {
-    base = Math.max(Math.round(currentInterval * 0.5), 1);
-  } else {
-    // superseded — push far out; not deleted in case understanding later returns
-    base = 180;
-  }
-  return hasOpenGap ? Math.max(Math.ceil(base * 0.5), 1) : base;
+// ─── FSRS-5 constants ──────────────────────────────────────────────────────────
+//
+// Published default parameters from Ye et al. (2024), "A Stochastic Shortest
+// Path Algorithm for Optimizing Spaced Repetition Scheduling", SIGKDD 2024.
+// Hardcoded so gleaned has zero runtime dependencies and stays self-contained.
+//
+// prettier-ignore
+const W = [
+  // w0–w3: initial stability for ratings Again / Hard / Good / Easy
+  0.40255, 1.18385, 3.17395, 15.69105,
+  // w4–w7: difficulty init-value, scale, delta-scale, mean-reversion weight
+  7.1949, 0.5345, 1.4604, 0.0046,
+  // w8–w10: recall stability: exponent, S-power, R-factor
+  1.54575, 0.1192, 1.01925,
+  // w11–w14: forgetting stability: base, D-exponent, S-exponent, R-factor
+  1.9395, 0.11, 0.29, 2.2700,
+  // w15–w16: hard-penalty and easy-bonus (unused — gleaned maps to Good/Again only)
+  0.2500, 2.9898,
+  // w17–w18: short-term stability parameters (unused)
+  0.51, 0.43,
+] as const;
+
+// At t = S days, R = 0.9.  Derivation: solve (1 + F × 1)^DECAY = 0.9 for F.
+const FSRS_DECAY  = -0.5;
+const FSRS_FACTOR = Math.pow(0.9, 1 / FSRS_DECAY) - 1; // ≈ 0.2346
+
+// ─── FSRS math helpers ────────────────────────────────────────────────────────
+
+function clamp(x: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, x));
 }
+
+/** Probability of recall after `daysSince` days given stability S. */
+export function retrievability(daysSince: number, stability: number): number {
+  return Math.pow(1 + FSRS_FACTOR * daysSince / stability, FSRS_DECAY);
+}
+
+/** Initial difficulty for a fresh entry reviewed at `rating` (1=Again, 3=Good). */
+function initialDifficulty(rating: 1 | 3): number {
+  return clamp(W[4] - Math.exp(W[5] * (rating - 1)) + 1, 1, 10);
+}
+
+/** Initial stability for a fresh entry reviewed at `rating`. */
+function initialStability(rating: 1 | 3): number {
+  return rating === 1 ? W[0] : W[2];
+}
+
+/** Mean-reversion target: D₀(4) — difficulty of an "easy" item. */
+const D0_EASY = W[4] - Math.exp(W[5] * 3) + 1;
+
+/** Update difficulty after a review at `rating`. */
+function updateDifficulty(D: number, rating: 1 | 3): number {
+  const delta = -W[6] * (rating - 3); // 0 for Good (3), positive for Again (1)
+  return clamp(W[7] * D0_EASY + (1 - W[7]) * (D + delta), 1, 10);
+}
+
+/** Stability growth after a successful recall (rating = Good). */
+function updateStabilityRecall(D: number, S: number, R: number): number {
+  const factor = Math.exp(W[8]) * (11 - D) * Math.pow(S, -W[9]) * (Math.exp(W[10] * (1 - R)) - 1);
+  return S * (factor + 1);
+}
+
+/** Stability reset after forgetting (rating = Again). */
+function updateStabilityForgetting(D: number, S: number, R: number): number {
+  return W[11] * Math.pow(D, -W[12]) * (Math.pow(S + 1, W[13]) - 1) * Math.exp(W[14] * (1 - R));
+}
+
+// ─── Public API ───────────────────────────────────────────────────────────────
+
+export interface ScheduleResult {
+  interval:   number;  // days until next review
+  stability:  number;  // updated FSRS stability S
+  difficulty: number;  // updated FSRS difficulty D
+}
+
+/**
+ * Computes the next review schedule using a two-axis model:
+ *
+ * Axis 1 — Forgetting risk (FSRS-5):
+ *   Tracks per-entry Stability S and Difficulty D.  Interval = round(S) gives
+ *   90% retention.  S grows on recall; resets on forgetting.
+ *
+ * Axis 2 — Gap pressure (gleaned-specific):
+ *   An open gap halves the interval, keeping boundary-of-understanding entries
+ *   in more frequent confrontation (region-of-proximal-learning principle).
+ *
+ * Outcome mapping (gleaned → FSRS rating):
+ *   still_holds  → rating 3 (Good)  — stable recall, S grows
+ *   needs_revision → rating 1 (Again) — forgot, S resets, D increases
+ *   superseded   → fixed 180 days  — not a forgetting event; archived
+ *
+ * Migration: entries without `stability` fall back to `reviewInterval` as the
+ * initial S estimate so existing data behaves sensibly without a bulk migration.
+ */
+export function scheduleEntry(
+  entry: Entry,
+  outcome: ReviewOutcome,
+  daysSinceReview: number,
+): ScheduleResult {
+  if (outcome === "superseded") {
+    return {
+      interval:   180,
+      stability:  entry.stability ?? entry.reviewInterval ?? 1,
+      difficulty: entry.difficulty ?? 5.0,
+    };
+  }
+
+  const rating: 1 | 3 = outcome === "still_holds" ? 3 : 1;
+
+  // Seed stability: prefer FSRS field, fall back to old reviewInterval for migration
+  const prevS = entry.stability ?? entry.reviewInterval ?? null;
+
+  let S: number;
+  let D: number;
+
+  if (prevS === null) {
+    S = initialStability(rating);
+    D = initialDifficulty(rating);
+  } else {
+    D = entry.difficulty ?? 5.0;
+    const R = retrievability(Math.max(daysSinceReview, 0), Math.max(prevS, 0.1));
+    if (rating === 1) {
+      S = Math.max(updateStabilityForgetting(D, prevS, R), 0.1);
+      D = updateDifficulty(D, 1);
+    } else {
+      S = Math.max(updateStabilityRecall(D, prevS, R), prevS); // S can only grow on recall
+      D = updateDifficulty(D, 3);
+    }
+  }
+
+  S = Math.max(S, 0.1);
+  const baseInterval = Math.max(Math.round(S), 1);
+
+  // Gap pressure: open gap halves the interval
+  const interval = entry.gapStatus === "open"
+    ? Math.max(Math.ceil(baseInterval * 0.5), 1)
+    : baseInterval;
+
+  return { interval, stability: S, difficulty: D };
+}
+
+// ─── Review queue ordering ────────────────────────────────────────────────────
 
 /**
  * Reorders a review queue using interleaved practice (Rohrer & Taylor, 2007).
@@ -46,7 +160,6 @@ export function interleaveQueue(
 ): Entry[] {
   if (entries.length <= 1) return [...entries];
 
-  // Group by entry type; untyped entries form their own bucket
   const buckets = new Map<string, Entry[]>();
   for (const e of entries) {
     const key = e.entryType ?? "untyped";
@@ -54,18 +167,14 @@ export function interleaveQueue(
     buckets.get(key)!.push(e);
   }
 
-  // Pre-compute scores then sort descending so the highest-priority entry
-  // in each bucket is at index 0 (to be shifted out first)
   for (const bucket of buckets.values()) {
     const scored = bucket.map((e) => ({ e, score: scoreEntry(e, today, rng) }));
     scored.sort((a, b) => b.score - a.score);
     bucket.splice(0, bucket.length, ...scored.map((s) => s.e));
   }
 
-  // Shuffle the bucket traversal order so different types lead across sessions
   const keys = shuffled([...buckets.keys()], rng);
 
-  // Round-robin: one entry per bucket per pass — guarantees type interleaving
   const result: Entry[] = [];
   while (result.length < entries.length) {
     for (const key of keys) {
@@ -93,8 +202,8 @@ const MIN_CALIBRATION_SAMPLES = 5;
 export function computeCalibration(
   entries: Array<Pick<Entry, "reviewHistory">>,
 ): number | null {
-  let hits = 0;   // still_holds → still_holds (confirmed)
-  let misses = 0; // still_holds → needs_revision | superseded (contradicted)
+  let hits = 0;
+  let misses = 0;
 
   for (const { reviewHistory } of entries) {
     if (!reviewHistory || reviewHistory.length < 2) continue;
@@ -104,7 +213,6 @@ export function computeCalibration(
       if (next === "still_holds") {
         hits++;
       } else {
-        // needs_revision or superseded after a "still holds" = miscalibration
         misses++;
       }
     }
