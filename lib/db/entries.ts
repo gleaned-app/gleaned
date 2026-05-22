@@ -6,16 +6,26 @@ import { encryptEntry, decryptEntry } from "./entry-crypto";
 // ─── Search cache ─────────────────────────────────────────────────────────────
 // All decrypted entries in memory so searchEntries never re-decrypts on each
 // query. Cleared on lock, updated incrementally on save/update/delete.
-let _searchCache: Entry[] | null = null;
+//
+// Always mutate through the cache object — never assign cache.entries directly
+// outside of buildSearchCache. Every write path (save/update/delete/deleteTag)
+// must call the matching method so the cache stays consistent.
+const cache = {
+  entries: null as Entry[] | null,
+  add(e: Entry)      { if (this.entries) this.entries = [e, ...this.entries]; },
+  remove(id: string) { if (this.entries) this.entries = this.entries.filter(x => x._id !== id); },
+  update(e: Entry)   { if (this.entries) this.entries = this.entries.map(x => x._id === e._id ? e : x); },
+  clear()            { this.entries = null; },
+};
 
-export function invalidateSearchCache(): void { _searchCache = null; }
+export function invalidateSearchCache(): void { cache.clear(); }
 
 async function buildSearchCache(): Promise<Entry[]> {
   const db = await getDB();
   const result = await db.find({ selector: { type: "entry" }, limit: QUERY_DECRYPT_LIMIT });
   const decrypted = await Promise.all((result.docs as unknown[]).filter(isEntry).map(decryptEntry));
-  _searchCache = decrypted.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  return _searchCache;
+  cache.entries = decrypted.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return cache.entries;
 }
 
 // ─── Entry CRUD ───────────────────────────────────────────────────────────────
@@ -53,7 +63,7 @@ export async function saveEntry(draft: EntryDraft): Promise<Entry> {
     ...(stake  !== undefined ? { stake  } : {}),
     ...(gap    !== undefined ? { gap    } : {}),
   } as Entry;
-  if (_searchCache !== null) _searchCache = [saved, ..._searchCache];
+  cache.add(saved);
   return saved;
 }
 
@@ -115,11 +125,14 @@ export async function getEntryCountsByDate(): Promise<Map<string, number>> {
 export async function searchEntries(query: string): Promise<Entry[]> {
   requireAuth();
   const q = query.toLowerCase();
-  const all = _searchCache ?? await buildSearchCache();
+  const all = cache.entries ?? await buildSearchCache();
   return all
     .filter((e) =>
       e.content?.toLowerCase().includes(q) ||
-      e.tags?.some((t) => t.toLowerCase().includes(q))
+      e.tags?.some((t) => t.toLowerCase().includes(q)) ||
+      e.source?.toLowerCase().includes(q) ||
+      e.stake?.toLowerCase().includes(q) ||
+      e.gap?.toLowerCase().includes(q)
     )
     .slice(0, 20);
 }
@@ -167,9 +180,7 @@ export async function updateEntry(entry: Entry, update: EntryUpdate): Promise<En
         ...(stake  !== undefined ? { stake  } : {}),
         ...(gap    !== undefined ? { gap    } : {}),
       } as Entry;
-      if (_searchCache !== null) {
-        _searchCache = _searchCache.map((e) => e._id === updated._id ? updated : e);
-      }
+      cache.update(updated);
       return updated;
     } catch (err) {
       if ((err as { status?: number }).status !== 409) throw err;
@@ -185,7 +196,7 @@ export async function deleteEntry(id: string): Promise<void> {
     try {
       const doc = await db.get(id);
       await db.remove(doc);
-      if (_searchCache !== null) _searchCache = _searchCache.filter((e) => e._id !== id);
+      cache.remove(id);
       return;
     } catch (err) {
       if ((err as { status?: number }).status === 404) return;
@@ -199,7 +210,7 @@ export async function deleteEntry(id: string): Promise<void> {
 
 export async function getAllTags(): Promise<Map<string, number>> {
   requireAuth();
-  const all = _searchCache ?? await buildSearchCache();
+  const all = cache.entries ?? await buildSearchCache();
   const counts = new Map<string, number>();
   for (const doc of all) {
     for (const tag of doc.tags ?? []) {
@@ -211,7 +222,7 @@ export async function getAllTags(): Promise<Map<string, number>> {
 
 export async function getEntriesByTag(tag: string): Promise<Entry[]> {
   requireAuth();
-  const all = _searchCache ?? await buildSearchCache();
+  const all = cache.entries ?? await buildSearchCache();
   return all.filter((e) => e.tags?.includes(tag));
 }
 
@@ -220,7 +231,7 @@ export async function deleteTag(tag: string): Promise<void> {
   const db = await getDB();
   // Use the search cache so only affected entries are re-encrypted and re-put —
   // avoids decrypting the full collection when only a few docs carry the tag.
-  const all = _searchCache ?? await buildSearchCache();
+  const all = cache.entries ?? await buildSearchCache();
   const affected = all.filter((e) => e.tags?.includes(tag));
   for (const doc of affected) {
     const newTags = doc.tags.filter((t) => t !== tag);
