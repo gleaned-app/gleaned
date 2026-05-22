@@ -201,6 +201,9 @@ function useMouse() {
 
 // ─── Lock screen ─────────────────────────────────────────────────────────────
 
+const LOCKOUT_KEY = "gleaned_lockout_until";
+const LOCKOUT_ATTEMPTS_KEY = "gleaned_lockout_attempts";
+
 interface Props { onAuth: () => void; }
 
 export default function LockScreen({ onAuth }: Props) {
@@ -222,6 +225,20 @@ export default function LockScreen({ onAuth }: Props) {
   const mouse = useMouse();
 
   useEffect(() => {
+    // Restore lockout state from sessionStorage so a page reload doesn't reset brute-force protection.
+    const storedUntil = sessionStorage.getItem(LOCKOUT_KEY);
+    const storedAttempts = sessionStorage.getItem(LOCKOUT_ATTEMPTS_KEY);
+    if (storedUntil) {
+      const until = Number(storedUntil);
+      if (until > Date.now()) {
+        setLockUntil(until);
+        setLockSecsLeft(Math.ceil((until - Date.now()) / 1000));
+        if (storedAttempts) setFailedAttempts(Number(storedAttempts));
+      } else {
+        sessionStorage.removeItem(LOCKOUT_KEY);
+        sessionStorage.removeItem(LOCKOUT_ATTEMPTS_KEY);
+      }
+    }
     hasPassword().then((has) => {
       setHasLocalAccount(has);
       setMode(has ? "login" : "choose");
@@ -233,6 +250,8 @@ export default function LockScreen({ onAuth }: Props) {
     const id = setInterval(() => {
       const left = Math.ceil((lockUntil - Date.now()) / 1000);
       if (left <= 0) {
+        sessionStorage.removeItem(LOCKOUT_KEY);
+        sessionStorage.removeItem(LOCKOUT_ATTEMPTS_KEY);
         setLockUntil(null);
         setLockSecsLeft(0);
         setError("");
@@ -272,6 +291,8 @@ export default function LockScreen({ onAuth }: Props) {
           // Exponential backoff: 2^(n-1) seconds, capped at 30 s
           const delaySecs = Math.min(Math.pow(2, attempts - 1), 30);
           const until = Date.now() + delaySecs * 1000;
+          sessionStorage.setItem(LOCKOUT_KEY, String(until));
+          sessionStorage.setItem(LOCKOUT_ATTEMPTS_KEY, String(attempts));
           setLockUntil(until);
           setLockSecsLeft(delaySecs);
           setError(t.tooManyAttempts(delaySecs));
