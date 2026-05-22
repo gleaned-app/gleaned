@@ -1,6 +1,7 @@
-import type { Entry, Attachment, EntryDraft, EntryUpdate } from "@/types/entry";
+import type { Entry, Attachment, EntryDraft, EntryUpdate, ReviewOutcome } from "@/types/entry";
 import type { Todo } from "@/types/todo";
 import { loadKey, encryptText, decryptText, encryptBytes, decryptBytes, bytesToBase64 } from "./crypto";
+import { computeNextInterval } from "./review-scheduler";
 
 type AnyDoc = Entry | Todo;
 
@@ -434,7 +435,9 @@ async function migrateTodosEncryption(): Promise<void> {
 export async function saveEntry(draft: EntryDraft): Promise<Entry> {
   requireAuth();
   const db = await getDB();
-  const { content, tags, attachments, entryType, source, stake, gap, gapStatus } = draft;
+  const { content, tags, attachments, entryType, source, stake, gap } = draft;
+  // Auto-default gapStatus to "open" when a gap is provided without an explicit status
+  const gapStatus = draft.gapStatus ?? (gap ? "open" : undefined);
   const now = new Date();
   const tomorrow = toLocalDateStr(new Date(now.getTime() + 86_400_000));
   const base: Omit<Entry, "_rev" | "encrypted" | "enc"> = {
@@ -551,7 +554,10 @@ export async function updateEntry(entry: Entry, update: EntryUpdate): Promise<En
   const source    = update.source    !== undefined ? update.source    : entry.source;
   const stake     = update.stake     !== undefined ? update.stake     : entry.stake;
   const gap       = update.gap       !== undefined ? update.gap       : entry.gap;
-  const gapStatus = update.gapStatus !== undefined ? update.gapStatus : entry.gapStatus;
+  // Auto-default gapStatus to "open" when gap is first introduced without an explicit status
+  const gapStatus = update.gapStatus !== undefined
+    ? update.gapStatus
+    : (entry.gapStatus ?? (gap ? "open" : undefined));
   const entryType = update.entryType !== undefined ? update.entryType : entry.entryType;
 
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -812,16 +818,17 @@ export async function getReviewCount(): Promise<number> {
   return scheduled + backfill;
 }
 
-export async function markReviewed(entry: Entry, remembered: boolean): Promise<Entry> {
+export async function markReviewed(entry: Entry, outcome: ReviewOutcome): Promise<Entry> {
   requireAuth();
   const db = await getDB();
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const latest = (await db.get(entry._id)) as unknown as Entry & { _attachments?: Record<string, unknown> };
       const currentInterval = latest.reviewInterval ?? 1;
-      const newInterval = remembered ? Math.min(currentInterval * 2, 60) : 1;
+      const hasOpenGap = latest.gapStatus === "open";
+      const newInterval = computeNextInterval(currentInterval, outcome, hasOpenGap);
       const nextReview = toLocalDateStr(new Date(Date.now() + newInterval * 86_400_000));
-      const updated = { ...latest, reviewInterval: newInterval, nextReview };
+      const updated = { ...latest, reviewInterval: newInterval, nextReview, lastReviewOutcome: outcome };
       const res = await db.put(updated as unknown as AnyDoc);
       return { ...updated, _rev: res.rev };
     } catch (err) {
