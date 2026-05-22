@@ -4,8 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 import {
   getReviewDue, markReviewed,
   getRecentEntries, getEntriesForMonth, getEntryMonths,
+  getCalibrationData,
 } from "@/lib/db";
 import type { Entry, ReviewOutcome } from "@/types/entry";
+import { computeCalibration } from "@/lib/review-scheduler";
 import { AttachmentView } from "./AttachmentView";
 import { useT } from "@/lib/i18n";
 import { useSettings, locale } from "@/lib/settings-context";
@@ -93,6 +95,7 @@ export default function ReviewView({
   const [monthEntries, setMonthEntries] = useState<Entry[]>([]);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [calibration, setCalibration] = useState<number | null | "loading">("loading");
 
   const [loadingQueue, setLoadingQueue] = useState(true);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -102,6 +105,7 @@ export default function ReviewView({
     getReviewDue().then((e) => { setQueue(e); setTotal(e.length); setLoadingQueue(false); });
     getRecentEntries(60).then((e) => { setHistory(e); setLoadingHistory(false); });
     getEntryMonths().then(setAllMonths);
+    getCalibrationData().then((data) => setCalibration(computeCalibration(data)));
   }, []);
 
   // Load entries when month filter changes
@@ -253,13 +257,16 @@ export default function ReviewView({
       )}
 
       {/* ── History ────────────────────────────────────────────────────────── */}
-      <div className="mt-2 mb-4 flex items-center gap-3">
+      <div className="mt-2 mb-3 flex items-center gap-3">
         <div className="h-px flex-1" style={{ background: "var(--border)" }} />
         <span className="font-sans text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: "var(--fg-muted)" }}>
           {tr.reviewHistory}
         </span>
         <div className="h-px flex-1" style={{ background: "var(--border)" }} />
       </div>
+      {calibration !== "loading" && (
+        <CalibrationRow score={calibration} tr={tr} />
+      )}
 
       {/* ── Filter row: month chips + tag input ─────────────────────────── */}
       {!loadingHistory && sourceEntries.length > 0 && (
@@ -514,6 +521,40 @@ function HistoryRow({ entry, loc, onClick }: { entry: Entry; loc: string; onClic
           <polyline points="9 18 15 12 9 6"/>
         </svg>
       )}
+    </div>
+  );
+}
+
+// ─── Calibration row ──────────────────────────────────────────────────────────
+
+function CalibrationRow({ score, tr }: { score: number | null; tr: ReturnType<typeof useT> }) {
+  const pct = score !== null ? Math.round(score * 100) : null;
+  const dotColor =
+    pct === null        ? "var(--fg-muted)" :
+    pct >= 75           ? "var(--accent)"   :
+    pct >= 50           ? "var(--due-today)":
+                          "var(--due-overdue)";
+
+  return (
+    <div
+      className="mb-4 flex items-center justify-between rounded-xl px-4 py-2.5"
+      style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
+    >
+      <div className="flex items-center gap-2">
+        <span
+          aria-hidden
+          style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, flexShrink: 0, display: "inline-block" }}
+        />
+        <span className="font-sans text-xs font-medium" style={{ color: "var(--fg-muted)" }}>
+          {tr.calibrationLabel}
+        </span>
+      </div>
+      <span
+        className="font-sans text-sm font-semibold tabular-nums"
+        style={{ color: pct !== null ? dotColor : "var(--fg-muted)", opacity: pct !== null ? 1 : 0.45 }}
+      >
+        {pct !== null ? `${pct}%` : tr.calibrationNotEnoughData}
+      </span>
     </div>
   );
 }

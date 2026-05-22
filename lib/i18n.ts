@@ -79,6 +79,8 @@ export interface Translations {
   reviewOf(done: number, total: number): string;
   reviewHistory: string;
   reviewSuperseded: string;
+  calibrationLabel: string;
+  calibrationNotEnoughData: string;
   filterRecent: string;
   filterAllTags: string;
   filterByTag: string;
@@ -242,6 +244,8 @@ const de: Translations = {
   reviewOf: (done, total) => `${done} von ${total}`,
   reviewHistory: "Verlauf",
   reviewSuperseded: "Überholt",
+  calibrationLabel: "Kalibrierung",
+  calibrationNotEnoughData: "noch zu wenig Daten",
   filterRecent: "Neueste",
   filterAllTags: "Alle",
   filterByTag: "tag filtern…",
@@ -400,6 +404,8 @@ const en: Translations = {
   reviewOf: (done, total) => `${done} of ${total}`,
   reviewHistory: "History",
   reviewSuperseded: "Superseded",
+  calibrationLabel: "Calibration",
+  calibrationNotEnoughData: "not enough data yet",
   filterRecent: "Recent",
   filterAllTags: "All",
   filterByTag: "filter by tag…",

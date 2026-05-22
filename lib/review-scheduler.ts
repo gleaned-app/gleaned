@@ -77,6 +77,44 @@ export function interleaveQueue(
   return result;
 }
 
+/**
+ * Computes the learner's calibration score: the fraction of "still holds"
+ * judgments that were confirmed by the subsequent review rather than
+ * contradicted (needs_revision / superseded).
+ *
+ * Returns null when fewer than MIN_CALIBRATION_SAMPLES confirmed judgments
+ * exist — prevents a noisy score from early, sparse data.
+ *
+ * Formula: confirmed_still_holds / (confirmed_still_holds + contradicted_still_holds)
+ * Range:   0.0 (always wrong) … 1.0 (always right)
+ */
+const MIN_CALIBRATION_SAMPLES = 5;
+
+export function computeCalibration(
+  entries: Array<Pick<Entry, "reviewHistory">>,
+): number | null {
+  let hits = 0;   // still_holds → still_holds (confirmed)
+  let misses = 0; // still_holds → needs_revision | superseded (contradicted)
+
+  for (const { reviewHistory } of entries) {
+    if (!reviewHistory || reviewHistory.length < 2) continue;
+    for (let i = 0; i < reviewHistory.length - 1; i++) {
+      if (reviewHistory[i].outcome !== "still_holds") continue;
+      const next = reviewHistory[i + 1].outcome;
+      if (next === "still_holds") {
+        hits++;
+      } else {
+        // needs_revision or superseded after a "still holds" = miscalibration
+        misses++;
+      }
+    }
+  }
+
+  const total = hits + misses;
+  if (total < MIN_CALIBRATION_SAMPLES) return null;
+  return hits / total;
+}
+
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
 function scoreEntry(e: Entry, today: string, rng: () => number): number {

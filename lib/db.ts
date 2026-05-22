@@ -1,4 +1,4 @@
-import type { Entry, Attachment, EntryDraft, EntryUpdate, ReviewOutcome } from "@/types/entry";
+import type { Entry, Attachment, EntryDraft, EntryUpdate, ReviewOutcome, ReviewEvent } from "@/types/entry";
 import type { Todo } from "@/types/todo";
 import { loadKey, encryptText, decryptText, encryptBytes, decryptBytes, bytesToBase64 } from "./crypto";
 import { computeNextInterval, interleaveQueue } from "./review-scheduler";
@@ -230,6 +230,7 @@ export async function deleteTag(tag: string): Promise<void> {
           ...(latest.entryType         !== undefined ? { entryType:         latest.entryType         } : {}),
           ...(latest.gapStatus         !== undefined ? { gapStatus:         latest.gapStatus         } : {}),
           ...(latest.lastReviewOutcome !== undefined ? { lastReviewOutcome: latest.lastReviewOutcome } : {}),
+          ...(latest.reviewHistory?.length           ? { reviewHistory:     latest.reviewHistory      } : {}),
           // v2 encrypted content from the decrypted doc
           ...(doc.source !== undefined ? { source: doc.source } : {}),
           ...(doc.stake  !== undefined ? { stake:  doc.stake  } : {}),
@@ -320,6 +321,7 @@ export async function encryptEntry(
     ...(doc.entryType         !== undefined ? { entryType:         doc.entryType         } : {}),
     ...(doc.gapStatus         !== undefined ? { gapStatus:         doc.gapStatus         } : {}),
     ...(doc.lastReviewOutcome !== undefined ? { lastReviewOutcome: doc.lastReviewOutcome } : {}),
+    ...(doc.reviewHistory?.length          ? { reviewHistory:     doc.reviewHistory      } : {}),
     ...(Object.keys(pouchAtts).length ? { _attachments: pouchAtts } : {}),
   } as unknown as Omit<Entry, "_rev">;
 }
@@ -574,8 +576,9 @@ export async function updateEntry(entry: Entry, update: EntryUpdate): Promise<En
         ...(latest.nextReview     !== undefined ? { nextReview:     latest.nextReview     } : {}),
         ...(latest.reviewInterval !== undefined ? { reviewInterval: latest.reviewInterval } : {}),
         ...(attMeta?.length ? { attachments: attMeta } : {}),
-        // v2 unencrypted metadata — latest from DB takes precedence for outcome; others from merge
+        // v2 unencrypted metadata — latest from DB takes precedence for outcome/history; others from merge
         ...(latest.lastReviewOutcome !== undefined ? { lastReviewOutcome: latest.lastReviewOutcome } : {}),
+        ...(latest.reviewHistory?.length           ? { reviewHistory:     latest.reviewHistory      } : {}),
         ...(entryType !== undefined ? { entryType } : {}),
         ...(gapStatus !== undefined ? { gapStatus } : {}),
         // v2 encrypted content — merged values
@@ -819,6 +822,18 @@ export async function getReviewCount(): Promise<number> {
   return scheduled + backfill;
 }
 
+// Metadata-only query — no decryption needed; reviewHistory is stored unencrypted.
+export async function getCalibrationData(): Promise<Pick<Entry, "_id" | "reviewHistory">[]> {
+  requireAuth();
+  const db = await getDB();
+  const result = await db.find({
+    selector: { type: "entry" },
+    fields: ["_id", "reviewHistory"],
+    limit: QUERY_METADATA_LIMIT,
+  });
+  return result.docs as unknown as Pick<Entry, "_id" | "reviewHistory">[];
+}
+
 export async function markReviewed(entry: Entry, outcome: ReviewOutcome): Promise<Entry> {
   requireAuth();
   const db = await getDB();
@@ -829,7 +844,9 @@ export async function markReviewed(entry: Entry, outcome: ReviewOutcome): Promis
       const hasOpenGap = latest.gapStatus === "open";
       const newInterval = computeNextInterval(currentInterval, outcome, hasOpenGap);
       const nextReview = toLocalDateStr(new Date(Date.now() + newInterval * 86_400_000));
-      const updated = { ...latest, reviewInterval: newInterval, nextReview, lastReviewOutcome: outcome };
+      const event: ReviewEvent = { date: toLocalDateStr(), outcome };
+      const reviewHistory = [...(latest.reviewHistory ?? []), event];
+      const updated = { ...latest, reviewInterval: newInterval, nextReview, lastReviewOutcome: outcome, reviewHistory };
       const res = await db.put(updated as unknown as AnyDoc);
       return { ...updated, _rev: res.rev };
     } catch (err) {
@@ -924,6 +941,7 @@ export async function resolveConflict(
       ...(keep.entryType         !== undefined ? { entryType:         keep.entryType         } : {}),
       ...(keep.gapStatus         !== undefined ? { gapStatus:         keep.gapStatus         } : {}),
       ...(keep.lastReviewOutcome !== undefined ? { lastReviewOutcome: keep.lastReviewOutcome } : {}),
+      ...(keep.reviewHistory?.length           ? { reviewHistory:     keep.reviewHistory      } : {}),
       ...(keep.source !== undefined ? { source: keep.source } : {}),
       ...(keep.stake  !== undefined ? { stake:  keep.stake  } : {}),
       ...(keep.gap    !== undefined ? { gap:    keep.gap    } : {}),

@@ -15,6 +15,12 @@ export type GapStatus = "open" | "resolved" | "archived";
 /** The learner's assessment at review time (replaces binary again/got-it in v2). */
 export type ReviewOutcome = "still_holds" | "needs_revision" | "superseded";
 
+/** A single review event stored in the entry's history for calibration tracking. */
+export interface ReviewEvent {
+  date: string;         // YYYY-MM-DD
+  outcome: ReviewOutcome;
+}
+
 export interface Entry {
   _id: string;
   _rev?: string;
@@ -34,6 +40,7 @@ export interface Entry {
   entryType?: EntryType;
   gapStatus?: GapStatus;
   lastReviewOutcome?: ReviewOutcome;
+  reviewHistory?: ReviewEvent[];  // append-only log used for calibration scoring
   // learning model v2 — encrypted content (personal; lives in EncPayload, never plaintext in DB)
   source?: string;  // where this came from
   stake?: string;   // what changes for the learner because of this knowledge
