@@ -5,7 +5,7 @@ import {
   getReviewDue, markReviewed,
   getRecentEntries, getEntriesForMonth, getEntryMonths,
 } from "@/lib/db";
-import type { Entry } from "@/types/entry";
+import type { Entry, ReviewOutcome } from "@/types/entry";
 import { useT } from "@/lib/i18n";
 import { useSettings, locale } from "@/lib/settings-context";
 import type { View } from "./BottomNav";
@@ -132,10 +132,11 @@ export default function ReviewView({
   const weeks = groupByWeek(displayHistory, tr, loc);
 
   const handleReview = useCallback(
-    async (remembered: boolean) => {
+    async (outcome: ReviewOutcome) => {
       if (!current || slide) return;
-      setSlide(remembered ? "right" : "left");
-      await markReviewed(current, remembered);
+      // still_holds → swipe right, anything else → swipe left
+      setSlide(outcome === "still_holds" ? "right" : "left");
+      await markReviewed(current, outcome);
       setTimeout(() => {
         setSlide(null);
         const next = index + 1;
@@ -159,7 +160,8 @@ export default function ReviewView({
     const diff = e.changedTouches[0].clientX - touchStartX;
     setTouchStartX(null);
     setDragX(0);
-    if (Math.abs(diff) > 56) { navigator.vibrate?.(8); handleReview(diff > 0); }
+    // Swipe right = still_holds, swipe left = needs_revision
+    if (Math.abs(diff) > 56) { navigator.vibrate?.(8); handleReview(diff > 0 ? "still_holds" : "needs_revision"); }
   }
 
   return (
@@ -224,18 +226,25 @@ export default function ReviewView({
           >
             {current && <ReviewCard entry={current} tr={tr} dragX={activeDrag ? dragX : 0} />}
           </div>
-          <div className="mb-2 flex gap-3">
-            <button onClick={() => handleReview(false)} disabled={!!slide}
-              className="flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 font-sans text-sm font-medium transition-opacity active:opacity-70 disabled:opacity-40"
+          {/* Secondary row: needs_revision + superseded */}
+          <div className="mb-2 flex gap-2">
+            <button onClick={() => handleReview("needs_revision")} disabled={!!slide}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 font-sans text-xs font-medium transition-opacity active:opacity-70 disabled:opacity-40"
               style={{ background: "var(--due-overdue-bg)", color: "var(--due-overdue)" }}>
               <IconAgain /> {tr.reviewAgain}
             </button>
-            <button onClick={() => handleReview(true)} disabled={!!slide}
-              className="flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 font-sans text-sm font-medium transition-opacity active:opacity-70 disabled:opacity-40"
-              style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
-              <IconCheck /> {tr.reviewGotIt}
+            <button onClick={() => handleReview("superseded")} disabled={!!slide}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 font-sans text-xs font-medium transition-opacity active:opacity-70 disabled:opacity-40"
+              style={{ background: "var(--border)", color: "var(--fg-muted)" }}>
+              <IconSuperseded /> {tr.reviewSuperseded}
             </button>
           </div>
+          {/* Primary action: still holds — full width */}
+          <button onClick={() => handleReview("still_holds")} disabled={!!slide}
+            className="btn-3d mb-2 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 font-sans text-sm font-semibold disabled:opacity-40"
+            style={{ minHeight: "3rem" }}>
+            <IconCheck /> {tr.reviewGotIt}
+          </button>
           <p className="mb-6 text-center font-sans text-[11px]" style={{ color: "var(--fg-muted)", opacity: 0.45 }}>
             ← {tr.reviewAgain} &nbsp;·&nbsp; {tr.reviewGotIt} →
           </p>
@@ -458,12 +467,12 @@ function HistoryRow({ entry, loc, onClick }: { entry: Entry; loc: string; onClic
     weekday: "short", day: "numeric", month: "short",
   });
   const snippet = entry.content.replace(/\n/g, " ").slice(0, 90) + (entry.content.length > 90 ? "…" : "");
-  const interval = entry.reviewInterval ?? 0;
   const dotColor =
-    interval >= 30 ? "var(--accent)" :
-    interval >= 7  ? "var(--due-soon)" :
-    interval >= 2  ? "var(--fg-muted)" :
-                     "var(--border-focus)";
+    entry.lastReviewOutcome === "still_holds"    ? "var(--accent)" :
+    entry.lastReviewOutcome === "needs_revision" ? "var(--due-today)" :
+    entry.lastReviewOutcome === "superseded"     ? "var(--fg-muted)" :
+    (entry.reviewInterval ?? 0) >= 7             ? "var(--due-soon)" :
+                                                   "var(--border-focus)";
 
   return (
     <div
@@ -515,6 +524,14 @@ function IconCheck() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  );
+}
+
+function IconSuperseded() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
     </svg>
   );
 }

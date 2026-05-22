@@ -78,6 +78,7 @@ export interface Translations {
   reviewEmptyBody: string;
   reviewOf(done: number, total: number): string;
   reviewHistory: string;
+  reviewSuperseded: string;
   filterRecent: string;
   filterAllTags: string;
   filterByTag: string;
@@ -240,6 +241,7 @@ const de: Translations = {
   reviewEmptyBody: "Du investierst in dein Wissen. Das zeigt.",
   reviewOf: (done, total) => `${done} von ${total}`,
   reviewHistory: "Verlauf",
+  reviewSuperseded: "Überholt",
   filterRecent: "Neueste",
   filterAllTags: "Alle",
   filterByTag: "tag filtern…",
@@ -397,6 +399,7 @@ const en: Translations = {
   reviewEmptyBody: "You're investing in your knowledge. It shows.",
   reviewOf: (done, total) => `${done} of ${total}`,
   reviewHistory: "History",
+  reviewSuperseded: "Superseded",
   filterRecent: "Recent",
   filterAllTags: "All",
   filterByTag: "filter by tag…",
