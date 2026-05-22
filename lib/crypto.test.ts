@@ -54,10 +54,10 @@ describe("saltToBase64 / base64ToSalt", () => {
 // ─── generateSalt ────────────────────────────────────────────────────────────
 
 describe("generateSalt", () => {
-  it("returns a Uint8Array of exactly 16 bytes", () => {
+  it("returns a Uint8Array of exactly 32 bytes", () => {
     const salt = generateSalt();
     expect(salt).toBeInstanceOf(Uint8Array);
-    expect(salt.length).toBe(16);
+    expect(salt.length).toBe(32);
   });
 
   it("produces unique values on each call", () => {

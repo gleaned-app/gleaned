@@ -26,7 +26,7 @@ export async function deriveKey(password: string, salt: Uint8Array, iterations =
 }
 
 export function generateSalt(): Uint8Array {
-  return crypto.getRandomValues(new Uint8Array(16));
+  return crypto.getRandomValues(new Uint8Array(32));
 }
 
 export function saltToBase64(salt: Uint8Array): string {
