@@ -1,7 +1,7 @@
 import type { Entry, Attachment, EntryDraft, EntryUpdate, ReviewOutcome } from "@/types/entry";
 import type { Todo } from "@/types/todo";
 import { loadKey, encryptText, decryptText, encryptBytes, decryptBytes, bytesToBase64 } from "./crypto";
-import { computeNextInterval } from "./review-scheduler";
+import { computeNextInterval, interleaveQueue } from "./review-scheduler";
 
 type AnyDoc = Entry | Todo;
 
@@ -798,7 +798,8 @@ export async function getReviewDue(): Promise<Entry[]> {
   // Pass 2: single batch request, then decrypt only what we need
   const res = await db.allDocs({ keys: ids, include_docs: true });
   const docs = (res.rows.map((r) => ("doc" in r ? r.doc : null)) as unknown[]).filter(isEntry);
-  return Promise.all(docs.map(decryptEntry));
+  const entries = await Promise.all(docs.map(decryptEntry));
+  return interleaveQueue(entries);
 }
 
 export async function getReviewCount(): Promise<number> {
