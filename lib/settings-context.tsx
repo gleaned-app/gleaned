@@ -16,6 +16,7 @@ export interface AppSettings {
   couchdbUsername: string;
   couchdbPassword: string;
   defaultView: AppView;
+  customEntryTypes: string[];
 }
 
 const ENV_URL = process.env.NEXT_PUBLIC_COUCHDB_URL ?? "";
@@ -29,6 +30,7 @@ export const DEFAULTS: AppSettings = {
   couchdbUsername: "",
   couchdbPassword: "",
   defaultView: "journal",
+  customEntryTypes: [],
 };
 
 const FONT_MAP: Record<BodyFont, string> = {
@@ -129,6 +131,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         couchdbUsername: s?.couchdbUsername ?? "",
         couchdbPassword: s?.couchdbPassword ?? "",
         defaultView: (s?.defaultView as AppView | undefined) ?? DEFAULTS.defaultView,
+        customEntryTypes: s?.customEntryTypes ?? [],
       };
       setSettings(next);
       applyTheme(next.theme);

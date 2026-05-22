@@ -19,6 +19,7 @@ export interface Settings {
   couchdbPasswordEnc?: string; // AES-GCM ciphertext stored in DB
   defaultView?: "journal" | "calendar" | "todos" | "review";
   migratedAttachmentsV2?: boolean; // set after one-shot native-attachment migration
+  customEntryTypes?: string[];     // user-defined types beyond the built-in five
 }
 
 export async function getSettings(): Promise<Settings | null> {

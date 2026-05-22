@@ -6,7 +6,7 @@ export interface Attachment {
   data?: string;    // base64 data URL; populated in memory after decryption, never persisted in enc payload
 }
 
-/** The shape of a knowledge entry — determines review prompts and scheduling behaviour. */
+/** Built-in entry types with dedicated review prompts. Custom types are stored as plain strings. */
 export type EntryType = "insight" | "technique" | "framework" | "fact" | "observation";
 
 /** Lifecycle state of an entry's gap. */
@@ -37,7 +37,7 @@ export interface Entry {
   nextReview?: string;      // YYYY-MM-DD
   reviewInterval?: number;  // days until next review
   // learning model v2 — unencrypted metadata (queryable for scheduling/filtering)
-  entryType?: EntryType;
+  entryType?: string;
   gapStatus?: GapStatus;
   lastReviewOutcome?: ReviewOutcome;
   reviewHistory?: ReviewEvent[];  // append-only log used for calibration scoring
@@ -52,7 +52,7 @@ export interface EntryDraft {
   content: string;
   tags: string[];
   attachments?: Attachment[];
-  entryType?: EntryType;
+  entryType?: string;
   source?: string;
   stake?: string;
   gap?: string;
@@ -67,7 +67,7 @@ export interface EntryDraft {
 export interface EntryUpdate {
   content: string;
   tags: string[];
-  entryType?: EntryType;
+  entryType?: string;
   source?: string;
   stake?: string;
   gap?: string;

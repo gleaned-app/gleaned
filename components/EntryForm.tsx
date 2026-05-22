@@ -5,6 +5,7 @@ import { saveEntry, getAllTags } from "@/lib/db";
 import type { Entry, Attachment, EntryType } from "@/types/entry";
 import { useT } from "@/lib/i18n";
 import type { Translations } from "@/lib/i18n";
+import { useSettings } from "@/lib/settings-context";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
@@ -50,6 +51,7 @@ interface Props {
 
 export default function EntryForm({ onSaved }: Props) {
   const t = useT();
+  const { settings } = useSettings();
   const [content, setContent] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>([]);
@@ -59,7 +61,7 @@ export default function EntryForm({ onSaved }: Props) {
   const [existingTags, setExistingTags] = useState<string[]>([]);
   // Context panel state
   const [contextOpen, setContextOpen] = useState(true);
-  const [entryType, setEntryType] = useState<EntryType | undefined>(undefined);
+  const [entryType, setEntryType] = useState<string | undefined>(undefined);
   const [source, setSource] = useState("");
   const [stake, setStake] = useState("");
   const [gap, setGap] = useState("");
@@ -264,9 +266,12 @@ export default function EntryForm({ onSaved }: Props) {
               paddingBottom: "0.75rem",
             }}
           >
-            {/* Entry type chips */}
+            {/* Entry type chips — built-ins + user-defined custom types */}
             <div className="flex flex-wrap gap-1.5 pb-3">
-              {ENTRY_TYPES.map(({ value, labelKey }) => (
+              {[
+                ...ENTRY_TYPES.map(({ value, labelKey }) => ({ value, label: t[labelKey] as string })),
+                ...settings.customEntryTypes.map((v) => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) })),
+              ].map(({ value, label }) => (
                 <button
                   key={value}
                   type="button"
@@ -279,7 +284,7 @@ export default function EntryForm({ onSaved }: Props) {
                     transition: "color 120ms ease",
                   }}
                 >
-                  {t[labelKey] as string}
+                  {label}
                 </button>
               ))}
             </div>
@@ -308,15 +313,15 @@ export default function EntryForm({ onSaved }: Props) {
               />
             </div>
 
-            {/* Gap */}
-            <div>
-              <input
-                type="text"
+            {/* Gap — dashed amber border signals open/uncertain vs. the solid borders above */}
+            <div style={{ borderBottom: "1px dashed color-mix(in oklch, var(--due-today) 55%, transparent)" }}>
+              <textarea
+                rows={2}
                 value={gap}
                 onChange={(e) => setGap(e.target.value)}
                 placeholder={t.gapPlaceholder}
-                className="journal-input w-full bg-transparent py-2 font-sans text-sm outline-none"
-                style={{ color: "var(--fg)", caretColor: "var(--accent)" }}
+                className="journal-input w-full resize-none bg-transparent py-2 font-sans text-sm leading-relaxed outline-none"
+                style={{ color: "var(--fg)", caretColor: "var(--due-today)" }}
               />
             </div>
           </div>
