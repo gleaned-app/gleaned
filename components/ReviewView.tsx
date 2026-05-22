@@ -99,6 +99,7 @@ export default function ReviewView({
   const [monthEntries, setMonthEntries] = useState<Entry[]>([]);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [showOpenGaps, setShowOpenGaps] = useState(false);
   const [calibration, setCalibration] = useState<number | null | "loading">("loading");
 
   const [loadingQueue, setLoadingQueue] = useState(true);
@@ -130,7 +131,9 @@ export default function ReviewView({
   const dragRotate = activeDrag ? Math.max(-7, Math.min(7, dragX * 0.05)) : 0;
   const dragScale = activeDrag ? 1 + Math.min(Math.abs(dragX) / 600, 0.025) : 1;
   const dragTranslate = slide === "left" ? -90 : slide === "right" ? 90 : activeDrag ? dragX : 0;
-  const sourceEntries = selectedMonth ? monthEntries : history;
+  const sourceEntries = showOpenGaps
+    ? history.filter((e) => e.gapStatus === "open")
+    : selectedMonth ? monthEntries : history;
   const sq = searchQuery.trim().toLowerCase();
   const displayHistory = sq
     ? sourceEntries.filter((e) =>
@@ -292,6 +295,7 @@ export default function ReviewView({
                   <IconGapOpen /> {tr.reviewGapStillOpen}
                 </button>
                 <button onClick={() => handleReview("superseded", "archived")} disabled={!!slide}
+                  title={tr.reviewGapArchiveTooltip}
                   className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 font-sans text-xs font-medium transition-opacity active:opacity-70 disabled:opacity-40"
                   style={{ background: "var(--border)", color: "var(--fg-muted)" }}>
                   <IconSuperseded /> {tr.reviewGapArchive}
@@ -317,6 +321,7 @@ export default function ReviewView({
                   <IconAgain /> {tr.reviewAgain}
                 </button>
                 <button onClick={() => handleReview("superseded")} disabled={!!slide}
+                  title={tr.reviewSupersededTooltip}
                   className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 font-sans text-xs font-medium transition-opacity active:opacity-70 disabled:opacity-40"
                   style={{ background: "var(--border)", color: "var(--fg-muted)" }}>
                   <IconSuperseded /> {tr.reviewSuperseded}
@@ -355,20 +360,33 @@ export default function ReviewView({
             {allMonths.length > 0 && (
               <>
                 <button
-                  onClick={() => setSelectedMonth(null)}
+                  onClick={() => { setSelectedMonth(null); setShowOpenGaps(false); }}
                   className="rounded-full px-3 py-1 font-sans text-xs font-medium transition-opacity hover:opacity-80"
                   style={{
-                    background: selectedMonth === null ? "var(--accent-soft)" : "var(--border)",
-                    color:      selectedMonth === null ? "var(--accent)"      : "var(--fg-muted)",
+                    background: selectedMonth === null && !showOpenGaps ? "var(--accent-soft)" : "var(--border)",
+                    color:      selectedMonth === null && !showOpenGaps ? "var(--accent)"      : "var(--fg-muted)",
                     whiteSpace: "nowrap",
                   }}
                 >
                   {tr.filterRecent}
                 </button>
+                {history.some((e) => e.gapStatus === "open") && (
+                  <button
+                    onClick={() => { setShowOpenGaps((v) => !v); setSelectedMonth(null); }}
+                    className="rounded-full px-3 py-1 font-sans text-xs font-medium transition-opacity hover:opacity-80"
+                    style={{
+                      background: showOpenGaps ? "color-mix(in oklch, var(--due-today) 18%, transparent)" : "var(--border)",
+                      color:      showOpenGaps ? "var(--due-today)" : "var(--fg-muted)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {tr.filterOpenGaps}
+                  </button>
+                )}
                 {allMonths.map((ym) => (
                   <button
                     key={ym}
-                    onClick={() => setSelectedMonth(ym === selectedMonth ? null : ym)}
+                    onClick={() => { setSelectedMonth(ym === selectedMonth ? null : ym); setShowOpenGaps(false); }}
                     className="rounded-full px-3 py-1 font-sans text-xs font-medium transition-opacity hover:opacity-80"
                     style={{
                       background: selectedMonth === ym ? "var(--accent-soft)" : "var(--border)",

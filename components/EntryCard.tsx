@@ -94,7 +94,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
   const [pendingDelete, setPendingDelete] = useState(false);
   // Edit mode context panel
   const [contextOpen, setContextOpen] = useState(false);
-  const [editType, setEditType] = useState<EntryType | undefined>(undefined);
+  const [editType, setEditType] = useState<string | undefined>(undefined);
   const [editSource, setEditSource] = useState("");
   const [editStake, setEditStake] = useState("");
   const [editGap, setEditGap] = useState("");
@@ -244,9 +244,12 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
         >
           <div style={{ overflow: "hidden" }}>
             <div style={{ opacity: contextOpen ? 1 : 0, transition: "opacity 180ms ease", paddingBottom: "0.5rem" }}>
-              {/* Type chips */}
+              {/* Type chips — built-ins + user-defined custom types */}
               <div className="flex flex-wrap gap-1.5 pb-3">
-                {ENTRY_TYPES.map(({ value, labelKey }) => (
+                {[
+                  ...ENTRY_TYPES.map(({ value, labelKey }) => ({ value, label: t[labelKey] as string })),
+                  ...settings.customEntryTypes.map((v) => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) })),
+                ].map(({ value, label }) => (
                   <button
                     key={value}
                     type="button"
@@ -259,7 +262,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
                       transition: "color 120ms ease",
                     }}
                   >
-                    {t[labelKey] as string}
+                    {label}
                   </button>
                 ))}
               </div>
@@ -286,14 +289,16 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
                 />
               </div>
               {/* Gap */}
-              <input
-                type="text"
-                value={editGap}
-                onChange={(e) => setEditGap(e.target.value)}
-                placeholder={t.gapPlaceholder}
-                className="journal-input w-full bg-transparent py-2 font-sans text-sm outline-none"
-                style={{ color: "var(--fg)", caretColor: "var(--accent)" }}
-              />
+              <div style={{ borderBottom: "1px dashed color-mix(in oklch, var(--due-today) 55%, transparent)" }}>
+                <textarea
+                  rows={2}
+                  value={editGap}
+                  onChange={(e) => setEditGap(e.target.value)}
+                  placeholder={t.gapPlaceholder}
+                  className="journal-input w-full resize-none bg-transparent py-2 font-sans text-sm leading-relaxed outline-none"
+                  style={{ color: "var(--fg)", caretColor: "var(--due-today)" }}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -496,7 +501,8 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
               border: "1px solid color-mix(in oklch, var(--accent), transparent 70%)",
             }}
           >
-            {t[`type${entry.entryType.charAt(0).toUpperCase()}${entry.entryType.slice(1)}` as keyof typeof t] as string}
+            {(t[`type${entry.entryType.charAt(0).toUpperCase()}${entry.entryType.slice(1)}` as keyof typeof t] as string | undefined)
+              ?? (entry.entryType.charAt(0).toUpperCase() + entry.entryType.slice(1))}
           </span>
         )}
         {entry.tags.map((tag) => (

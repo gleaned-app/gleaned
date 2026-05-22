@@ -96,8 +96,11 @@ export interface Translations {
   reviewGapStillOpen: string;
   reviewGapArchive: string;
   filterRecent: string;
+  filterOpenGaps: string;
   filterAllTags: string;
   filterByTag: string;
+  reviewSupersededTooltip: string;
+  reviewGapArchiveTooltip: string;
   thisWeek: string;
   lastWeek: string;
   weeksAgo(n: number): string;
@@ -155,6 +158,9 @@ export interface Translations {
   swUpdateReload: string;
 
   defaultViewLabel: string;
+  customTypesLabel: string;
+  customTypesPlaceholder: string;
+  customTypesEmpty: string;
   genericError: string;
 
   // Entry context panel (source / stake / gap / type) — form labels
@@ -273,8 +279,11 @@ const de: Translations = {
   reviewGapStillOpen: "Noch offen",
   reviewGapArchive: "Nicht mehr relevant",
   filterRecent: "Neueste",
+  filterOpenGaps: "Offene Lücken",
   filterAllTags: "Alle",
   filterByTag: "tag filtern…",
+  reviewSupersededTooltip: "Dieses Wissen wurde durch neueres Verständnis ersetzt — wird in 6 Monaten wieder gezeigt.",
+  reviewGapArchiveTooltip: "Diese Lücke ist nicht mehr relevant — wird archiviert und nicht weiter verfolgt.",
   thisWeek: "Diese Woche",
   lastWeek: "Letzte Woche",
   weeksAgo: (n) => n === 1 ? "Vor 1 Woche" : `Vor ${n} Wochen`,
@@ -331,6 +340,9 @@ const de: Translations = {
   swUpdateReload: "Neu laden",
 
   defaultViewLabel: "Standard-Ansicht",
+  customTypesLabel: "Eigene Typen",
+  customTypesPlaceholder: "Neuer Typ…",
+  customTypesEmpty: "Noch keine eigenen Typen.",
   genericError: "Fehler — Seite neu laden.",
 
   search: "Suchen",
@@ -445,8 +457,11 @@ const en: Translations = {
   reviewGapStillOpen: "Still open",
   reviewGapArchive: "No longer relevant",
   filterRecent: "Recent",
+  filterOpenGaps: "Open gaps",
   filterAllTags: "All",
   filterByTag: "filter by tag…",
+  reviewSupersededTooltip: "This knowledge has been superseded — pushed to 6 months from now.",
+  reviewGapArchiveTooltip: "This gap is no longer worth resolving — it will be archived.",
   thisWeek: "This week",
   lastWeek: "Last week",
   weeksAgo: (n) => n === 1 ? "1 week ago" : `${n} weeks ago`,
@@ -503,6 +518,9 @@ const en: Translations = {
   swUpdateReload: "Reload",
 
   defaultViewLabel: "Default view",
+  customTypesLabel: "Custom types",
+  customTypesPlaceholder: "New type…",
+  customTypesEmpty: "No custom types yet.",
   genericError: "Error — reload the page.",
 
   search: "Search",
