@@ -129,3 +129,40 @@ http://localhost:5984/gleaned
 | Encryption | PBKDF2 + AES-GCM |
 | Fonts | DM Sans, Lora, Playfair Display, Caveat |
 | Package manager | pnpm |
+
+---
+
+## Security model
+
+### What is encrypted
+
+Everything you write is encrypted with AES-GCM-256 before it is stored in IndexedDB. The key is derived from your password using PBKDF2-HMAC-SHA-256 (600 000 iterations, 128-bit random salt). The key never leaves your device and is never written to storage — it lives only in JS memory for the duration of the session.
+
+Encrypted fields per entry: content, tags, source, stake, gap, attachment binaries, attachment metadata.
+Encrypted fields per todo: text.
+The CouchDB password (if configured) is also stored encrypted.
+
+### What is not encrypted — metadata tradeoff
+
+The following fields are stored **in plaintext** in IndexedDB to allow scheduling and filtering without decryption:
+
+| Field | Why unencrypted |
+|---|---|
+| `date`, `createdAt` | Required for calendar view and entry ordering |
+| `entryType` | Used to select the correct review prompt |
+| `gapStatus` | Drives gap-aware queue prioritisation |
+| `nextReview`, `reviewInterval` | SM-2 scheduling without full DB scan |
+| `lastReviewOutcome`, `reviewHistory` | Calibration score computation |
+
+**Implication:** someone with access to your IndexedDB (e.g. another user on the same device, a malicious browser extension) can see *when* you made entries and how they are classified (Insight, Observation, etc.) — without knowing your password. The actual content, tags, and personal context fields remain encrypted.
+
+If this is a concern, do not share the device or browser profile.
+
+### Threat model
+
+- **Remote / network attackers** — no attack surface; the app is local-only and there is no server.
+- **CouchDB sync** — data is encrypted before it leaves the browser. The CouchDB server stores only ciphertext.
+- **Same-origin JS (extensions, XSS)** — the AES key is in the JS heap and is accessible to any same-origin script for the duration of the session. Lock the app (⌘L) when stepping away.
+- **Physical access to an unlocked device** — not protected; the key is live in memory. Lock before stepping away.
+- **Physical access to a locked device** — protected; the key is wiped from memory on lock, and a wrong password cannot decrypt the data.
+- **Brute force** — PBKDF2 at 600 000 iterations makes each attempt slow (~600 ms on a modern CPU). The UI adds exponential backoff (1 s, 2 s, 4 s … 30 s cap) persisted across page reloads.

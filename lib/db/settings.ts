@@ -8,6 +8,7 @@ export interface Settings {
   type: "settings";
   encryptionSalt?: string;
   encryptionVerification?: string;
+  encryptionIterations?: number; // PBKDF2 iteration count; absent = 200_000 (pre-v0.2 legacy)
   language?: "de" | "en";
   weekStart?: "monday" | "sunday";
   theme?: "system" | "light" | "dark" | "sepia";

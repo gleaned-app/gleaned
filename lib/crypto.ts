@@ -6,7 +6,9 @@
 
 let _keyCache: CryptoKey | null = null;
 
-export async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
+export const PBKDF2_ITERATIONS = 600_000;
+
+export async function deriveKey(password: string, salt: Uint8Array, iterations = PBKDF2_ITERATIONS): Promise<CryptoKey> {
   const keyMaterial = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(password),
@@ -15,7 +17,7 @@ export async function deriveKey(password: string, salt: Uint8Array): Promise<Cry
     ["deriveKey"],
   );
   return crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt: salt.buffer as ArrayBuffer, iterations: 200_000, hash: "SHA-256" },
+    { name: "PBKDF2", salt: salt.buffer as ArrayBuffer, iterations, hash: "SHA-256" },
     keyMaterial,
     { name: "AES-GCM", length: 256 },
     true,
