@@ -140,6 +140,17 @@ export interface Translations {
   defaultViewLabel: string;
   genericError: string;
 
+  // Entry context panel (source / stake / gap / type)
+  contextToggle: string;
+  sourcePlaceholder: string;
+  stakePlaceholder: string;
+  gapPlaceholder: string;
+  typeInsight: string;
+  typeTechnique: string;
+  typeFramework: string;
+  typeFact: string;
+  typeObservation: string;
+
   // Search
   search: string;
   searchPlaceholder: string;
@@ -291,6 +302,16 @@ const de: Translations = {
   searchNoResults: "Nichts gefunden.",
   searchEmpty: "Schreib etwas um zu suchen",
 
+  contextToggle: "Kontext",
+  sourcePlaceholder: "Quelle — wo hast du das gelernt?",
+  stakePlaceholder: "Einsatz — was ändert sich für dich jetzt?",
+  gapPlaceholder: "Lücke — was ist noch unklar?",
+  typeInsight: "Erkenntnis",
+  typeTechnique: "Technik",
+  typeFramework: "Framework",
+  typeFact: "Fakt",
+  typeObservation: "Beobachtung",
+
   syncConflict: "Sync-Konflikt",
   conflictDesc: "Dieser Eintrag wurde auf zwei Geräten offline bearbeitet. Wähle die Version, die gespeichert werden soll.",
   noContent: "Kein Inhalt",
@@ -434,6 +455,16 @@ const en: Translations = {
   searchPlaceholder: "Search your entries…",
   searchNoResults: "No results.",
   searchEmpty: "Type something to search",
+
+  contextToggle: "Context",
+  sourcePlaceholder: "Source — where did you learn this?",
+  stakePlaceholder: "Stake — what changes for you now?",
+  gapPlaceholder: "Gap — what is still unclear?",
+  typeInsight: "Insight",
+  typeTechnique: "Technique",
+  typeFramework: "Framework",
+  typeFact: "Fact",
+  typeObservation: "Observation",
 
   syncConflict: "Sync conflict",
   conflictDesc: "This entry was edited on two devices while offline. Choose the version to keep.",

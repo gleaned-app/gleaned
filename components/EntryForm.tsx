@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect } from "react";
 import { saveEntry, getAllTags } from "@/lib/db";
-import type { Entry, Attachment } from "@/types/entry";
+import type { Entry, Attachment, EntryType } from "@/types/entry";
 import { useT } from "@/lib/i18n";
+import type { Translations } from "@/lib/i18n";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
@@ -17,6 +18,15 @@ const ACCEPT = [
   ".sh", ".yaml", ".yml", ".toml", ".sql",
   ".vue", ".svelte", ".r", ".m",
 ].join(",");
+
+// Static — defined outside component to avoid re-creation on every render.
+const ENTRY_TYPES: { value: EntryType; labelKey: keyof Translations }[] = [
+  { value: "insight",     labelKey: "typeInsight"     },
+  { value: "technique",   labelKey: "typeTechnique"   },
+  { value: "framework",   labelKey: "typeFramework"   },
+  { value: "fact",        labelKey: "typeFact"        },
+  { value: "observation", labelKey: "typeObservation" },
+];
 
 function fileCategory(a: Attachment): "image" | "audio" | "video" | "pdf" | "code" | "other" {
   if (a.mimeType.startsWith("image/")) return "image";
@@ -47,6 +57,13 @@ export default function EntryForm({ onSaved }: Props) {
   const [saving, setSaving] = useState(false);
   const [focused, setFocused] = useState(false);
   const [existingTags, setExistingTags] = useState<string[]>([]);
+  // Context panel state
+  const [contextOpen, setContextOpen] = useState(false);
+  const [entryType, setEntryType] = useState<EntryType | undefined>(undefined);
+  const [source, setSource] = useState("");
+  const [stake, setStake] = useState("");
+  const [gap, setGap] = useState("");
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -63,9 +80,12 @@ export default function EntryForm({ onSaved }: Props) {
 
   const suggestions = tagInput.trim()
     ? existingTags.filter(
-        (t) => t.startsWith(tagInput.trim().toLowerCase().replace(/^#/, "")) && !tags.includes(t)
+        (tag) => tag.startsWith(tagInput.trim().toLowerCase().replace(/^#/, "")) && !tags.includes(tag)
       ).slice(0, 5)
     : [];
+
+  // True when any context field carries data — used to boost toggle visibility.
+  const hasContextData = !!entryType || source.trim() !== "" || stake.trim() !== "" || gap.trim() !== "";
 
   function addTag(value: string) {
     const tag = value.trim().toLowerCase().replace(/^#/, "");
@@ -110,16 +130,27 @@ export default function EntryForm({ onSaved }: Props) {
       const finalTags = tagInput.trim()
         ? [...tags, tagInput.trim().toLowerCase().replace(/^#/, "")]
         : tags;
+      // Convert empty strings to undefined so absent fields are not stored.
       const entry = await saveEntry({
         content: content.trim(),
         tags: finalTags,
         attachments: attachments.length ? attachments : undefined,
+        entryType,
+        source:    source.trim()  || undefined,
+        stake:     stake.trim()   || undefined,
+        gap:       gap.trim()     || undefined,
       });
       onSaved(entry);
       setContent("");
       setTags([]);
       setTagInput("");
       setAttachments([]);
+      setEntryType(undefined);
+      setSource("");
+      setStake("");
+      setGap("");
+      // Keep context panel open if user had data — feels less jarring.
+      if (!hasContextData) setContextOpen(false);
       textareaRef.current?.focus();
     } finally {
       setSaving(false);
@@ -152,7 +183,7 @@ export default function EntryForm({ onSaved }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="transition-all duration-200">
-      {/* Writing surface — blends into page, lines are the only visual structure */}
+      {/* Writing surface */}
       <div
         className="rounded-xl px-0 pt-1 pb-0"
         style={{
@@ -183,6 +214,113 @@ export default function EntryForm({ onSaved }: Props) {
             backgroundPositionY: "0px",
           }}
         />
+      </div>
+
+      {/* Context toggle — horizontal rule with centered label */}
+      <button
+        type="button"
+        onClick={() => setContextOpen((o) => !o)}
+        className="flex w-full items-center gap-2 py-2.5 font-sans text-[11px]"
+        style={{
+          color: "var(--fg-muted)",
+          opacity: hasContextData ? 0.9 : 0.45,
+          transition: "opacity 150ms ease",
+          WebkitTapHighlightColor: "transparent",
+        }}
+      >
+        <span aria-hidden style={{ flex: 1, height: "1px", background: "var(--border)" }} />
+        <span style={{ display: "flex", alignItems: "center", gap: "0.3rem", userSelect: "none" }}>
+          <span
+            style={{
+              display: "inline-block",
+              transform: contextOpen ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 200ms cubic-bezier(0.16, 1, 0.3, 1)",
+              lineHeight: 1,
+            }}
+          >
+            ▾
+          </span>
+          {t.contextToggle}
+          {hasContextData && (
+            <span style={{ color: "var(--accent)", fontWeight: 600 }}>·</span>
+          )}
+        </span>
+        <span aria-hidden style={{ flex: 1, height: "1px", background: "var(--border)" }} />
+      </button>
+
+      {/* Context panel — CSS grid height animation, no JS measurement */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateRows: contextOpen ? "1fr" : "0fr",
+          transition: "grid-template-rows 220ms cubic-bezier(0.16, 1, 0.3, 1)",
+        }}
+      >
+        <div style={{ overflow: "hidden" }}>
+          <div
+            style={{
+              opacity: contextOpen ? 1 : 0,
+              transition: "opacity 180ms ease",
+              paddingBottom: "0.75rem",
+            }}
+          >
+            {/* Entry type chips */}
+            <div className="flex flex-wrap gap-1.5 pb-3">
+              {ENTRY_TYPES.map(({ value, labelKey }) => (
+                <button
+                  key={value}
+                  type="button"
+                  data-active={entryType === value ? "true" : undefined}
+                  onClick={() => setEntryType((prev) => prev === value ? undefined : value)}
+                  className="btn-3d-subtle rounded-full px-3 font-sans text-xs"
+                  style={{
+                    color: entryType === value ? "var(--accent)" : "var(--fg-muted)",
+                    minHeight: "2.2rem",
+                    transition: "color 120ms ease",
+                  }}
+                >
+                  {t[labelKey] as string}
+                </button>
+              ))}
+            </div>
+
+            {/* Source */}
+            <div style={{ borderBottom: "1px solid var(--border)" }}>
+              <input
+                type="text"
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+                placeholder={t.sourcePlaceholder}
+                className="journal-input w-full bg-transparent py-2 font-sans text-sm outline-none"
+                style={{ color: "var(--fg)", caretColor: "var(--accent)" }}
+              />
+            </div>
+
+            {/* Stake */}
+            <div style={{ borderBottom: "1px solid var(--border)" }}>
+              <input
+                type="text"
+                value={stake}
+                onChange={(e) => setStake(e.target.value)}
+                placeholder={t.stakePlaceholder}
+                className="journal-input w-full bg-transparent py-2 font-sans text-sm outline-none"
+                style={{ color: "var(--fg)", caretColor: "var(--accent)" }}
+              />
+            </div>
+
+            {/* Gap */}
+            <div>
+              <input
+                type="text"
+                value={gap}
+                onChange={(e) => setGap(e.target.value)}
+                placeholder={t.gapPlaceholder}
+                className="journal-input w-full bg-transparent py-2 font-sans text-sm outline-none"
+                style={{ color: "var(--fg)", caretColor: "var(--accent)" }}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Attachment previews */}
@@ -230,6 +368,7 @@ export default function EntryForm({ onSaved }: Props) {
         </div>
       )}
 
+      {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2 pb-3 pt-2">
         {/* Upload button */}
         <button
@@ -256,7 +395,7 @@ export default function EntryForm({ onSaved }: Props) {
           <button
             key={tag}
             type="button"
-            onClick={() => setTags((prev) => prev.filter((t) => t !== tag))}
+            onClick={() => setTags((prev) => prev.filter((tg) => tg !== tag))}
             className="group flex items-center gap-1 rounded-full px-2.5 py-0.5 font-sans text-xs transition-opacity"
             style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
           >
@@ -276,7 +415,7 @@ export default function EntryForm({ onSaved }: Props) {
           />
           {suggestions.length > 0 && (
             <div
-              className="absolute bottom-full left-0 mb-1 z-20 flex flex-col overflow-hidden rounded-xl py-1"
+              className="absolute bottom-full left-0 z-20 mb-1 flex flex-col overflow-hidden rounded-xl py-1"
               style={{
                 background: "var(--bg-card)",
                 boxShadow: "var(--shadow-form)",
