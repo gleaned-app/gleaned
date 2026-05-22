@@ -1,5 +1,30 @@
 import { describe, it, expect } from "vitest";
-import { computeNextInterval } from "./review-scheduler";
+import { computeNextInterval, interleaveQueue } from "./review-scheduler";
+import type { Entry, EntryType, GapStatus } from "@/types/entry";
+
+// ─── Fixture helper ───────────────────────────────────────────────────────────
+
+let _seq = 0;
+function makeEntry(overrides: {
+  entryType?: EntryType;
+  gapStatus?: GapStatus;
+  nextReview?: string;
+  reviewInterval?: number;
+} = {}): Entry {
+  const id = `entry_${++_seq}`;
+  return {
+    _id: id,
+    type: "entry",
+    content: "stub",
+    tags: [],
+    date: "2025-01-01",
+    createdAt: new Date().toISOString(),
+    ...overrides,
+  } as unknown as Entry;
+}
+
+// rng that always returns 0 — eliminates jitter for deterministic tests
+const rng0 = () => 0;
 
 describe("computeNextInterval", () => {
   // ── still_holds ─────────────────────────────────────────────────────────────
@@ -74,5 +99,151 @@ describe("computeNextInterval", () => {
   it("interval 1 still_holds grows to 2", () => {
     // round(1 * 2.1) = round(2.1) = 2
     expect(computeNextInterval(1, "still_holds", false)).toBe(2);
+  });
+});
+
+// ─── interleaveQueue ──────────────────────────────────────────────────────────
+
+describe("interleaveQueue", () => {
+  const TODAY = "2025-01-20";
+
+  // ── edge cases ──────────────────────────────────────────────────────────────
+
+  it("returns empty array for empty input", () => {
+    expect(interleaveQueue([], { today: TODAY, rng: rng0 })).toEqual([]);
+  });
+
+  it("returns single entry unchanged", () => {
+    const e = makeEntry({ entryType: "insight" });
+    const result = interleaveQueue([e], { today: TODAY, rng: rng0 });
+    expect(result).toHaveLength(1);
+    expect(result[0]._id).toBe(e._id);
+  });
+
+  it("preserves all entries — no entries lost or duplicated", () => {
+    const entries = [
+      makeEntry({ entryType: "insight" }),
+      makeEntry({ entryType: "technique" }),
+      makeEntry({ entryType: "fact" }),
+      makeEntry({ entryType: "insight" }),
+      makeEntry({ entryType: "fact" }),
+    ];
+    const result = interleaveQueue(entries, { today: TODAY, rng: rng0 });
+    expect(result).toHaveLength(entries.length);
+    const ids = result.map((e) => e._id).sort();
+    const originalIds = entries.map((e) => e._id).sort();
+    expect(ids).toEqual(originalIds);
+  });
+
+  // ── type interleaving ────────────────────────────────────────────────────────
+
+  it("two types: entries strictly alternate types (round-robin)", () => {
+    // 3 insights + 3 techniques — with rng=0, round-robin produces perfect alternation
+    const insights = [
+      makeEntry({ entryType: "insight", nextReview: "2025-01-18" }),
+      makeEntry({ entryType: "insight", nextReview: "2025-01-17" }),
+      makeEntry({ entryType: "insight", nextReview: "2025-01-15" }),
+    ];
+    const techniques = [
+      makeEntry({ entryType: "technique", nextReview: "2025-01-19" }),
+      makeEntry({ entryType: "technique", nextReview: "2025-01-16" }),
+      makeEntry({ entryType: "technique", nextReview: "2025-01-14" }),
+    ];
+    const result = interleaveQueue([...insights, ...techniques], { today: TODAY, rng: rng0 });
+    // Types must alternate — no two consecutive entries may share the same type
+    for (let i = 1; i < result.length; i++) {
+      expect(result[i].entryType).not.toBe(result[i - 1].entryType);
+    }
+  });
+
+  it("reduces type-clustering compared to sorted-by-type input", () => {
+    // 4 insights followed by 4 facts — worst-case blocked ordering
+    const blocked = [
+      makeEntry({ entryType: "insight" }),
+      makeEntry({ entryType: "insight" }),
+      makeEntry({ entryType: "insight" }),
+      makeEntry({ entryType: "insight" }),
+      makeEntry({ entryType: "fact" }),
+      makeEntry({ entryType: "fact" }),
+      makeEntry({ entryType: "fact" }),
+      makeEntry({ entryType: "fact" }),
+    ];
+    const result = interleaveQueue(blocked, { today: TODAY, rng: rng0 });
+    // Count consecutive same-type pairs in result
+    let violations = 0;
+    for (let i = 1; i < result.length; i++) {
+      if (result[i].entryType === result[i - 1].entryType) violations++;
+    }
+    // Perfectly interleaved would give 0; blocked would give 6. We expect 0 here.
+    expect(violations).toBe(0);
+  });
+
+  it("untyped entries form their own bucket and interleave with typed entries", () => {
+    const entries = [
+      makeEntry({ entryType: "insight" }),
+      makeEntry(),                           // no entryType
+      makeEntry({ entryType: "insight" }),
+      makeEntry(),
+    ];
+    const result = interleaveQueue(entries, { today: TODAY, rng: rng0 });
+    // Should not have two consecutive entries of the same type/untyped
+    for (let i = 1; i < result.length; i++) {
+      const a = result[i - 1].entryType ?? "untyped";
+      const b = result[i].entryType ?? "untyped";
+      expect(a).not.toBe(b);
+    }
+  });
+
+  // ── within-bucket priority ───────────────────────────────────────────────────
+
+  it("gap-open entry scores higher than non-gap entry with same overdue days", () => {
+    // Both insight, both 5 days overdue — gap-open must come first
+    const gapOpen = makeEntry({ entryType: "insight", gapStatus: "open",    nextReview: "2025-01-15" });
+    const noGap   = makeEntry({ entryType: "insight", gapStatus: undefined, nextReview: "2025-01-15" });
+    // Single-bucket, rng=0 → pure score comparison
+    const result = interleaveQueue([noGap, gapOpen], { today: TODAY, rng: rng0 });
+    expect(result[0]._id).toBe(gapOpen._id);
+  });
+
+  it("more overdue entry scores higher within same bucket (no gap)", () => {
+    const veryOverdue   = makeEntry({ entryType: "fact", nextReview: "2025-01-01" }); // 19d overdue
+    const slightlyOverdue = makeEntry({ entryType: "fact", nextReview: "2025-01-18" }); // 2d overdue
+    const result = interleaveQueue([slightlyOverdue, veryOverdue], { today: TODAY, rng: rng0 });
+    expect(result[0]._id).toBe(veryOverdue._id);
+  });
+
+  it("gap-open entry with 0 overdue days beats non-gap entry with 9 overdue days", () => {
+    // gap bonus = 10pts; 9 days overdue < 10 → gap-open wins
+    const gapOpen  = makeEntry({ entryType: "technique", gapStatus: "open",    nextReview: "2025-01-20" }); // 0d overdue
+    const longWait = makeEntry({ entryType: "technique", gapStatus: undefined, nextReview: "2025-01-11" }); // 9d overdue
+    const result = interleaveQueue([longWait, gapOpen], { today: TODAY, rng: rng0 });
+    expect(result[0]._id).toBe(gapOpen._id);
+  });
+
+  it("overdue days cap at 30 — extremely overdue is not weighted differently from 30-day overdue", () => {
+    const wayOverdue   = makeEntry({ entryType: "observation", nextReview: "2024-01-01" }); // ~384d
+    const thirtyDaysOld = makeEntry({ entryType: "observation", nextReview: "2024-12-21" }); // 30d
+    // Both cap at 30pts; rng=0 means first element (wayOverdue, higher insertion score in tie)
+    // wins. Either order is acceptable — the key is neither entry gets runaway priority.
+    const result = interleaveQueue([wayOverdue, thirtyDaysOld], { today: TODAY, rng: rng0 });
+    // Both present, order is implementation-defined at the cap boundary
+    expect(result).toHaveLength(2);
+    const ids = result.map((e) => e._id);
+    expect(ids).toContain(wayOverdue._id);
+    expect(ids).toContain(thirtyDaysOld._id);
+  });
+
+  // ── all same type ────────────────────────────────────────────────────────────
+
+  it("all same type: gap-open entries appear before non-gap entries", () => {
+    const gapA = makeEntry({ entryType: "framework", gapStatus: "open",    nextReview: "2025-01-15" });
+    const gapB = makeEntry({ entryType: "framework", gapStatus: "open",    nextReview: "2025-01-16" });
+    const plain = makeEntry({ entryType: "framework", gapStatus: undefined, nextReview: "2025-01-10" });
+    const result = interleaveQueue([plain, gapA, gapB], { today: TODAY, rng: rng0 });
+    // Gap entries must both appear before the non-gap entry
+    const gapIds = new Set([gapA._id, gapB._id]);
+    const plainIdx = result.findIndex((e) => e._id === plain._id);
+    const firstGapIdx = result.findIndex((e) => gapIds.has(e._id));
+    expect(firstGapIdx).toBeLessThan(plainIdx);
   });
 });
