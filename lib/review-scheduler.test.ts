@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { computeNextInterval, interleaveQueue } from "./review-scheduler";
-import type { Entry, EntryType, GapStatus } from "@/types/entry";
+import { computeNextInterval, interleaveQueue, computeCalibration } from "./review-scheduler";
+import type { Entry, EntryType, GapStatus, ReviewOutcome } from "@/types/entry";
 
 // ─── Fixture helper ───────────────────────────────────────────────────────────
 
@@ -245,5 +245,111 @@ describe("interleaveQueue", () => {
     const plainIdx = result.findIndex((e) => e._id === plain._id);
     const firstGapIdx = result.findIndex((e) => gapIds.has(e._id));
     expect(firstGapIdx).toBeLessThan(plainIdx);
+  });
+});
+
+// ─── computeCalibration ───────────────────────────────────────────────────────
+
+function makeHistory(...outcomes: ReviewOutcome[]) {
+  return outcomes.map((outcome, i) => ({ date: `2025-01-${String(i + 1).padStart(2, "0")}`, outcome }));
+}
+
+describe("computeCalibration", () => {
+  // ── insufficient data ────────────────────────────────────────────────────────
+
+  it("returns null for empty input", () => {
+    expect(computeCalibration([])).toBeNull();
+  });
+
+  it("returns null when no entry has a review history", () => {
+    expect(computeCalibration([{}, {}, {}])).toBeNull();
+  });
+
+  it("returns null when no entry has more than one review", () => {
+    const entries = [
+      { reviewHistory: makeHistory("still_holds") },
+      { reviewHistory: makeHistory("needs_revision") },
+    ];
+    expect(computeCalibration(entries)).toBeNull();
+  });
+
+  it("returns null when confirmed judgments < MIN_CALIBRATION_SAMPLES (5)", () => {
+    // 4 still_holds → still_holds transitions — one short of threshold
+    const entries = Array.from({ length: 4 }, () => ({
+      reviewHistory: makeHistory("still_holds", "still_holds"),
+    }));
+    expect(computeCalibration(entries)).toBeNull();
+  });
+
+  // ── perfect calibration ──────────────────────────────────────────────────────
+
+  it("returns 1.0 when all still_holds judgments are confirmed", () => {
+    const entries = Array.from({ length: 5 }, () => ({
+      reviewHistory: makeHistory("still_holds", "still_holds"),
+    }));
+    expect(computeCalibration(entries)).toBe(1.0);
+  });
+
+  it("returns 1.0 for a long run of confirmed still_holds on a single entry", () => {
+    const entry = {
+      reviewHistory: makeHistory(
+        "still_holds", "still_holds", "still_holds", "still_holds", "still_holds", "still_holds",
+      ),
+    };
+    // 5 consecutive still_holds → still_holds transitions
+    expect(computeCalibration([entry])).toBe(1.0);
+  });
+
+  // ── zero calibration ─────────────────────────────────────────────────────────
+
+  it("returns 0.0 when every still_holds is followed by needs_revision", () => {
+    const entries = Array.from({ length: 5 }, () => ({
+      reviewHistory: makeHistory("still_holds", "needs_revision"),
+    }));
+    expect(computeCalibration(entries)).toBe(0.0);
+  });
+
+  it("returns 0.0 when every still_holds is followed by superseded", () => {
+    const entries = Array.from({ length: 5 }, () => ({
+      reviewHistory: makeHistory("still_holds", "superseded"),
+    }));
+    expect(computeCalibration(entries)).toBe(0.0);
+  });
+
+  // ── mixed calibration ────────────────────────────────────────────────────────
+
+  it("returns 0.5 for equal hits and misses", () => {
+    const entries = [
+      ...Array.from({ length: 5 }, () => ({ reviewHistory: makeHistory("still_holds", "still_holds") })),
+      ...Array.from({ length: 5 }, () => ({ reviewHistory: makeHistory("still_holds", "needs_revision") })),
+    ];
+    expect(computeCalibration(entries)).toBe(0.5);
+  });
+
+  it("ignores non-still_holds outcomes as the preceding judgment", () => {
+    // needs_revision → still_holds should not count as a hit or miss
+    const entries = Array.from({ length: 5 }, () => ({
+      reviewHistory: makeHistory("still_holds", "still_holds"),
+    }));
+    // Add entries with needs_revision → still_holds (should not affect score)
+    entries.push({ reviewHistory: makeHistory("needs_revision", "still_holds") });
+    entries.push({ reviewHistory: makeHistory("superseded", "needs_revision") });
+    expect(computeCalibration(entries)).toBe(1.0);
+  });
+
+  it("counts multiple transitions within a single entry's history", () => {
+    // One entry: still_holds, still_holds, needs_revision → 1 hit + 1 miss
+    // Five copies → 5 hits + 5 misses = 0.5
+    const entry = { reviewHistory: makeHistory("still_holds", "still_holds", "needs_revision") };
+    const entries = Array.from({ length: 5 }, () => entry);
+    expect(computeCalibration(entries)).toBe(0.5);
+  });
+
+  it("correctly handles entries without reviewHistory mixed in", () => {
+    const withHistory = Array.from({ length: 5 }, () => ({
+      reviewHistory: makeHistory("still_holds", "still_holds"),
+    }));
+    const withoutHistory = [{}, { reviewHistory: undefined }, { reviewHistory: [] }];
+    expect(computeCalibration([...withHistory, ...withoutHistory])).toBe(1.0);
   });
 });
