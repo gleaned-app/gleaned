@@ -95,7 +95,7 @@ export default function EntryForm({ onSaved }: Props) {
         reader.onload = () => resolve(reader.result as string);
         reader.readAsDataURL(file);
       });
-      next.push({ name: file.name, mimeType: file.type || "application/octet-stream", size: file.size, data });
+      next.push({ id: Math.random().toString(36).slice(2, 10), name: file.name, mimeType: file.type || "application/octet-stream", size: file.size, data });
     }
     setAttachments((prev) => [...prev, ...next]);
     if (fileInputRef.current) fileInputRef.current.value = "";

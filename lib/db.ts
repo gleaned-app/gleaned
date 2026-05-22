@@ -1,6 +1,6 @@
 import type { Entry, Attachment } from "@/types/entry";
 import type { Todo } from "@/types/todo";
-import { loadKey, encryptText, decryptText } from "./crypto";
+import { loadKey, encryptText, decryptText, encryptBytes, decryptBytes, bytesToBase64 } from "./crypto";
 
 type AnyDoc = Entry | Todo;
 
@@ -9,6 +9,9 @@ type AnyDoc = Entry | Todo;
 const QUERY_METADATA_LIMIT = 5000;
 // Upper bound for queries that decrypt entry content.
 const QUERY_DECRYPT_LIMIT = 2000;
+// Max number of never-reviewed ("backfill") entries added to the review queue.
+// Prevents overwhelming a new user who has many old entries without nextReview.
+const REVIEW_BACKFILL_CAP = 20;
 
 // ─── Search cache ─────────────────────────────────────────────────────────────
 // All decrypted entries in memory so searchEntries never re-decrypts on each
@@ -102,20 +105,16 @@ let _dbAuthState: DbAuthState = "pending";
 export function setDbAuthenticated(authenticated: boolean): void {
   _dbAuthState = authenticated ? "authenticated" : "locked";
   if (!authenticated) invalidateSearchCache();
-  if (authenticated) migrateTodosEncryption().catch(() => {});
+  if (authenticated) {
+    migrateTodosEncryption().catch(() => {});
+    migrateAttachmentsToNative().catch(() => {});
+  }
 }
 
 function requireAuth(): void {
   if (_dbAuthState === "locked") throw new Error("gleaned: not authenticated");
 }
 
-// ─── Tags cache ──────────────────────────────────────────────────────────────
-
-let _tagsCache: Map<string, number> | null = null;
-let _tagsCacheTime = 0;
-const TAGS_CACHE_TTL = 60_000;
-
-function invalidateTagsCache() { _tagsCache = null; }
 
 // ─── DB init ─────────────────────────────────────────────────────────────────
 
@@ -186,19 +185,13 @@ export async function getStreakData(): Promise<{ streak: number; todayCount: num
 
 export async function getAllTags(): Promise<Map<string, number>> {
   requireAuth();
-  const now = Date.now();
-  if (_tagsCache && now - _tagsCacheTime < TAGS_CACHE_TTL) return _tagsCache;
-  const db = await getDB();
-  const result = await db.find({ selector: { type: "entry" } });
-  const decrypted = await Promise.all((result.docs as unknown[]).filter(isEntry).map(decryptEntry));
+  const all = _searchCache ?? await buildSearchCache();
   const counts = new Map<string, number>();
-  for (const doc of decrypted) {
+  for (const doc of all) {
     for (const tag of doc.tags ?? []) {
       counts.set(tag, (counts.get(tag) ?? 0) + 1);
     }
   }
-  _tagsCache = counts;
-  _tagsCacheTime = now;
   return counts;
 }
 
@@ -223,52 +216,90 @@ export async function deleteTag(tag: string): Promise<void> {
     const newTags = doc.tags.filter((t) => t !== tag);
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
-        const latest = (await db.get(doc._id)) as unknown as Entry;
+        const latest = (await db.get(doc._id)) as unknown as Entry & { _attachments?: Record<string, unknown> };
+        const attMeta = doc.attachments?.map(({ id, name, mimeType, size }) => ({ id, name, mimeType, size }));
         const base: Omit<Entry, "_rev" | "encrypted" | "enc"> = {
           _id: latest._id, type: "entry",
           content: doc.content, tags: newTags,
           date: latest.date, createdAt: latest.createdAt,
           ...(latest.nextReview !== undefined ? { nextReview: latest.nextReview } : {}),
           ...(latest.reviewInterval !== undefined ? { reviewInterval: latest.reviewInterval } : {}),
-          ...(doc.attachments?.length ? { attachments: doc.attachments } : {}),
+          ...(attMeta?.length ? { attachments: attMeta } : {}),
         };
         const enc = await encryptEntry(base);
-        await db.put({ ...enc, _rev: latest._rev } as unknown as AnyDoc);
+        await db.put({
+          ...enc,
+          _rev: latest._rev,
+          ...(latest._attachments ? { _attachments: latest._attachments } : {}),
+        } as unknown as AnyDoc);
         break;
       } catch (err) {
         if ((err as { status?: number }).status !== 409) throw err;
       }
     }
   }
-  invalidateTagsCache();
   invalidateSearchCache();
 }
 
 // ─── Entry encryption helpers ────────────────────────────────────────────────
 
+// Only attachment metadata (no binary data) goes into the encrypted JSON payload.
+// The actual binary data is stored as a separate encrypted PouchDB _attachment.
+interface AttachmentMeta {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+}
+
 interface EncPayload {
   content: string;
   tags: string[];
-  attachments?: Attachment[];
+  attachments?: AttachmentMeta[];
 }
+
+type PouchAttachmentInline = { content_type: string; data: string };
+type PouchAttachmentStub   = { content_type: string; stub: true; digest?: string; length?: number; revpos?: number };
+type PouchAttachments = Record<string, PouchAttachmentInline | PouchAttachmentStub>;
 
 async function encryptEntry(
   doc: Omit<Entry, "_rev" | "encrypted" | "enc">,
 ): Promise<Omit<Entry, "_rev">> {
   const key = await loadKey();
   if (!key) return doc;
+
+  const attMeta: AttachmentMeta[] | undefined = doc.attachments?.map(
+    ({ id, name, mimeType, size }) => ({ id, name, mimeType, size }),
+  );
   const payload: EncPayload = {
     content: doc.content,
     tags: doc.tags,
-    ...(doc.attachments?.length ? { attachments: doc.attachments } : {}),
+    ...(attMeta?.length ? { attachments: attMeta } : {}),
   };
   const enc = await encryptText(key, JSON.stringify(payload));
+
+  // Encrypt attachment binaries and attach them inline to the document.
+  // Only attachments that carry fresh data (att.data is set) are encrypted here;
+  // existing attachments without data are preserved via stubs in the put call.
+  const pouchAtts: PouchAttachments = {};
+  for (const att of doc.attachments ?? []) {
+    if (!att.data) continue;
+    const comma = att.data.indexOf(",");
+    const rawBase64 = comma !== -1 ? att.data.slice(comma + 1) : att.data;
+    const bytes = Uint8Array.from(atob(rawBase64), (c) => c.charCodeAt(0));
+    pouchAtts[att.id] = {
+      content_type: "application/octet-stream",
+      data: await encryptBytes(key, bytes.buffer as ArrayBuffer),
+    };
+  }
+
   return {
     _id: doc._id, type: "entry", date: doc.date, createdAt: doc.createdAt,
     content: "", tags: [], encrypted: true, enc,
     ...(doc.nextReview !== undefined ? { nextReview: doc.nextReview } : {}),
     ...(doc.reviewInterval !== undefined ? { reviewInterval: doc.reviewInterval } : {}),
-  };
+    ...(Object.keys(pouchAtts).length ? { _attachments: pouchAtts } : {}),
+  } as unknown as Omit<Entry, "_rev">;
 }
 
 async function decryptEntry(entry: Entry): Promise<Entry> {
@@ -277,7 +308,29 @@ async function decryptEntry(entry: Entry): Promise<Entry> {
   if (!key) return entry;
   try {
     const payload = JSON.parse(await decryptText(key, entry.enc)) as EncPayload;
-    return { ...entry, content: payload.content, tags: payload.tags, attachments: payload.attachments };
+    const rawAtts = (entry as unknown as { _attachments?: Record<string, { data?: string }> })._attachments;
+
+    let attachments: Attachment[] | undefined;
+    if (payload.attachments?.length) {
+      attachments = await Promise.all(
+        payload.attachments.map(async (meta): Promise<Attachment> => {
+          const encB64 = rawAtts?.[meta.id]?.data;
+          if (encB64) {
+            const plain = await decryptBytes(key, encB64);
+            const data = `data:${meta.mimeType};base64,${bytesToBase64(new Uint8Array(plain))}`;
+            return { ...meta, data };
+          }
+          return meta;
+        }),
+      );
+    }
+
+    return {
+      ...entry,
+      content: payload.content,
+      tags: payload.tags,
+      ...(attachments?.length ? { attachments } : {}),
+    };
   } catch {
     return entry;
   }
@@ -333,9 +386,13 @@ async function migrateTodosEncryption(): Promise<void> {
       try {
         const latest = attempt === 0 ? todo : (await db.get(todo._id)) as unknown as Todo;
         if ((latest as { encrypted?: boolean }).encrypted) break;
-        const { _rev, ...base } = latest as Todo & { _rev?: string };
-        void _rev;
-        const enc = await encryptTodo(base as Omit<Todo, "_rev" | "encrypted" | "textEnc">);
+        const base: Omit<Todo, "_rev" | "encrypted" | "textEnc"> = {
+          _id: latest._id, type: "todo",
+          text: latest.text, done: latest.done, createdAt: latest.createdAt,
+          ...(latest.dueDate ? { dueDate: latest.dueDate } : {}),
+          ...(latest.color  ? { color:  latest.color  } : {}),
+        };
+        const enc = await encryptTodo(base);
         await db.put({ ...enc, _rev: latest._rev } as unknown as AnyDoc);
         break;
       } catch (err) {
@@ -365,7 +422,6 @@ export async function saveEntry(content: string, tags: string[], attachments?: A
   };
   const doc = await encryptEntry(base);
   await db.put(doc as unknown as AnyDoc);
-  invalidateTagsCache();
   const saved: Entry = { ...doc, content, tags, ...(attachments?.length ? { attachments } : {}) } as Entry;
   if (_searchCache !== null) _searchCache = [saved, ..._searchCache];
   return saved;
@@ -374,11 +430,20 @@ export async function saveEntry(content: string, tags: string[], attachments?: A
 export async function getEntriesByDate(date: string): Promise<Entry[]> {
   requireAuth();
   const db = await getDB();
-  const result = await db.find({
+  // Pass 1: fetch only metadata so we can sort without loading enc blobs
+  const meta = await db.find({
     selector: { type: "entry", date },
+    fields: ["_id", "createdAt"],
     sort: [{ type: "asc" }, { date: "asc" }, { createdAt: "asc" }],
   });
-  return Promise.all((result.docs as unknown[]).filter(isEntry).map(decryptEntry));
+  const ids = (meta.docs as { _id: string; createdAt: string }[])
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    .map((d) => d._id);
+  if (ids.length === 0) return [];
+  // Pass 2: batch fetch with attachment data so decryptEntry can reconstruct data URLs
+  const res = await db.allDocs({ keys: ids, include_docs: true, attachments: true } as Parameters<typeof db.allDocs>[0]);
+  const docs = (res.rows.map((r) => ("doc" in r ? r.doc : null)) as unknown[]).filter(isEntry);
+  return Promise.all(docs.map(decryptEntry));
 }
 
 export async function getEntryMonths(): Promise<string[]> {
@@ -442,18 +507,26 @@ export async function updateEntry(entry: Entry, content: string, tags: string[])
   const db = await getDB();
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
-      const latest = attempt === 0 ? entry : (await db.get(entry._id)) as unknown as Entry;
+      // Always fetch fresh — needed for the correct _rev and for _attachments stubs
+      // that preserve existing PouchDB native attachment binaries on re-put.
+      const latest = (await db.get(entry._id)) as unknown as Entry & { _attachments?: Record<string, unknown> };
+      // Pass metadata only (no data) so encryptEntry skips binary re-encryption
+      // while still writing the correct attachment metadata into the enc payload.
+      const attMeta = entry.attachments?.map(({ id, name, mimeType, size }) => ({ id, name, mimeType, size }));
       const base: Omit<Entry, "_rev" | "encrypted" | "enc"> = {
         _id: latest._id, type: "entry",
         content, tags, date: latest.date, createdAt: latest.createdAt,
         ...(latest.nextReview !== undefined ? { nextReview: latest.nextReview } : {}),
         ...(latest.reviewInterval !== undefined ? { reviewInterval: latest.reviewInterval } : {}),
-        ...(latest.attachments?.length ? { attachments: latest.attachments } : {}),
+        ...(attMeta?.length ? { attachments: attMeta } : {}),
       };
       const enc = await encryptEntry(base);
-      const res = await db.put({ ...enc, _rev: latest._rev } as unknown as AnyDoc);
-      invalidateTagsCache();
-      const updated = { ...enc, _rev: res.rev, content, tags } as Entry;
+      const res = await db.put({
+        ...enc,
+        _rev: latest._rev,
+        ...(latest._attachments ? { _attachments: latest._attachments } : {}),
+      } as unknown as AnyDoc);
+      const updated = { ...enc, _rev: res.rev, content, tags, ...(entry.attachments?.length ? { attachments: entry.attachments } : {}) } as Entry;
       if (_searchCache !== null) {
         _searchCache = _searchCache.map((e) => e._id === updated._id ? updated : e);
       }
@@ -571,9 +644,13 @@ export async function updateTodoText(todo: Todo, text: string): Promise<Todo> {
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const latest = attempt === 0 ? todo : (await db.get(todo._id)) as unknown as Todo;
-      const { _rev, encrypted: _e, textEnc: _t, ...rest } = latest as Todo & { _rev?: string; encrypted?: boolean; textEnc?: string };
-      void _rev; void _e; void _t;
-      const enc = await encryptTodo({ ...rest, text } as Omit<Todo, "_rev" | "encrypted" | "textEnc">);
+      const base: Omit<Todo, "_rev" | "encrypted" | "textEnc"> = {
+        _id: latest._id, type: "todo",
+        text, done: latest.done, createdAt: latest.createdAt,
+        ...(latest.dueDate ? { dueDate: latest.dueDate } : {}),
+        ...(latest.color  ? { color:  latest.color  } : {}),
+      };
+      const enc = await encryptTodo(base);
       const res = await db.put({ ...enc, _rev: latest._rev } as unknown as AnyDoc);
       return { ...enc, _rev: res.rev, text } as Todo;
     } catch (err) {
@@ -621,7 +698,7 @@ export async function getRecentEntries(limit = 50): Promise<Entry[]> {
   return Promise.all(docs.map(decryptEntry));
 }
 
-export async function getReviewDue(maxBackfill = 10): Promise<Entry[]> {
+export async function getReviewDue(): Promise<Entry[]> {
   requireAuth();
   const db = await getDB();
   const today = toLocalDateStr();
@@ -634,19 +711,18 @@ export async function getReviewDue(maxBackfill = 10): Promise<Entry[]> {
   });
   const all = result.docs as unknown as Pick<Entry, "_id" | "date" | "createdAt" | "nextReview">[];
 
+  // All entries whose scheduled review date has arrived or passed
   const scheduledIds = all
     .filter((e) => e.nextReview && e.nextReview <= today)
-    .slice(0, 20)
     .map((e) => e._id);
 
-  const remaining = Math.max(0, maxBackfill - scheduledIds.length);
-  const backfillIds = remaining > 0
-    ? all
-        .filter((e) => !e.nextReview && e.date < today)
-        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-        .slice(0, remaining)
-        .map((e) => e._id)
-    : [];
+  // Oldest entries that have never been reviewed (pre-feature data), capped so a
+  // new user is not flooded with their entire history on first use
+  const backfillIds = all
+    .filter((e) => !e.nextReview && e.date < today)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    .slice(0, REVIEW_BACKFILL_CAP)
+    .map((e) => e._id);
 
   const ids = [...scheduledIds, ...backfillIds];
   if (ids.length === 0) return [];
@@ -669,8 +745,8 @@ export async function getReviewCount(): Promise<number> {
   const all = result.docs as unknown as Pick<Entry, "_id" | "nextReview" | "date">[];
 
   const scheduled = all.filter((e) => e.nextReview && e.nextReview <= today).length;
-  const backfill  = all.filter((e) => !e.nextReview && e.date < today).length;
-  return Math.min(scheduled, 20) + Math.min(Math.max(0, 10 - Math.min(scheduled, 20)), backfill);
+  const backfill  = Math.min(all.filter((e) => !e.nextReview && e.date < today).length, REVIEW_BACKFILL_CAP);
+  return scheduled + backfill;
 }
 
 export async function markReviewed(entry: Entry, remembered: boolean): Promise<Entry> {
@@ -678,9 +754,7 @@ export async function markReviewed(entry: Entry, remembered: boolean): Promise<E
   const db = await getDB();
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
-      const latest = attempt === 0
-        ? entry
-        : (await db.get(entry._id)) as unknown as Entry;
+      const latest = (await db.get(entry._id)) as unknown as Entry & { _attachments?: Record<string, unknown> };
       const currentInterval = latest.reviewInterval ?? 1;
       const newInterval = remembered ? Math.min(currentInterval * 2, 60) : 1;
       const nextReview = toLocalDateStr(new Date(Date.now() + newInterval * 86_400_000));
@@ -711,6 +785,7 @@ export interface Settings {
   couchdbPassword?: string;    // never stored — ephemeral, only returned by getSettings
   couchdbPasswordEnc?: string; // AES-GCM ciphertext stored in DB
   defaultView?: "journal" | "calendar" | "todos" | "review";
+  migratedAttachmentsV2?: boolean; // set after one-shot native-attachment migration
 }
 
 // ─── Conflicts ───────────────────────────────────────────────────────────────
@@ -762,20 +837,25 @@ export async function resolveConflict(
 ): Promise<void> {
   requireAuth();
   const db = await getDB();
-  const current = (await db.get(id)) as Entry;
+  const current = (await db.get(id)) as Entry & { _attachments?: Record<string, unknown> };
 
   if (current._rev !== keepRev) {
     // User chose an alternative — decrypt it and overwrite the winner
     const keepRaw = (await db.get(id, { rev: keepRev })) as Entry;
     const keep = await decryptEntry(keepRaw);
+    const attMeta = keep.attachments?.map(({ id: aid, name, mimeType, size }) => ({ id: aid, name, mimeType, size }));
     const base: Omit<Entry, "_rev" | "encrypted" | "enc"> = {
       _id: id, type: "entry",
       content: keep.content, tags: keep.tags,
       date: keep.date, createdAt: keep.createdAt,
-      ...(keep.attachments ? { attachments: keep.attachments } : {}),
+      ...(attMeta?.length ? { attachments: attMeta } : {}),
     };
     const enc = await encryptEntry(base);
-    await db.put({ ...enc, _rev: current._rev } as unknown as AnyDoc);
+    await db.put({
+      ...enc,
+      _rev: current._rev,
+      ...(current._attachments ? { _attachments: current._attachments } : {}),
+    } as unknown as AnyDoc);
   }
 
   await Promise.allSettled(discardRevs.map((rev) => db.remove(id, rev)));
@@ -822,8 +902,7 @@ export async function saveSettings(data: Partial<Settings>): Promise<void> {
         rawExisting = (await db.get("gleaned_settings")) as unknown as Record<string, unknown>;
       } catch { /* not found — first save */ }
 
-      const { couchdbPassword: _legacy, ...safeExisting } = rawExisting ?? {};
-      void _legacy;
+      const { couchdbPassword: _, ...safeExisting } = rawExisting ?? {};
 
       await db.put({
         _id: "gleaned_settings",
@@ -844,26 +923,23 @@ export async function saveSettings(data: Partial<Settings>): Promise<void> {
 export async function exportData(): Promise<string> {
   requireAuth();
   const db = await getDB();
-  const result = await db.allDocs({ include_docs: true });
+  // Load with attachments:true so decryptEntry can reconstruct attachment data URLs.
+  const result = await db.allDocs({ include_docs: true, attachments: true } as Parameters<typeof db.allDocs>[0]);
   // Decrypt entries so the export is portable across devices and passwords.
   const docs = await Promise.all(
     result.rows
       .filter((r) => r.doc && (r.doc.type === "entry" || r.doc.type === "todo"))
       .map(async (r) => {
-        const { _rev, ...doc } = r.doc as AnyDoc & { _rev?: string };
-        void _rev;
-        if (doc.type === "entry" && (doc as Entry & { encrypted?: boolean }).encrypted) {
+        const raw = r.doc as AnyDoc & { _rev?: string; encrypted?: boolean; enc?: string; textEnc?: string };
+        const { _rev: _, _attachments: __, ...doc } = raw as typeof raw & { _attachments?: unknown };
+        if (doc.type === "entry" && doc.encrypted) {
           const decrypted = await decryptEntry(doc as Entry);
-          const { encrypted: _e, enc: _enc, ...plain } =
-            decrypted as Entry & { encrypted?: boolean; enc?: string };
-          void _e; void _enc;
+          const { encrypted: _e, enc: _f, ...plain } = decrypted as Entry & { encrypted?: boolean; enc?: string };
           return plain;
         }
-        if (doc.type === "todo" && (doc as Todo & { encrypted?: boolean }).encrypted) {
+        if (doc.type === "todo" && doc.encrypted) {
           const decrypted = await decryptTodo(doc as Todo);
-          const { encrypted: _e, textEnc: _t, ...plain } =
-            decrypted as Todo & { encrypted?: boolean; textEnc?: string };
-          void _e; void _t;
+          const { encrypted: _e, textEnc: _f, ...plain } = decrypted as Todo & { encrypted?: boolean; textEnc?: string };
           return plain;
         }
         return doc;
@@ -930,6 +1006,12 @@ export async function importData(json: string): Promise<{ imported: number; skip
           delete mutable._rev;
           delete mutable.encrypted;
           delete mutable.enc;
+          // Backfill missing attachment IDs from exports created before migration
+          if (Array.isArray(mutable.attachments)) {
+            mutable.attachments = (mutable.attachments as Attachment[]).map(
+              (att) => att.id ? att : { ...att, id: Math.random().toString(36).slice(2, 10) },
+            );
+          }
           const toStore = await encryptEntry(mutable as Omit<Entry, "_rev" | "encrypted" | "enc">);
           await db.put(toStore as unknown as AnyDoc);
         } else {
@@ -949,4 +1031,77 @@ export async function importData(json: string): Promise<{ imported: number; skip
   }
 
   return { imported, skipped };
+}
+
+// ─── One-shot migration: base64-in-enc → PouchDB native attachments ──────────
+// Runs fire-and-forget after every login but exits immediately once the settings
+// flag is set, so the only cost after first run is one getSettings() call.
+
+async function migrateAttachmentsToNative(): Promise<void> {
+  const settings = await getSettings();
+  if (settings?.migratedAttachmentsV2) return;
+
+  const key = await loadKey();
+  if (!key) return;
+  const db = await getDB();
+
+  const result = await db.find({ selector: { type: "entry" } });
+  for (const raw of result.docs as Entry[]) {
+    if (!raw.encrypted || !raw.enc) continue;
+
+    let payload: EncPayload;
+    try {
+      payload = JSON.parse(await decryptText(key, raw.enc)) as EncPayload;
+    } catch { continue; }
+
+    // An attachment in the old format has a `data` field in the enc payload.
+    const legacyAtts = (payload.attachments ?? []).filter(
+      (a) => typeof (a as unknown as { data?: string }).data === "string",
+    );
+    if (legacyAtts.length === 0) continue;
+
+    const newMeta: AttachmentMeta[] = [];
+    const pouchAtts: PouchAttachments = {};
+
+    for (const att of payload.attachments ?? []) {
+      const legacyData = (att as unknown as { data?: string }).data;
+      if (legacyData) {
+        const id = (att as unknown as { id?: string }).id ?? Math.random().toString(36).slice(2, 10);
+        const comma = legacyData.indexOf(",");
+        const rawBase64 = comma !== -1 ? legacyData.slice(comma + 1) : legacyData;
+        const bytes = Uint8Array.from(atob(rawBase64), (c) => c.charCodeAt(0));
+        pouchAtts[id] = {
+          content_type: "application/octet-stream",
+          data: await encryptBytes(key, bytes.buffer as ArrayBuffer),
+        };
+        newMeta.push({ id, name: att.name, mimeType: att.mimeType, size: att.size });
+      } else {
+        const { id: existingId, name, mimeType, size } = att as AttachmentMeta;
+        newMeta.push({ id: existingId, name, mimeType, size });
+      }
+    }
+
+    const newPayload: EncPayload = { ...payload, attachments: newMeta.length ? newMeta : undefined };
+    const newEnc = await encryptText(key, JSON.stringify(newPayload));
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const latest = (await db.get(raw._id)) as unknown as Entry & {
+          _rev?: string;
+          _attachments?: Record<string, unknown>;
+        };
+        await db.put({
+          ...latest,
+          enc: newEnc,
+          _attachments: { ...(latest._attachments ?? {}), ...pouchAtts },
+        } as unknown as AnyDoc);
+        break;
+      } catch (err) {
+        if ((err as { status?: number }).status !== 409) break;
+      }
+    }
+  }
+
+  invalidateSearchCache();
+  await saveSettings({ migratedAttachmentsV2: true });
 }

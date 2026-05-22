@@ -50,6 +50,7 @@ function CodeBlock({ att }: { att: Attachment }) {
   const lang = EXT_LANG[ext];
 
   useEffect(() => {
+    if (!att.data) return;
     const text = dataUrlToText(att.data);
     import("highlight.js").then((mod) => {
       const hljs = mod.default;
@@ -70,14 +71,16 @@ function CodeBlock({ att }: { att: Attachment }) {
         <span className="font-sans text-[11px] font-medium" style={{ color: "var(--fg-muted)" }}>
           {att.name}
         </span>
-        <a
-          href={att.data}
-          download={att.name}
-          className="font-sans text-[10px] transition-opacity hover:opacity-70"
-          style={{ color: "var(--accent)", textDecoration: "none" }}
-        >
-          Download
-        </a>
+        {att.data && (
+          <a
+            href={att.data}
+            download={att.name}
+            className="font-sans text-[10px] transition-opacity hover:opacity-70"
+            style={{ color: "var(--accent)", textDecoration: "none" }}
+          >
+            Download
+          </a>
+        )}
       </div>
       <pre
         className="overflow-x-auto p-3 text-xs leading-relaxed"
@@ -86,7 +89,7 @@ function CodeBlock({ att }: { att: Attachment }) {
         {html !== null ? (
           <code dangerouslySetInnerHTML={{ __html: html }} />
         ) : (
-          <code style={{ color: "var(--fg)" }}>{dataUrlToText(att.data)}</code>
+          <code style={{ color: "var(--fg)" }}>{dataUrlToText(att.data ?? "")}</code>
         )}
       </pre>
     </div>
@@ -95,6 +98,18 @@ function CodeBlock({ att }: { att: Attachment }) {
 
 function AttachmentView({ att }: { att: Attachment }) {
   const cat = fileCategory(att);
+
+  if (!att.data) {
+    return (
+      <div
+        className="flex items-center gap-2 rounded-xl px-3 py-2"
+        style={{ background: "var(--bg)", border: "1px solid var(--border)" }}
+      >
+        <span className="font-sans text-xs" style={{ color: "var(--fg-muted)" }}>{att.name}</span>
+        <span className="font-sans text-[10px]" style={{ color: "var(--fg-muted)" }}>{formatSize(att.size)}</span>
+      </div>
+    );
+  }
 
   if (cat === "image") {
     return (

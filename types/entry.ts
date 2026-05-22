@@ -1,8 +1,9 @@
 export interface Attachment {
+  id: string;       // stable key, used as PouchDB _attachments entry
   name: string;
   mimeType: string;
   size: number;
-  data: string; // base64 data URL
+  data?: string;    // base64 data URL; populated in memory after decryption, never persisted in enc payload
 }
 
 export interface Entry {
