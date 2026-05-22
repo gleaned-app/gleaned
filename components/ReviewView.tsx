@@ -98,7 +98,7 @@ export default function ReviewView({
   const [loadingMonth, setLoadingMonth] = useState(false);
 
   useEffect(() => {
-    getReviewDue(10).then((e) => { setQueue(e); setTotal(e.length); setLoadingQueue(false); });
+    getReviewDue().then((e) => { setQueue(e); setTotal(e.length); setLoadingQueue(false); });
     getRecentEntries(60).then((e) => { setHistory(e); setLoadingHistory(false); });
     getEntryMonths().then(setAllMonths);
   }, []);
@@ -122,9 +122,11 @@ export default function ReviewView({
   const dragScale = activeDrag ? 1 + Math.min(Math.abs(dragX) / 600, 0.025) : 1;
   const dragTranslate = slide === "left" ? -90 : slide === "right" ? 90 : activeDrag ? dragX : 0;
   const sourceEntries = selectedMonth ? monthEntries : history;
-  const displayHistory = searchQuery.trim()
+  const sq = searchQuery.trim().toLowerCase();
+  const displayHistory = sq
     ? sourceEntries.filter((e) =>
-        e.tags.some((t) => t.toLowerCase().includes(searchQuery.trim().toLowerCase()))
+        e.content.toLowerCase().includes(sq) ||
+        e.tags.some((t) => t.toLowerCase().includes(sq))
       )
     : sourceEntries;
   const weeks = groupByWeek(displayHistory, tr, loc);
@@ -298,7 +300,7 @@ export default function ReviewView({
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value.replace(/^#/, ""))}
-                placeholder="tag..."
+                placeholder="search..."
                 size={searchQuery ? Math.max(4, searchQuery.length + 1) : 4}
                 className="bg-transparent font-sans text-xs outline-none"
                 style={{ color: searchQuery ? "var(--accent)" : "var(--fg-muted)" }}

@@ -28,11 +28,22 @@ export function generateSalt(): Uint8Array {
 }
 
 export function saltToBase64(salt: Uint8Array): string {
-  return btoa(String.fromCharCode(...salt));
+  return bytesToBase64(salt);
 }
 
 export function base64ToSalt(b64: string): Uint8Array {
   return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+}
+
+// Stack-overflow-safe base64 encoder — avoids spreading large Uint8Arrays into
+// String.fromCharCode, which throws a RangeError for arrays larger than ~65k bytes.
+export function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunk = 32_768;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
 }
 
 export async function encryptText(key: CryptoKey, plaintext: string): Promise<string> {
@@ -45,7 +56,7 @@ export async function encryptText(key: CryptoKey, plaintext: string): Promise<st
   const combined = new Uint8Array(12 + ciphertext.byteLength);
   combined.set(iv);
   combined.set(new Uint8Array(ciphertext), 12);
-  return btoa(String.fromCharCode(...combined));
+  return bytesToBase64(combined);
 }
 
 export async function decryptText(key: CryptoKey, ciphertext: string): Promise<string> {
@@ -56,6 +67,26 @@ export async function decryptText(key: CryptoKey, ciphertext: string): Promise<s
     combined.slice(12),
   );
   return new TextDecoder().decode(plain);
+}
+
+// Binary equivalents of encryptText/decryptText for attachment data.
+// Input/output is raw binary (ArrayBuffer), not text — no TextEncoder involved.
+export async function encryptBytes(key: CryptoKey, data: ArrayBuffer): Promise<string> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, data);
+  const combined = new Uint8Array(12 + ciphertext.byteLength);
+  combined.set(iv);
+  combined.set(new Uint8Array(ciphertext), 12);
+  return bytesToBase64(combined);
+}
+
+export async function decryptBytes(key: CryptoKey, b64: string): Promise<ArrayBuffer> {
+  const combined = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  return crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: combined.slice(0, 12) },
+    key,
+    combined.slice(12),
+  );
 }
 
 export async function storeKey(key: CryptoKey): Promise<void> {
