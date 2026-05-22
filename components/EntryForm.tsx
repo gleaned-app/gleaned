@@ -110,7 +110,11 @@ export default function EntryForm({ onSaved }: Props) {
       const finalTags = tagInput.trim()
         ? [...tags, tagInput.trim().toLowerCase().replace(/^#/, "")]
         : tags;
-      const entry = await saveEntry(content.trim(), finalTags, attachments.length ? attachments : undefined);
+      const entry = await saveEntry({
+        content: content.trim(),
+        tags: finalTags,
+        attachments: attachments.length ? attachments : undefined,
+      });
       onSaved(entry);
       setContent("");
       setTags([]);

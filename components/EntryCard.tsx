@@ -232,7 +232,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
       const finalTags = tagInput.trim()
         ? [...tags, tagInput.trim().toLowerCase().replace(/^#/, "")]
         : tags;
-      const updated = await updateEntry(entry, content.trim(), finalTags);
+      const updated = await updateEntry(entry, { content: content.trim(), tags: finalTags });
       onUpdate?.(updated);
       setEditing(false);
     } finally {
