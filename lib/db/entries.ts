@@ -211,22 +211,18 @@ export async function getAllTags(): Promise<Map<string, number>> {
 
 export async function getEntriesByTag(tag: string): Promise<Entry[]> {
   requireAuth();
-  const db = await getDB();
-  const result = await db.find({
-    selector: { type: "entry" },
-    sort: [{ type: "asc" }, { createdAt: "asc" }],
-  });
-  const decrypted = await Promise.all((result.docs as Entry[]).map(decryptEntry));
-  return decrypted.filter((e) => e.tags?.includes(tag));
+  const all = _searchCache ?? await buildSearchCache();
+  return all.filter((e) => e.tags?.includes(tag));
 }
 
 export async function deleteTag(tag: string): Promise<void> {
   requireAuth();
   const db = await getDB();
-  const result = await db.find({ selector: { type: "entry" } });
-  for (const raw of result.docs as Entry[]) {
-    const doc = await decryptEntry(raw);
-    if (!doc.tags?.includes(tag)) continue;
+  // Use the search cache so only affected entries are re-encrypted and re-put —
+  // avoids decrypting the full collection when only a few docs carry the tag.
+  const all = _searchCache ?? await buildSearchCache();
+  const affected = all.filter((e) => e.tags?.includes(tag));
+  for (const doc of affected) {
     const newTags = doc.tags.filter((t) => t !== tag);
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
