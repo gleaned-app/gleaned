@@ -140,7 +140,7 @@ export interface Translations {
   defaultViewLabel: string;
   genericError: string;
 
-  // Entry context panel (source / stake / gap / type)
+  // Entry context panel (source / stake / gap / type) — form labels
   contextToggle: string;
   sourcePlaceholder: string;
   stakePlaceholder: string;
@@ -150,6 +150,10 @@ export interface Translations {
   typeFramework: string;
   typeFact: string;
   typeObservation: string;
+  // Entry card display labels
+  sourceLabel: string;
+  stakeLabel: string;
+  gapLabel: string;
 
   // Search
   search: string;
@@ -311,6 +315,9 @@ const de: Translations = {
   typeFramework: "Framework",
   typeFact: "Fakt",
   typeObservation: "Beobachtung",
+  sourceLabel: "Quelle",
+  stakeLabel: "Einsatz",
+  gapLabel: "Lücke",
 
   syncConflict: "Sync-Konflikt",
   conflictDesc: "Dieser Eintrag wurde auf zwei Geräten offline bearbeitet. Wähle die Version, die gespeichert werden soll.",
@@ -465,6 +472,9 @@ const en: Translations = {
   typeFramework: "Framework",
   typeFact: "Fact",
   typeObservation: "Observation",
+  sourceLabel: "Source",
+  stakeLabel: "Stake",
+  gapLabel: "Gap",
 
   syncConflict: "Sync conflict",
   conflictDesc: "This entry was edited on two devices while offline. Choose the version to keep.",

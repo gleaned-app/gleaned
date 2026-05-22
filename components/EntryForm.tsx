@@ -58,7 +58,7 @@ export default function EntryForm({ onSaved }: Props) {
   const [focused, setFocused] = useState(false);
   const [existingTags, setExistingTags] = useState<string[]>([]);
   // Context panel state
-  const [contextOpen, setContextOpen] = useState(false);
+  const [contextOpen, setContextOpen] = useState(true);
   const [entryType, setEntryType] = useState<EntryType | undefined>(undefined);
   const [source, setSource] = useState("");
   const [stake, setStake] = useState("");
@@ -206,7 +206,7 @@ export default function EntryForm({ onSaved }: Props) {
             color: "var(--fg)",
             caretColor: "var(--accent)",
             fontFamily: "var(--font-body)",
-            minHeight: "clamp(10rem, 40vh, 28rem)",
+            minHeight: "clamp(5rem, 16dvh, 11rem)",
             padding: "0",
             backgroundImage:
               "repeating-linear-gradient(to bottom, transparent, transparent calc(1.625em - 1px), var(--border) calc(1.625em - 1px), var(--border) 1.625em)",
@@ -220,10 +220,10 @@ export default function EntryForm({ onSaved }: Props) {
       <button
         type="button"
         onClick={() => setContextOpen((o) => !o)}
-        className="flex w-full items-center gap-2 py-2.5 font-sans text-[11px]"
+        className="flex w-full items-center gap-2 py-2.5 font-sans text-xs"
         style={{
           color: "var(--fg-muted)",
-          opacity: hasContextData ? 0.9 : 0.45,
+          opacity: hasContextData ? 1 : 0.65,
           transition: "opacity 150ms ease",
           WebkitTapHighlightColor: "transparent",
         }}
