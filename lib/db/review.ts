@@ -2,7 +2,7 @@ import type { Entry, ReviewOutcome, ReviewEvent, GapStatus } from "@/types/entry
 import { getDB, requireAuth, toLocalDateStr, isEntry, QUERY_METADATA_LIMIT, REVIEW_BACKFILL_CAP } from "./client";
 import type { AnyDoc } from "./client";
 import { decryptEntry } from "./entry-crypto";
-import { computeNextInterval, interleaveQueue } from "../review-scheduler";
+import { scheduleEntry, interleaveQueue } from "../review-scheduler";
 
 export async function getRecentEntries(limit = 50): Promise<Entry[]> {
   requireAuth();
@@ -102,12 +102,16 @@ export async function undoMarkReviewed(prev: Entry): Promise<void> {
         lastReviewOutcome: prev.lastReviewOutcome,
         reviewHistory:     prev.reviewHistory,
         gapStatus:         prev.gapStatus,
+        stability:         prev.stability,
+        difficulty:        prev.difficulty,
       };
       if (prev.reviewInterval    === undefined) delete reverted.reviewInterval;
       if (prev.nextReview        === undefined) delete reverted.nextReview;
       if (prev.lastReviewOutcome === undefined) delete reverted.lastReviewOutcome;
       if (prev.reviewHistory     === undefined) delete reverted.reviewHistory;
       if (prev.gapStatus         === undefined) delete reverted.gapStatus;
+      if (prev.stability         === undefined) delete reverted.stability;
+      if (prev.difficulty        === undefined) delete reverted.difficulty;
       await db.put(reverted as unknown as AnyDoc);
       return;
     } catch (err) {
@@ -128,9 +132,20 @@ export async function markReviewed(
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const latest = (await db.get(entry._id)) as unknown as Entry & { _attachments?: Record<string, unknown> };
-      const currentInterval = latest.reviewInterval ?? 1;
-      const hasOpenGap = latest.gapStatus === "open";
-      const newInterval = computeNextInterval(currentInterval, outcome, hasOpenGap);
+
+      // Days since last review: use last history event date, or createdAt for first review
+      const lastEvent = (latest.reviewHistory ?? []).at(-1);
+      const prevDate = lastEvent
+        ? new Date(`${lastEvent.date}T00:00:00`)
+        : new Date(latest.createdAt);
+      const daysSinceReview = (Date.now() - prevDate.getTime()) / 86_400_000;
+
+      const { interval: newInterval, stability, difficulty } = scheduleEntry(
+        latest,
+        outcome,
+        daysSinceReview,
+      );
+
       const nextReview = toLocalDateStr(new Date(Date.now() + newInterval * 86_400_000));
       const event: ReviewEvent = { date: toLocalDateStr(), outcome };
       const reviewHistory = [...(latest.reviewHistory ?? []), event];
@@ -140,6 +155,8 @@ export async function markReviewed(
         nextReview,
         lastReviewOutcome: outcome,
         reviewHistory,
+        stability,
+        difficulty,
         ...(gapUpdate !== undefined ? { gapStatus: gapUpdate } : {}),
       };
       const res = await db.put(updated as unknown as AnyDoc);
