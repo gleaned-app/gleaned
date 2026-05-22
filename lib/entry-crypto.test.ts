@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { deriveKey, generateSalt, storeKey, clearKey } from "./crypto";
-import { encryptEntry, decryptEntry } from "./db";
+import { encryptEntry, decryptEntry } from "./db/entry-crypto";
 import type { Entry } from "@/types/entry";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
