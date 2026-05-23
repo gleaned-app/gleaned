@@ -8,9 +8,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test": "NODE_OPTIONS=--disable-warning=DEP0205 vitest run",
+    "test:watch": "NODE_OPTIONS=--disable-warning=DEP0205 vitest",
+    "test:coverage": "NODE_OPTIONS=--disable-warning=DEP0205 vitest run --coverage",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "dompurify": "^3.4.5",
@@ -34,6 +35,7 @@
     }
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
     "@types/dompurify": "^3.2.0",
     "@types/node": "^25.9.1",

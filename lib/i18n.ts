@@ -74,13 +74,33 @@ export interface Translations {
   reviewDaysAgo(n: number): string;
   reviewAgain: string;
   reviewGotIt: string;
+  reviewUndo: string;
   reviewEmpty: string;
   reviewEmptyBody: string;
   reviewOf(done: number, total: number): string;
   reviewHistory: string;
+  reviewSuperseded: string;
+  calibrationLabel: string;
+  calibrationNotEnoughData: string;
+
+  // Type-specific review prompts
+  reviewPromptInsight: string;
+  reviewPromptTechnique: string;
+  reviewPromptFramework: string;
+  reviewPromptObservation: string;
+  reviewReveal: string;
+
+  // Gap review mode
+  reviewGapPrompt: string;
+  reviewGapResolved: string;
+  reviewGapStillOpen: string;
+  reviewGapArchive: string;
   filterRecent: string;
+  filterOpenGaps: string;
   filterAllTags: string;
   filterByTag: string;
+  reviewSupersededTooltip: string;
+  reviewGapArchiveTooltip: string;
   thisWeek: string;
   lastWeek: string;
   weeksAgo(n: number): string;
@@ -138,7 +158,29 @@ export interface Translations {
   swUpdateReload: string;
 
   defaultViewLabel: string;
+  customTypesLabel: string;
+  customTypesPlaceholder: string;
+  customTypesEmpty: string;
+  contextSourcesLabel: string;
+  contextSourcesPlaceholder: string;
+  contextSourcesEmpty: string;
+  contextLabel: string;
   genericError: string;
+
+  // Entry context panel (source / stake / gap / type) — form labels
+  contextToggle: string;
+  sourcePlaceholder: string;
+  stakePlaceholder: string;
+  gapPlaceholder: string;
+  typeInsight: string;
+  typeTechnique: string;
+  typeFramework: string;
+  typeFact: string;
+  typeObservation: string;
+  // Entry card display labels
+  sourceLabel: string;
+  stakeLabel: string;
+  gapLabel: string;
 
   // Search
   search: string;
@@ -221,13 +263,31 @@ const de: Translations = {
   reviewDaysAgo: (n) => n === 1 ? "vor 1 Tag" : `vor ${n} Tagen`,
   reviewAgain: "Nochmal",
   reviewGotIt: "Sitzt noch!",
+  reviewUndo: "Rückgängig",
   reviewEmpty: "Alles wiederholt.",
   reviewEmptyBody: "Du investierst in dein Wissen. Das zeigt.",
   reviewOf: (done, total) => `${done} von ${total}`,
   reviewHistory: "Verlauf",
+  reviewSuperseded: "Überholt",
+  calibrationLabel: "Kalibrierung",
+  calibrationNotEnoughData: "noch zu wenig Daten",
+
+  reviewPromptInsight: "Gilt das noch für dich — heute, wer du bist?",
+  reviewPromptTechnique: "Kannst du es durchgehen, ohne nachzuschauen?",
+  reviewPromptFramework: "Kannst du die Struktur rekonstruieren?",
+  reviewPromptObservation: "Hat sich das verändert? Hast du das Gegenteil gesehen?",
+  reviewReveal: "Inhalt zeigen",
+
+  reviewGapPrompt: "Du hast hier etwas Offenes notiert. Hat es sich geklärt?",
+  reviewGapResolved: "Geklärt",
+  reviewGapStillOpen: "Noch offen",
+  reviewGapArchive: "Nicht mehr relevant",
   filterRecent: "Neueste",
+  filterOpenGaps: "Offene Lücken",
   filterAllTags: "Alle",
   filterByTag: "tag filtern…",
+  reviewSupersededTooltip: "Dieses Wissen wurde durch neueres Verständnis ersetzt — wird in 6 Monaten wieder gezeigt.",
+  reviewGapArchiveTooltip: "Diese Lücke ist nicht mehr relevant — wird archiviert und nicht weiter verfolgt.",
   thisWeek: "Diese Woche",
   lastWeek: "Letzte Woche",
   weeksAgo: (n) => n === 1 ? "Vor 1 Woche" : `Vor ${n} Wochen`,
@@ -284,12 +344,32 @@ const de: Translations = {
   swUpdateReload: "Neu laden",
 
   defaultViewLabel: "Standard-Ansicht",
+  customTypesLabel: "Eigene Typen",
+  customTypesPlaceholder: "Neuer Typ…",
+  customTypesEmpty: "Noch keine eigenen Typen.",
+  contextSourcesLabel: "Lernorte",
+  contextSourcesPlaceholder: "Neuer Ort…",
+  contextSourcesEmpty: "Noch keine Lernorte.",
+  contextLabel: "Lernort",
   genericError: "Fehler — Seite neu laden.",
 
   search: "Suchen",
   searchPlaceholder: "Einträge durchsuchen…",
   searchNoResults: "Nichts gefunden.",
   searchEmpty: "Schreib etwas um zu suchen",
+
+  contextToggle: "Kontext",
+  sourcePlaceholder: "Quelle — wo hast du das gelernt?",
+  stakePlaceholder: "Einsatz — was ändert sich für dich jetzt?",
+  gapPlaceholder: "Lücke — was ist noch unklar?",
+  typeInsight: "Erkenntnis",
+  typeTechnique: "Technik",
+  typeFramework: "Framework",
+  typeFact: "Fakt",
+  typeObservation: "Beobachtung",
+  sourceLabel: "Quelle",
+  stakeLabel: "Einsatz",
+  gapLabel: "Lücke",
 
   syncConflict: "Sync-Konflikt",
   conflictDesc: "Dieser Eintrag wurde auf zwei Geräten offline bearbeitet. Wähle die Version, die gespeichert werden soll.",
@@ -365,13 +445,31 @@ const en: Translations = {
   reviewDaysAgo: (n) => n === 1 ? "1 day ago" : `${n} days ago`,
   reviewAgain: "Again",
   reviewGotIt: "Got it!",
+  reviewUndo: "Undo",
   reviewEmpty: "All caught up.",
   reviewEmptyBody: "You're investing in your knowledge. It shows.",
   reviewOf: (done, total) => `${done} of ${total}`,
   reviewHistory: "History",
+  reviewSuperseded: "Superseded",
+  calibrationLabel: "Calibration",
+  calibrationNotEnoughData: "not enough data yet",
+
+  reviewPromptInsight: "Is this still true for who you are now?",
+  reviewPromptTechnique: "Can you walk through it without looking?",
+  reviewPromptFramework: "Can you reconstruct the structure?",
+  reviewPromptObservation: "Has this changed? Have you seen the opposite?",
+  reviewReveal: "Reveal",
+
+  reviewGapPrompt: "You flagged something unresolved here. Has it resolved?",
+  reviewGapResolved: "Resolved",
+  reviewGapStillOpen: "Still open",
+  reviewGapArchive: "No longer relevant",
   filterRecent: "Recent",
+  filterOpenGaps: "Open gaps",
   filterAllTags: "All",
   filterByTag: "filter by tag…",
+  reviewSupersededTooltip: "This knowledge has been superseded — pushed to 6 months from now.",
+  reviewGapArchiveTooltip: "This gap is no longer worth resolving — it will be archived.",
   thisWeek: "This week",
   lastWeek: "Last week",
   weeksAgo: (n) => n === 1 ? "1 week ago" : `${n} weeks ago`,
@@ -428,12 +526,32 @@ const en: Translations = {
   swUpdateReload: "Reload",
 
   defaultViewLabel: "Default view",
+  customTypesLabel: "Custom types",
+  customTypesPlaceholder: "New type…",
+  customTypesEmpty: "No custom types yet.",
+  contextSourcesLabel: "Learning contexts",
+  contextSourcesPlaceholder: "New context…",
+  contextSourcesEmpty: "No learning contexts yet.",
+  contextLabel: "Context",
   genericError: "Error — reload the page.",
 
   search: "Search",
   searchPlaceholder: "Search your entries…",
   searchNoResults: "No results.",
   searchEmpty: "Type something to search",
+
+  contextToggle: "Context",
+  sourcePlaceholder: "Source — where did you learn this?",
+  stakePlaceholder: "Stake — what changes for you now?",
+  gapPlaceholder: "Gap — what is still unclear?",
+  typeInsight: "Insight",
+  typeTechnique: "Technique",
+  typeFramework: "Framework",
+  typeFact: "Fact",
+  typeObservation: "Observation",
+  sourceLabel: "Source",
+  stakeLabel: "Stake",
+  gapLabel: "Gap",
 
   syncConflict: "Sync conflict",
   conflictDesc: "This entry was edited on two devices while offline. Choose the version to keep.",

@@ -266,22 +266,20 @@ The table below maps every methodological element in this document to its curren
 | Entry writing (own words, one sentence bar) | ✓ built | No required fields, fast capture |
 | Tags | ✓ built | Optional, multi-tag |
 | Streak counter (current + longest) | ✓ built | Both numbers tracked |
-| Basic spaced repetition (review queue, intervals) | ~ partial | Interval doubles on success, resets to 1 on failure. No quality scale, no forgetting model. Effectively simplified SM-2 without ratings. |
-| Review queue (scheduled + backfill) | ~ partial | Works. Not interleaved — no mixing across types or recency. |
-| **Gap field** | **○ not built** | The central mechanism. Not in the data model yet. |
-| Source field | ○ not built | — |
-| Stake / Anchor field | ○ not built | Elaborative interrogation mechanic |
-| Entry types (Insight / Technique / Framework / Fact / Observation) | ○ not built | Not in data model. All entries are untyped. |
-| Type-specific review prompts | ○ not built | Depends on entry types |
-| Gap-based scheduling priority | ○ not built | Depends on Gap field |
-| FSRS or Option C scheduler | ○ not built | Current interval logic is a placeholder |
-| Interleaved review queue | ○ not built | Current queue is date-sorted |
-| "Still holds / needs revision / superseded" review states | ○ not built | Current review is binary (Again / Got it) |
-| Calibration score (open question 4) | ○ not built | Would be derivable from review history once richer states exist |
+| Source field | ✓ built | Encrypted in payload; URL/DOI/ISBN parsed for display |
+| Stake / Anchor field | ✓ built | Encrypted in payload alongside content |
+| **Gap field** | **✓ built** | Data model, encryption, gap-aware review UI, gap-based scheduling priority |
+| Entry types (Insight / Technique / Framework / Fact / Observation) | ✓ built | `entryType` in data model; unencrypted for scheduling |
+| Type-specific review prompts | ✓ built | Prompts per type in `ReviewView`; Fact uses blur/reveal |
+| "Still holds / needs revision / superseded" review states | ✓ built | `ReviewOutcome` type; review history append-only |
+| Gap-based scheduling priority | ✓ built | Open gap halves interval in `computeNextInterval`; +10 pts in queue scoring |
+| Interleaved review queue | ✓ built | `interleaveQueue` — round-robin by entry type, scored by overdue + gap status + jitter |
+| Calibration score | ✓ built | `computeCalibration` — fraction of "still holds" judgments confirmed by subsequent reviews |
+| Review queue (scheduled + backfill) | ~ partial | Works. Backfill from recent entries included but gap-vs-forgetting two-axis model not yet separate. |
+| Scheduling algorithm | ~ partial | `computeNextInterval` uses ×2.1 / ×0.5 / 180-day rules with gap pressure. Correct shape; not full FSRS / Option C. The forgetting-probability axis is not modelled per learner. |
+| FSRS / Option C two-axis scheduler | ○ not built | Would replace the interval multipliers with a per-learner forgetting model. Requires longitudinal review data to calibrate. |
 
-**The current implementation covers the encode pillar well and the confront pillar at a basic functional level. The anchor pillar (Source, Stake) and the full Gap mechanism do not exist yet. The scheduling layer is a placeholder that works but does not reflect the methodology.**
-
-The priority order implied by the methodology: Gap field → entry types → type-specific prompts → FSRS/Option C → interleaving → calibration. Each depends on the one before it.
+**All three pillars are now implemented at a functional level.** Encode (entry, source, stake), Anchor (stake field, gap at capture time), and Confront (typed review prompts, gap mode, three-outcome states, interleaving, calibration score). The remaining open item is the scheduling algorithm: the current logic is a sound approximation but not the full two-axis model described above.
 
 ---
 
