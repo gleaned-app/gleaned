@@ -25,6 +25,22 @@ export function stopSync() {
   setSyncStatus("idle");
 }
 
+/**
+ * Verifies that a URL points to a real CouchDB database by checking for the
+ * db_name field in the JSON response. Guards against false-green sync status
+ * when an HTTP server (e.g. the Next.js dev server) returns 200 for any path.
+ */
+async function isCouchDB(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return false;
+    const json = await res.json() as Record<string, unknown>;
+    return typeof json.db_name === "string";
+  } catch {
+    return false;
+  }
+}
+
 export async function startSync(url: string, username?: string, password?: string) {
   stopSync();
   const trimmed = url.trim();
@@ -40,8 +56,13 @@ export async function startSync(url: string, username?: string, password?: strin
     } catch { /* invalid URL — use as-is */ }
   }
 
-  const db = await getDB();
+  // Pre-flight: reject non-CouchDB endpoints before starting live sync.
+  // Prevents false-green status when any HTTP 200 server is entered as URL.
   setSyncStatus("syncing");
+  const valid = await isCouchDB(syncUrl);
+  if (!valid) { setSyncStatus("error"); return; }
+
+  const db = await getDB();
   _syncHandler = db
     .sync(syncUrl, { live: true, retry: true })
     .on("active",  () => setSyncStatus("syncing"))

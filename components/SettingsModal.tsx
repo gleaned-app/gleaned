@@ -98,7 +98,10 @@ export default function SettingsModal({ onClose }: Props) {
       const headers: Record<string, string> = {};
       if (couchdbUser) headers["Authorization"] = "Basic " + btoa(`${couchdbUser}:${couchdbPass}`);
       const res = await fetch(url, { method: "GET", headers, signal: AbortSignal.timeout(5000) });
-      setSyncTestStatus(res.ok ? "ok" : res.status === 401 ? "error-auth" : "error-unreachable");
+      if (!res.ok) { setSyncTestStatus(res.status === 401 ? "error-auth" : "error-unreachable"); return; }
+      const json = await res.json() as Record<string, unknown>;
+      // A valid CouchDB database endpoint always includes db_name in its response.
+      setSyncTestStatus(typeof json.db_name === "string" ? "ok" : "error-unreachable");
     } catch {
       setSyncTestStatus("error-unreachable");
     }
