@@ -450,7 +450,7 @@ export default function ReviewView({
         </div>
       ) : displayHistory.length === 0 ? (
         <p className="py-8 text-center font-serif italic" style={{ color: "var(--fg-muted)" }}>
-          {searchQuery ? tr.searchNoResults : tr.addFirstGoal}
+          {searchQuery ? tr.searchNoResults : tr.reviewHistoryEmpty}
         </p>
       ) : (
         <div className="flex flex-col gap-6">

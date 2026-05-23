@@ -79,6 +79,7 @@ export interface Translations {
   reviewEmptyBody: string;
   reviewOf(done: number, total: number): string;
   reviewHistory: string;
+  reviewHistoryEmpty: string;
   reviewSuperseded: string;
   calibrationLabel: string;
   calibrationNotEnoughData: string;
@@ -268,6 +269,7 @@ const de: Translations = {
   reviewEmptyBody: "Du investierst in dein Wissen. Das zeigt.",
   reviewOf: (done, total) => `${done} von ${total}`,
   reviewHistory: "Verlauf",
+  reviewHistoryEmpty: "Noch nichts wiederholt.",
   reviewSuperseded: "Überholt",
   calibrationLabel: "Kalibrierung",
   calibrationNotEnoughData: "noch zu wenig Daten",
@@ -450,6 +452,7 @@ const en: Translations = {
   reviewEmptyBody: "You're investing in your knowledge. It shows.",
   reviewOf: (done, total) => `${done} of ${total}`,
   reviewHistory: "History",
+  reviewHistoryEmpty: "Nothing reviewed yet.",
   reviewSuperseded: "Superseded",
   calibrationLabel: "Calibration",
   calibrationNotEnoughData: "not enough data yet",
