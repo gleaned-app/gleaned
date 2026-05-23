@@ -26,7 +26,7 @@ test("creates an entry and shows it in the list", async ({ page }) => {
   await expect(page.locator("form button[type='submit']")).toBeEnabled();
   await page.locator("form button[type='submit']").click();
 
-  await expect(page.getByText(content)).toBeVisible();
+  await expect(page.getByText(content).first()).toBeVisible();
 });
 
 test("saves an entry with Ctrl+Enter shortcut", async ({ page }) => {
@@ -34,7 +34,7 @@ test("saves an entry with Ctrl+Enter shortcut", async ({ page }) => {
   await contentArea(page).fill(content);
   await page.keyboard.press("Control+Enter");
 
-  await expect(page.getByText(content)).toBeVisible();
+  await expect(page.getByText(content).first()).toBeVisible();
 });
 
 test("clears the textarea after saving", async ({ page }) => {
