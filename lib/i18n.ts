@@ -251,7 +251,7 @@ const de: Translations = {
   connectNotFound: "Kein gleaned-Account auf diesem Server gefunden.",
   connectAuthError: "Zugangsdaten falsch.",
   connectNetworkError: "Server nicht erreichbar.",
-  connectOverwriteWarning: "Das überschreibt den lokalen Account auf diesem Gerät. Nur fortfahren, wenn du den gleichen Account von einem anderen Server holen willst.",
+  connectOverwriteWarning: "Lokale Einträge auf diesem Gerät, die noch nicht mit CouchDB synchronisiert wurden, werden unlesbar — der Verschlüsselungsschlüssel ändert sich auch bei gleichem Passwort. Nur fortfahren, wenn du sicher bist.",
 
   filterBack: "zurück",
   noEntriesTag: (tag) => `Keine Einträge für #${tag}`,
@@ -445,7 +445,7 @@ const en: Translations = {
   connectNotFound: "No gleaned account found on this server.",
   connectAuthError: "Wrong credentials.",
   connectNetworkError: "Server not reachable.",
-  connectOverwriteWarning: "This will overwrite the local account on this device. Only continue if you want to pull the same account from another server.",
+  connectOverwriteWarning: "Local entries on this device that have not been synced to CouchDB will become unreadable — the encryption key changes even if the password is the same. Only continue if you are sure.",
 
   filterBack: "back",
   noEntriesTag: (tag) => `No entries for #${tag}`,
