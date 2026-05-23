@@ -138,7 +138,7 @@ http://localhost:5984/gleaned
 
 Everything you write is encrypted with AES-GCM-256 before it is stored in IndexedDB. The key is derived from your password using PBKDF2-HMAC-SHA-256 (600 000 iterations, 128-bit random salt). The key never leaves your device and is never written to storage — it lives only in JS memory for the duration of the session.
 
-Encrypted fields per entry: content, tags, source, stake, gap, attachment binaries, attachment metadata.
+Encrypted fields per entry: content, tags, source, stake, gap, attachment binaries, attachment metadata. The `context` (learning location) field is intentionally stored unencrypted — see the metadata tradeoff section below.
 Encrypted fields per todo: text.
 The CouchDB password (if configured) is also stored encrypted.
 
@@ -150,8 +150,10 @@ The following fields are stored **in plaintext** in IndexedDB to allow schedulin
 |---|---|
 | `date`, `createdAt` | Required for calendar view and entry ordering |
 | `entryType` | Used to select the correct review prompt |
+| `context` | Learning location (Arbeit, Schule, …); stored plain for filtering |
 | `gapStatus` | Drives gap-aware queue prioritisation |
-| `nextReview`, `reviewInterval` | SM-2 scheduling without full DB scan |
+| `nextReview`, `reviewInterval` | Scheduling without full DB scan |
+| `stability`, `difficulty` | FSRS-5 parameters; needed for interval calculation without decryption |
 | `lastReviewOutcome`, `reviewHistory` | Calibration score computation |
 
 **Implication:** someone with access to your IndexedDB (e.g. another user on the same device, a malicious browser extension) can see *when* you made entries and how they are classified (Insight, Observation, etc.) — without knowing your password. The actual content, tags, and personal context fields remain encrypted.
