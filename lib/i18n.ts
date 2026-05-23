@@ -46,6 +46,7 @@ export interface Translations {
   connectNotFound: string;
   connectAuthError: string;
   connectNetworkError: string;
+  connectOverwriteWarning: string;
 
   // Journal
   filterBack: string;
@@ -250,6 +251,7 @@ const de: Translations = {
   connectNotFound: "Kein gleaned-Account auf diesem Server gefunden.",
   connectAuthError: "Zugangsdaten falsch.",
   connectNetworkError: "Server nicht erreichbar.",
+  connectOverwriteWarning: "Das überschreibt den lokalen Account auf diesem Gerät. Nur fortfahren, wenn du den gleichen Account von einem anderen Server holen willst.",
 
   filterBack: "zurück",
   noEntriesTag: (tag) => `Keine Einträge für #${tag}`,
@@ -443,6 +445,7 @@ const en: Translations = {
   connectNotFound: "No gleaned account found on this server.",
   connectAuthError: "Wrong credentials.",
   connectNetworkError: "Server not reachable.",
+  connectOverwriteWarning: "This will overwrite the local account on this device. Only continue if you want to pull the same account from another server.",
 
   filterBack: "back",
   noEntriesTag: (tag) => `No entries for #${tag}`,
