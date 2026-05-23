@@ -33,7 +33,7 @@ async function buildSearchCache(): Promise<Entry[]> {
 export async function saveEntry(draft: EntryDraft): Promise<Entry> {
   requireAuth();
   const db = await getDB();
-  const { content, tags, attachments, entryType, source, stake, gap } = draft;
+  const { content, tags, attachments, entryType, context, source, stake, gap } = draft;
   const gapStatus = draft.gapStatus ?? (gap ? "open" : undefined);
   const now = new Date();
   const tomorrow = toLocalDateStr(new Date(now.getTime() + 86_400_000));
@@ -48,6 +48,7 @@ export async function saveEntry(draft: EntryDraft): Promise<Entry> {
     reviewInterval: 1,
     ...(attachments?.length ? { attachments } : {}),
     ...(entryType !== undefined ? { entryType } : {}),
+    ...(context   !== undefined ? { context   } : {}),
     ...(source    !== undefined ? { source    } : {}),
     ...(stake     !== undefined ? { stake     } : {}),
     ...(gap       !== undefined ? { gap       } : {}),
@@ -59,9 +60,10 @@ export async function saveEntry(draft: EntryDraft): Promise<Entry> {
   const saved: Entry = {
     ...doc, content, tags,
     ...(attachments?.length ? { attachments } : {}),
-    ...(source !== undefined ? { source } : {}),
-    ...(stake  !== undefined ? { stake  } : {}),
-    ...(gap    !== undefined ? { gap    } : {}),
+    ...(context !== undefined ? { context } : {}),
+    ...(source  !== undefined ? { source  } : {}),
+    ...(stake   !== undefined ? { stake   } : {}),
+    ...(gap     !== undefined ? { gap     } : {}),
   } as Entry;
   cache.add(saved);
   return saved;
@@ -141,6 +143,7 @@ export async function updateEntry(entry: Entry, update: EntryUpdate): Promise<En
   requireAuth();
   const db = await getDB();
   const { content, tags } = update;
+  const context   = update.context   !== undefined ? update.context   : entry.context;
   const source    = update.source    !== undefined ? update.source    : entry.source;
   const stake     = update.stake     !== undefined ? update.stake     : entry.stake;
   const gap       = update.gap       !== undefined ? update.gap       : entry.gap;
@@ -162,6 +165,7 @@ export async function updateEntry(entry: Entry, update: EntryUpdate): Promise<En
         ...(latest.lastReviewOutcome !== undefined ? { lastReviewOutcome: latest.lastReviewOutcome } : {}),
         ...(latest.reviewHistory?.length           ? { reviewHistory:     latest.reviewHistory      } : {}),
         ...(entryType !== undefined ? { entryType } : {}),
+        ...(context   !== undefined ? { context   } : {}),
         ...(gapStatus !== undefined ? { gapStatus } : {}),
         ...(source !== undefined ? { source } : {}),
         ...(stake  !== undefined ? { stake  } : {}),
@@ -176,9 +180,10 @@ export async function updateEntry(entry: Entry, update: EntryUpdate): Promise<En
       const updated: Entry = {
         ...enc, _rev: res.rev, content, tags,
         ...(entry.attachments?.length ? { attachments: entry.attachments } : {}),
-        ...(source !== undefined ? { source } : {}),
-        ...(stake  !== undefined ? { stake  } : {}),
-        ...(gap    !== undefined ? { gap    } : {}),
+        ...(context !== undefined ? { context } : {}),
+        ...(source  !== undefined ? { source  } : {}),
+        ...(stake   !== undefined ? { stake   } : {}),
+        ...(gap     !== undefined ? { gap     } : {}),
       } as Entry;
       cache.update(updated);
       return updated;
@@ -247,6 +252,7 @@ export async function deleteTag(tag: string): Promise<void> {
           ...(latest.reviewInterval    !== undefined ? { reviewInterval:    latest.reviewInterval    } : {}),
           ...(attMeta?.length ? { attachments: attMeta } : {}),
           ...(latest.entryType         !== undefined ? { entryType:         latest.entryType         } : {}),
+          ...(latest.context           !== undefined ? { context:           latest.context           } : {}),
           ...(latest.gapStatus         !== undefined ? { gapStatus:         latest.gapStatus         } : {}),
           ...(latest.lastReviewOutcome !== undefined ? { lastReviewOutcome: latest.lastReviewOutcome } : {}),
           ...(latest.reviewHistory?.length           ? { reviewHistory:     latest.reviewHistory      } : {}),

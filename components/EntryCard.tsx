@@ -64,10 +64,7 @@ function SourceValue({ source }: { source: string }) {
   }
 
   return (
-    <span className="inline-flex items-center gap-1 font-sans text-xs" style={{ color: "var(--fg-muted)" }}>
-      <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-      </svg>
+    <span className="font-sans text-xs" style={{ color: "var(--fg-muted)" }}>
       {parsed.label}
     </span>
   );
@@ -98,6 +95,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
   // Edit mode context panel
   const [contextOpen, setContextOpen] = useState(false);
   const [editType, setEditType] = useState<string | undefined>(undefined);
+  const [editContext, setEditContext] = useState("");
   const [editSource, setEditSource] = useState("");
   const [editStake, setEditStake] = useState("");
   const [editGap, setEditGap] = useState("");
@@ -107,13 +105,14 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
     minute: "2-digit",
   });
 
-  const hasContextData = !!entry.entryType || !!entry.source || !!entry.stake || !!entry.gap;
+  const hasContextData = !!entry.entryType || !!entry.context || !!entry.source || !!entry.stake || !!entry.gap;
 
   function handleEditStart() {
     setContent(entry.content);
     setTags(entry.tags);
     setTagInput("");
     setEditType(entry.entryType);
+    setEditContext(entry.context ?? "");
     setEditSource(entry.source ?? "");
     setEditStake(entry.stake ?? "");
     setEditGap(entry.gap ?? "");
@@ -156,9 +155,10 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
         content: content.trim(),
         tags: finalTags,
         entryType: editType,
-        source: editSource.trim() || undefined,
-        stake:  editStake.trim()  || undefined,
-        gap:    editGap.trim()    || undefined,
+        context:   editContext     || undefined,
+        source: editSource.trim()  || undefined,
+        stake:  editStake.trim()   || undefined,
+        gap:    editGap.trim()     || undefined,
       });
       onUpdate?.(updated);
       setEditing(false);
@@ -194,7 +194,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
   // ── Edit mode ───────────────────────────────────────────────────────────────
 
   if (editing) {
-    const editHasContext = !!editType || editSource.trim() !== "" || editStake.trim() !== "" || editGap.trim() !== "";
+    const editHasContext = !!editType || !!editContext || editSource.trim() !== "" || editStake.trim() !== "" || editGap.trim() !== "";
     return (
       <div className={cardClass} style={cardStyle}>
         <textarea
@@ -280,6 +280,27 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
                   style={{ color: "var(--fg)", caretColor: "var(--accent)" }}
                 />
               </div>
+              {/* Lernort */}
+              {(settings.contextSources ?? []).length > 0 && (
+                <div className="flex flex-wrap gap-1 py-1.5" style={{ borderBottom: "1px solid var(--border)" }}>
+                  {(settings.contextSources ?? []).map((ctx) => (
+                    <button
+                      key={ctx}
+                      type="button"
+                      onClick={() => setEditContext((prev) => prev === ctx ? "" : ctx)}
+                      className="btn-3d-subtle rounded-full font-sans"
+                      style={{
+                        fontSize: "11px",
+                        padding: "0.2rem 0.65rem",
+                        color: editContext === ctx ? "var(--accent)" : "var(--fg-muted)",
+                        transition: "color 120ms ease",
+                      }}
+                    >
+                      {editContext === ctx ? "▪ " : ""}{ctx}
+                    </button>
+                  ))}
+                </div>
+              )}
               {/* Stake */}
               <div style={{ borderBottom: "1px solid var(--border)" }}>
                 <input
@@ -524,7 +545,16 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
           </button>
         ))}
         {!flat && (
-          <span className="ml-auto font-sans text-[11px]" style={{ color: "var(--fg-muted)" }}>
+          <span className="ml-auto flex items-center gap-1 font-sans text-[11px]" style={{ color: "var(--fg-muted)" }}>
+            {entry.context && (
+              <>
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" aria-hidden style={{ flexShrink: 0, opacity: 0.7 }}>
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                </svg>
+                <span>{entry.context}</span>
+                <span aria-hidden style={{ opacity: 0.35 }}>·</span>
+              </>
+            )}
             {time}
           </span>
         )}

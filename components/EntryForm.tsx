@@ -63,6 +63,7 @@ export default function EntryForm({ onSaved }: Props) {
   const [contextOpen, setContextOpen] = useState(true);
   const [entryType, setEntryType] = useState<string | undefined>(undefined);
   const [source, setSource] = useState("");
+  const [context, setContext] = useState("");
   const [stake, setStake] = useState("");
   const [gap, setGap] = useState("");
 
@@ -87,7 +88,7 @@ export default function EntryForm({ onSaved }: Props) {
     : [];
 
   // True when any context field carries data — used to boost toggle visibility.
-  const hasContextData = !!entryType || source.trim() !== "" || stake.trim() !== "" || gap.trim() !== "";
+  const hasContextData = !!entryType || !!context || source.trim() !== "" || stake.trim() !== "" || gap.trim() !== "";
 
   function addTag(value: string) {
     const tag = value.trim().toLowerCase().replace(/^#/, "");
@@ -138,9 +139,10 @@ export default function EntryForm({ onSaved }: Props) {
         tags: finalTags,
         attachments: attachments.length ? attachments : undefined,
         entryType,
-        source:    source.trim()  || undefined,
-        stake:     stake.trim()   || undefined,
-        gap:       gap.trim()     || undefined,
+        context:   context         || undefined,
+        source:    source.trim()   || undefined,
+        stake:     stake.trim()    || undefined,
+        gap:       gap.trim()      || undefined,
       });
       onSaved(entry);
       setContent("");
@@ -148,6 +150,7 @@ export default function EntryForm({ onSaved }: Props) {
       setTagInput("");
       setAttachments([]);
       setEntryType(undefined);
+      setContext("");
       setSource("");
       setStake("");
       setGap("");
@@ -289,7 +292,7 @@ export default function EntryForm({ onSaved }: Props) {
               ))}
             </div>
 
-            {/* Source + context chips */}
+            {/* Source */}
             <div style={{ borderBottom: "1px solid var(--border)" }}>
               <input
                 type="text"
@@ -299,26 +302,29 @@ export default function EntryForm({ onSaved }: Props) {
                 className="journal-input w-full bg-transparent py-2 font-sans text-sm outline-none"
                 style={{ color: "var(--fg)", caretColor: "var(--accent)" }}
               />
-              {(settings.contextSources ?? []).length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pb-2">
-                  {(settings.contextSources ?? []).map((ctx) => (
-                    <button
-                      key={ctx}
-                      type="button"
-                      onClick={() => setSource((prev) => prev === ctx ? "" : ctx)}
-                      className="btn-3d-subtle rounded-full px-3 font-sans text-xs"
-                      style={{
-                        color: source === ctx ? "var(--accent)" : "var(--fg-muted)",
-                        minHeight: "2rem",
-                        transition: "color 120ms ease",
-                      }}
-                    >
-                      {ctx}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
+
+            {/* Lernort — compact chip strip, only shown when chips are configured */}
+            {(settings.contextSources ?? []).length > 0 && (
+              <div className="flex flex-wrap gap-1 py-1.5" style={{ borderBottom: "1px solid var(--border)" }}>
+                {(settings.contextSources ?? []).map((ctx) => (
+                  <button
+                    key={ctx}
+                    type="button"
+                    onClick={() => setContext((prev) => prev === ctx ? "" : ctx)}
+                    className="btn-3d-subtle rounded-full font-sans"
+                    style={{
+                      fontSize: "11px",
+                      padding: "0.2rem 0.65rem",
+                      color: context === ctx ? "var(--accent)" : "var(--fg-muted)",
+                      transition: "color 120ms ease",
+                    }}
+                  >
+                    {context === ctx ? "▪ " : ""}{ctx}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Stake */}
             <div style={{ borderBottom: "1px solid var(--border)" }}>
