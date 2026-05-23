@@ -15,4 +15,4 @@ try {
   document.documentElement.style.setProperty("--font-body", fm[f] || fm.sans);
   var l = localStorage.getItem("gleaned-lang") || "de";
   document.documentElement.lang = l;
-} catch (e) {}
+} catch {}
