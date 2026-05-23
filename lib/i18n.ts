@@ -35,6 +35,18 @@ export interface Translations {
   noLocalAccount: string;
   tooManyAttempts(secs: number): string;
 
+  // Connect-existing-account flow
+  connectAccount: string;
+  connectPrompt: string;
+  connectCouchdbUrl: string;
+  connectCouchdbUser: string;
+  connectCouchdbPass: string;
+  connectAction: string;
+  connectSuccess: string;
+  connectNotFound: string;
+  connectAuthError: string;
+  connectNetworkError: string;
+
   // Journal
   filterBack: string;
   noEntriesTag(tag: string): string;
@@ -228,6 +240,16 @@ const de: Translations = {
   wrongPassword: "Falsches Passwort.",
   noLocalAccount: "Kein Konto in diesem Browser. CouchDB-Sync einrichten oder Registrieren.",
   tooManyAttempts: (secs) => `Zu viele Versuche — bitte ${secs}s warten.`,
+  connectAccount: "Gerät verbinden",
+  connectPrompt: "Server-URL und CouchDB-Zugangsdaten eingeben, um den bestehenden Account auf dieses Gerät zu holen.",
+  connectCouchdbUrl: "Server-URL",
+  connectCouchdbUser: "Benutzername",
+  connectCouchdbPass: "CouchDB-Passwort",
+  connectAction: "Verbinden",
+  connectSuccess: "Account gefunden — bitte mit deinem App-Passwort einloggen.",
+  connectNotFound: "Kein gleaned-Account auf diesem Server gefunden.",
+  connectAuthError: "Zugangsdaten falsch.",
+  connectNetworkError: "Server nicht erreichbar.",
 
   filterBack: "zurück",
   noEntriesTag: (tag) => `Keine Einträge für #${tag}`,
@@ -411,6 +433,16 @@ const en: Translations = {
   wrongPassword: "Wrong password.",
   noLocalAccount: "No account in this browser. Set up CouchDB sync or register.",
   tooManyAttempts: (secs) => `Too many attempts — please wait ${secs}s.`,
+  connectAccount: "Connect device",
+  connectPrompt: "Enter your server URL and CouchDB credentials to bring your existing account to this device.",
+  connectCouchdbUrl: "Server URL",
+  connectCouchdbUser: "Username",
+  connectCouchdbPass: "CouchDB password",
+  connectAction: "Connect",
+  connectSuccess: "Account found — please log in with your app password.",
+  connectNotFound: "No gleaned account found on this server.",
+  connectAuthError: "Wrong credentials.",
+  connectNetworkError: "Server not reachable.",
 
   filterBack: "back",
   noEntriesTag: (tag) => `No entries for #${tag}`,
