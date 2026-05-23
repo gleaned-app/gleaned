@@ -127,6 +127,9 @@ export interface Translations {
   lock: string;
   install: string;
   syncConflicts(n: number): string;
+  syncStatusSyncing: string;
+  syncStatusSynced: string;
+  syncStatusError: string;
 
   // Settings modal
   settingsTitle: string;
@@ -326,6 +329,9 @@ const de: Translations = {
   lock: "Sperren",
   install: "Installieren",
   syncConflicts: (n) => `${n} Sync-Konflikt${n !== 1 ? "e" : ""}`,
+  syncStatusSyncing: "Synchronisiert gerade …",
+  syncStatusSynced: "Synchronisiert",
+  syncStatusError: "Synchronisierungsfehler — URL oder Zugangsdaten prüfen",
 
   settingsTitle: "Einstellungen",
   catAppearance: "Darstellung",
@@ -520,6 +526,9 @@ const en: Translations = {
   lock: "Lock",
   install: "Install",
   syncConflicts: (n) => `${n} sync conflict${n !== 1 ? "s" : ""}`,
+  syncStatusSyncing: "Syncing …",
+  syncStatusSynced: "Synced",
+  syncStatusError: "Sync error — check URL and credentials",
 
   settingsTitle: "Settings",
   catAppearance: "Appearance",

@@ -22,16 +22,22 @@ import SWUpdatePrompt from "./SWUpdatePrompt";
 
 function SyncDot() {
   const status = useSyncStatus();
+  const t = useT();
   if (status === "idle") return null;
 
   const color =
-    status === "error"   ? "oklch(55% 0.19 25)"  :
-    status === "syncing" ? "oklch(62% 0.17 145)"  :
+    status === "error"   ? "oklch(55% 0.19 25)" :
+    status === "syncing" ? "oklch(62% 0.17 145)" :
                            "oklch(62% 0.17 145)";
+
+  const label =
+    status === "error"   ? t.syncStatusError :
+    status === "syncing" ? t.syncStatusSyncing :
+                           t.syncStatusSynced;
 
   return (
     <span
-      title={status}
+      title={label}
       style={{
         display: "inline-block",
         width: 7,
@@ -39,6 +45,7 @@ function SyncDot() {
         borderRadius: "50%",
         background: color,
         flexShrink: 0,
+        cursor: "default",
         animation: status === "syncing" ? "pulse 1.2s ease-in-out infinite" : "none",
       }}
     />
