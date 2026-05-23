@@ -288,14 +288,18 @@ export default function LockScreen({ onAuth }: Props) {
         } else {
           const attempts = failedAttempts + 1;
           setFailedAttempts(attempts);
-          // Exponential backoff: 2^(n-1) seconds, capped at 30 s
-          const delaySecs = Math.min(Math.pow(2, attempts - 1), 30);
-          const until = Date.now() + delaySecs * 1000;
-          sessionStorage.setItem(LOCKOUT_KEY, String(until));
-          sessionStorage.setItem(LOCKOUT_ATTEMPTS_KEY, String(attempts));
-          setLockUntil(until);
-          setLockSecsLeft(delaySecs);
-          setError(t.tooManyAttempts(delaySecs));
+          if (attempts === 1) {
+            setError(t.wrongPassword);
+          } else {
+            // Exponential backoff from 2nd attempt: 2^(n-2) seconds, capped at 30 s
+            const delaySecs = Math.min(Math.pow(2, attempts - 2), 30);
+            const until = Date.now() + delaySecs * 1000;
+            sessionStorage.setItem(LOCKOUT_KEY, String(until));
+            sessionStorage.setItem(LOCKOUT_ATTEMPTS_KEY, String(attempts));
+            setLockUntil(until);
+            setLockSecsLeft(delaySecs);
+            setError(t.tooManyAttempts(delaySecs));
+          }
           setPassword("");
         }
       } catch {
