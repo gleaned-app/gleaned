@@ -16,10 +16,10 @@ test("navigates to the Calendar view", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Journal" })).toHaveAttribute("data-active", "false");
 });
 
-test("navigates to the Todos view", async ({ page }) => {
-  await page.getByRole("button", { name: "Lernen" }).click();
+test("navigates to the Threads view", async ({ page }) => {
+  await page.getByRole("button", { name: "Threads" }).click();
 
-  await expect(page.getByRole("button", { name: "Lernen" })).toHaveAttribute("data-active", "true");
+  await expect(page.getByRole("button", { name: "Threads" })).toHaveAttribute("data-active", "true");
 });
 
 test("navigates to the Review view", async ({ page }) => {
@@ -29,7 +29,7 @@ test("navigates to the Review view", async ({ page }) => {
 });
 
 test("can switch between all views and return to Journal", async ({ page }) => {
-  for (const tab of ["Kalender", "Lernen", "Review", "Journal"]) {
+  for (const tab of ["Kalender", "Threads", "Review", "Journal"]) {
     await page.getByRole("button", { name: tab }).click();
     await expect(page.getByRole("button", { name: tab })).toHaveAttribute("data-active", "true");
   }

@@ -2,22 +2,22 @@
 
 import { useState, useEffect, useRef, useCallback, memo } from "react";
 import {
-  getTodos,
-  saveTodo,
-  updateTodoDoc,
-  updateTodoText,
-  updateTodoDueDate,
-  updateTodoColor,
-  deleteTodo,
+  getThreads,
+  saveThread,
+  updateThreadDoc,
+  updateThreadText,
+  updateThreadDueDate,
+  updateThreadColor,
+  deleteThread,
   toLocalDateStr,
 } from "@/lib/db";
-import type { Todo } from "@/types/todo";
+import type { Thread } from "@/types/thread";
 import { useT, type Translations } from "@/lib/i18n";
 import { useSettings, locale } from "@/lib/settings-context";
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
 
-const TODO_COLORS = [
+const THREAD_COLORS = [
   "#ef4444",
   "#f97316",
   "#eab308",
@@ -72,15 +72,15 @@ const STATUS_COLOR: Record<DueStatus, { fg: string; bg: string }> = {
   future:  { fg: "var(--fg-muted)",    bg: "var(--border)"        },
 };
 
-function sortOpen(todos: Todo[]): Todo[] {
+function sortOpen(threads: Thread[]): Thread[] {
   const t = today();
-  const rank = (todo: Todo): number => {
-    if (!todo.dueDate) return 4;
-    if (todo.dueDate < t) return 0;
-    if (todo.dueDate === t) return 1;
+  const rank = (thread: Thread): number => {
+    if (!thread.dueDate) return 4;
+    if (thread.dueDate < t) return 0;
+    if (thread.dueDate === t) return 1;
     return 2;
   };
-  return [...todos].sort((a, b) => {
+  return [...threads].sort((a, b) => {
     const dr = rank(a) - rank(b);
     if (dr !== 0) return dr;
     if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
@@ -90,9 +90,9 @@ function sortOpen(todos: Todo[]): Todo[] {
 
 // ─── Main view ────────────────────────────────────────────────────────────────
 
-export default function TodoView() {
+export default function ThreadsView() {
   const t = useT();
-  const [todos, setTodos] = useState<Todo[]>([]);
+  const [threads, setThreads] = useState<Thread[]>([]);
   const [input, setInput] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [color, setColor] = useState("");
@@ -101,7 +101,7 @@ export default function TodoView() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    getTodos().then(setTodos).finally(() => setLoading(false));
+    getThreads().then(setThreads).finally(() => setLoading(false));
   }, []);
 
   async function handleAdd(e: React.FormEvent) {
@@ -113,39 +113,39 @@ export default function TodoView() {
     setColor("");
     setShowPanel(false);
     inputRef.current?.focus();
-    const todo = await saveTodo(text, dueDate || undefined, color || undefined);
-    setTodos((prev) => [todo, ...prev]);
+    const thread = await saveThread(text, dueDate || undefined, color || undefined);
+    setThreads((prev) => [thread, ...prev]);
   }
 
-  const handleToggle = useCallback(async (todo: Todo) => {
-    setTodos((prev) =>
-      prev.map((t) => (t._id === todo._id ? { ...t, done: !t.done } : t))
+  const handleToggle = useCallback(async (thread: Thread) => {
+    setThreads((prev) =>
+      prev.map((t) => (t._id === thread._id ? { ...t, done: !t.done } : t))
     );
-    const updated = await updateTodoDoc(todo);
-    setTodos((prev) =>
+    const updated = await updateThreadDoc(thread);
+    setThreads((prev) =>
       prev.map((t) => (t._id === updated._id ? updated : t))
     );
   }, []);
 
-  const handleUpdateText = useCallback(async (todo: Todo, text: string) => {
-    setTodos((prev) =>
-      prev.map((t) => (t._id === todo._id ? { ...t, text } : t))
+  const handleUpdateText = useCallback(async (thread: Thread, text: string) => {
+    setThreads((prev) =>
+      prev.map((t) => (t._id === thread._id ? { ...t, text } : t))
     );
-    const updated = await updateTodoText(todo, text);
-    setTodos((prev) =>
+    const updated = await updateThreadText(thread, text);
+    setThreads((prev) =>
       prev.map((t) => (t._id === updated._id ? updated : t))
     );
   }, []);
 
   const handleUpdateDueDate = useCallback(
-    async (todo: Todo, dueDate: string | undefined) => {
-      setTodos((prev) =>
+    async (thread: Thread, dueDate: string | undefined) => {
+      setThreads((prev) =>
         prev.map((t) =>
-          t._id === todo._id ? { ...t, dueDate: dueDate ?? undefined } : t
+          t._id === thread._id ? { ...t, dueDate: dueDate ?? undefined } : t
         )
       );
-      const updated = await updateTodoDueDate(todo, dueDate);
-      setTodos((prev) =>
+      const updated = await updateThreadDueDate(thread, dueDate);
+      setThreads((prev) =>
         prev.map((t) => (t._id === updated._id ? updated : t))
       );
     },
@@ -153,14 +153,14 @@ export default function TodoView() {
   );
 
   const handleUpdateColor = useCallback(
-    async (todo: Todo, color: string | undefined) => {
-      setTodos((prev) =>
+    async (thread: Thread, color: string | undefined) => {
+      setThreads((prev) =>
         prev.map((t) =>
-          t._id === todo._id ? { ...t, color: color ?? undefined } : t
+          t._id === thread._id ? { ...t, color: color ?? undefined } : t
         )
       );
-      const updated = await updateTodoColor(todo, color);
-      setTodos((prev) =>
+      const updated = await updateThreadColor(thread, color);
+      setThreads((prev) =>
         prev.map((t) => (t._id === updated._id ? updated : t))
       );
     },
@@ -168,17 +168,17 @@ export default function TodoView() {
   );
 
   const handleDelete = useCallback(async (id: string) => {
-    setTodos((prev) => prev.filter((t) => t._id !== id));
+    setThreads((prev) => prev.filter((t) => t._id !== id));
     try {
-      await deleteTodo(id);
+      await deleteThread(id);
     } catch {
-      getTodos().then(setTodos);
+      getThreads().then(setThreads);
     }
   }, []);
 
-  const open = sortOpen(todos.filter((t) => !t.done));
-  const done = todos.filter((t) => t.done);
-  const total = todos.length;
+  const open = sortOpen(threads.filter((t) => !t.done));
+  const done = threads.filter((t) => t.done);
+  const total = threads.length;
   const pct = total > 0 ? done.length / total : 0;
   const hasOverdue = open.some((t) => t.dueDate && t.dueDate < today());
 
@@ -194,7 +194,7 @@ export default function TodoView() {
             fontWeight: 500,
           }}
         >
-          {t.toLearn}
+          {t.threadsTitle}
         </h2>
         {total > 0 && (
           <span
@@ -229,7 +229,7 @@ export default function TodoView() {
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={t.whatToLearn}
+            placeholder={t.threadsPlaceholder}
             autoFocus
             className="journal-input flex-1 rounded-2xl px-4 py-3 font-sans text-sm outline-none"
             style={{
@@ -299,7 +299,7 @@ export default function TodoView() {
               background: "var(--bg-card)",
               border: "1px solid var(--border)",
               boxShadow: "var(--shadow-card)",
-              animation: "todo-in 0.2s cubic-bezier(0.16,1,0.3,1) both",
+              animation: "thread-in 0.2s cubic-bezier(0.16,1,0.3,1) both",
             }}
           >
             {/* Date row */}
@@ -391,7 +391,7 @@ export default function TodoView() {
                 {t.color}:
               </span>
               <div className="flex items-center gap-2">
-                {TODO_COLORS.map((c) => (
+                {THREAD_COLORS.map((c) => (
                   <button
                     key={c}
                     type="button"
@@ -443,15 +443,15 @@ export default function TodoView() {
           className="py-16 text-center font-serif italic"
           style={{ color: "var(--fg-muted)" }}
         >
-          {t.addFirstGoal}
+          {t.threadsEmpty}
         </p>
       ) : (
         <>
           <div className="flex flex-col gap-2">
-            {open.map((todo, i) => (
-              <TodoItem
-                key={todo._id}
-                todo={todo}
+            {open.map((thread, i) => (
+              <ThreadItem
+                key={thread._id}
+                thread={thread}
                 index={i}
                 onToggle={handleToggle}
                 onUpdateText={handleUpdateText}
@@ -481,10 +481,10 @@ export default function TodoView() {
                 />
               </div>
               <div className="flex flex-col gap-2">
-                {done.map((todo, i) => (
-                  <TodoItem
-                    key={todo._id}
-                    todo={todo}
+                {done.map((thread, i) => (
+                  <ThreadItem
+                    key={thread._id}
+                    thread={thread}
                     index={i}
                     onToggle={handleToggle}
                     onUpdateText={handleUpdateText}
@@ -503,12 +503,12 @@ export default function TodoView() {
   );
 }
 
-// ─── Todo item ────────────────────────────────────────────────────────────────
+// ─── Thread item ──────────────────────────────────────────────────────────────
 
 type OpenPanel = "date" | "color" | null;
 
-const TodoItem = memo(function TodoItem({
-  todo,
+const ThreadItem = memo(function ThreadItem({
+  thread,
   index,
   onToggle,
   onUpdateText,
@@ -517,12 +517,12 @@ const TodoItem = memo(function TodoItem({
   onDelete,
   dimmed = false,
 }: {
-  todo: Todo;
+  thread: Thread;
   index: number;
-  onToggle: (t: Todo) => void;
-  onUpdateText: (t: Todo, text: string) => void;
-  onUpdateDueDate: (t: Todo, dueDate: string | undefined) => void;
-  onUpdateColor: (t: Todo, color: string | undefined) => void;
+  onToggle: (t: Thread) => void;
+  onUpdateText: (t: Thread, text: string) => void;
+  onUpdateDueDate: (t: Thread, dueDate: string | undefined) => void;
+  onUpdateColor: (t: Thread, color: string | undefined) => void;
   onDelete: (id: string) => void;
   dimmed?: boolean;
 }) {
@@ -530,7 +530,7 @@ const TodoItem = memo(function TodoItem({
   const { settings } = useSettings();
   const loc = locale(settings);
   const [editing, setEditing] = useState(false);
-  const [val, setVal] = useState(todo.text);
+  const [val, setVal] = useState(thread.text);
   const [popping, setPopping] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(false);
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null);
@@ -539,10 +539,10 @@ const TodoItem = memo(function TodoItem({
 
   useEffect(() => {
     if (editing) {
-      setVal(todo.text);
+      setVal(thread.text);
       requestAnimationFrame(() => editRef.current?.select());
     }
-  }, [editing, todo.text]);
+  }, [editing, thread.text]);
 
   // Close panel when clicking/touching outside this item
   useEffect(() => {
@@ -561,27 +561,27 @@ const TodoItem = memo(function TodoItem({
   function commit() {
     setEditing(false);
     const trimmed = val.trim();
-    if (trimmed && trimmed !== todo.text) onUpdateText(todo, trimmed);
-    else setVal(todo.text);
+    if (trimmed && trimmed !== thread.text) onUpdateText(thread, trimmed);
+    else setVal(thread.text);
   }
 
   function handleToggleClick() {
     setPopping(true);
     setOpenPanel(null);
-    onToggle(todo);
+    onToggle(thread);
   }
 
   function togglePanel(panel: Exclude<OpenPanel, null>) {
-    if (todo.done) return;
+    if (thread.done) return;
     setOpenPanel((p) => (p === panel ? null : panel));
   }
 
   const dueInfo =
-    todo.dueDate && !todo.done ? getDueInfo(todo.dueDate, tr, loc) : null;
+    thread.dueDate && !thread.done ? getDueInfo(thread.dueDate, tr, loc) : null;
   const dueColors = dueInfo ? STATUS_COLOR[dueInfo.status] : null;
 
-  const leftAccent = todo.color
-    ? `var(--shadow-card), inset 3px 0 0 ${todo.color}`
+  const leftAccent = thread.color
+    ? `var(--shadow-card), inset 3px 0 0 ${thread.color}`
     : dueInfo?.status === "overdue"
     ? `var(--shadow-card), inset 3px 0 0 var(--due-overdue)`
     : "var(--shadow-card)";
@@ -590,7 +590,7 @@ const TodoItem = memo(function TodoItem({
     <div ref={itemRef} className="flex flex-col gap-1">
       {/* Main row */}
       <div
-        className={`todo-appear group flex items-center gap-2.5 rounded-2xl px-3.5 py-[13px]`}
+        className={`thread-appear group flex items-center gap-2.5 rounded-2xl px-3.5 py-[13px]`}
         style={{
           background: "var(--bg-card)",
           boxShadow: leftAccent,
@@ -609,12 +609,12 @@ const TodoItem = memo(function TodoItem({
             width: 14,
             height: 14,
             borderRadius: "50%",
-            background: todo.color || "transparent",
-            border: todo.color
-              ? `2.5px solid ${todo.color}`
+            background: thread.color || "transparent",
+            border: thread.color
+              ? `2.5px solid ${thread.color}`
               : "2px dashed var(--border-focus)",
-            opacity: todo.done ? 0.25 : 0.7,
-            cursor: todo.done ? "default" : "pointer",
+            opacity: thread.done ? 0.25 : 0.7,
+            cursor: thread.done ? "default" : "pointer",
             flexShrink: 0,
           }}
         />
@@ -625,11 +625,11 @@ const TodoItem = memo(function TodoItem({
           onAnimationEnd={() => setPopping(false)}
           className={`flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200${popping ? " check-pop" : ""}`}
           style={{
-            borderColor: todo.done ? "var(--accent)" : "var(--border-focus)",
-            background: todo.done ? "var(--accent)" : "transparent",
+            borderColor: thread.done ? "var(--accent)" : "var(--border-focus)",
+            background: thread.done ? "var(--accent)" : "transparent",
             color: "var(--bg)",
           }}
-          aria-label={todo.done ? tr.markOpen : tr.markDone}
+          aria-label={thread.done ? tr.markOpen : tr.markDone}
         >
           <svg
             width="10"
@@ -641,7 +641,7 @@ const TodoItem = memo(function TodoItem({
             strokeLinecap="round"
             strokeLinejoin="round"
             style={{
-              opacity: todo.done ? 1 : 0,
+              opacity: thread.done ? 1 : 0,
               transition: "opacity 120ms ease",
             }}
           >
@@ -659,31 +659,31 @@ const TodoItem = memo(function TodoItem({
               onBlur={commit}
               onKeyDown={(e) => {
                 if (e.key === "Enter") { e.preventDefault(); commit(); }
-                if (e.key === "Escape") { setEditing(false); setVal(todo.text); }
+                if (e.key === "Escape") { setEditing(false); setVal(thread.text); }
               }}
               className="bg-transparent font-sans text-sm leading-relaxed outline-none"
               style={{ color: "var(--fg)" }}
             />
           ) : (
             <span
-              onClick={() => !todo.done && setEditing(true)}
+              onClick={() => !thread.done && setEditing(true)}
               className="truncate font-sans text-sm leading-relaxed"
               style={{
                 color: "var(--fg)",
-                textDecorationLine: todo.done ? "line-through" : "none",
+                textDecorationLine: thread.done ? "line-through" : "none",
                 textDecorationColor: "var(--fg-muted)",
-                opacity: todo.done ? 0.55 : 1,
-                cursor: todo.done ? "default" : "text",
+                opacity: thread.done ? 0.55 : 1,
+                cursor: thread.done ? "default" : "text",
                 transition: "opacity 200ms ease",
               }}
             >
-              {todo.text}
+              {thread.text}
             </span>
           )}
         </div>
 
         {/* Date chip (existing) or calendar icon (add date) */}
-        {!todo.done && (
+        {!thread.done && (
           dueInfo && dueColors ? (
             <button
               onClick={() => togglePanel("date")}
@@ -730,7 +730,7 @@ const TodoItem = memo(function TodoItem({
         {pendingDelete ? (
           <div className="flex flex-shrink-0 items-center gap-1.5">
             <button
-              onClick={() => onDelete(todo._id)}
+              onClick={() => onDelete(thread._id)}
               className="rounded-lg px-2 py-0.5 font-sans text-[11px] font-medium transition-opacity hover:opacity-80"
               style={{
                 background: "var(--due-overdue-bg)",
@@ -773,14 +773,14 @@ const TodoItem = memo(function TodoItem({
       </div>
 
       {/* Inline panel — date or color picker */}
-      {openPanel && !todo.done && (
+      {openPanel && !thread.done && (
         <div
           className="rounded-2xl px-4 py-3"
           style={{
             background: "var(--bg-card)",
             border: "1px solid var(--border)",
             boxShadow: "var(--shadow-card)",
-            animation: "todo-in 0.18s cubic-bezier(0.16,1,0.3,1) both",
+            animation: "thread-in 0.18s cubic-bezier(0.16,1,0.3,1) both",
           }}
         >
           {openPanel === "color" && (
@@ -792,28 +792,28 @@ const TodoItem = memo(function TodoItem({
                 {tr.color}:
               </span>
               <div className="flex flex-wrap items-center gap-2">
-                {TODO_COLORS.map((c) => (
+                {THREAD_COLORS.map((c) => (
                   <button
                     key={c}
                     onClick={() => {
-                      onUpdateColor(todo, todo.color === c ? undefined : c);
+                      onUpdateColor(thread, thread.color === c ? undefined : c);
                       setOpenPanel(null);
                     }}
                     className="h-7 w-7 rounded-full transition-transform hover:scale-110 active:scale-95"
                     style={{
                       background: c,
                       boxShadow:
-                        todo.color === c
+                        thread.color === c
                           ? `0 0 0 2px var(--bg-card), 0 0 0 3.5px ${c}`
                           : "none",
                     }}
                     aria-label={c}
                   />
                 ))}
-                {todo.color && (
+                {thread.color && (
                   <button
                     onClick={() => {
-                      onUpdateColor(todo, undefined);
+                      onUpdateColor(thread, undefined);
                       setOpenPanel(null);
                     }}
                     className="flex h-7 w-7 items-center justify-center rounded-full border transition-opacity hover:opacity-60"
@@ -834,17 +834,17 @@ const TodoItem = memo(function TodoItem({
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => {
-                  onUpdateDueDate(todo, today());
+                  onUpdateDueDate(thread, today());
                   setOpenPanel(null);
                 }}
                 className="rounded-full px-3 py-1.5 font-sans text-xs font-medium transition-opacity hover:opacity-80 active:opacity-60"
                 style={{
                   background:
-                    todo.dueDate === today()
+                    thread.dueDate === today()
                       ? "var(--accent-soft)"
                       : "var(--border)",
                   color:
-                    todo.dueDate === today()
+                    thread.dueDate === today()
                       ? "var(--accent)"
                       : "var(--fg-muted)",
                 }}
@@ -853,17 +853,17 @@ const TodoItem = memo(function TodoItem({
               </button>
               <button
                 onClick={() => {
-                  onUpdateDueDate(todo, tomorrow());
+                  onUpdateDueDate(thread, tomorrow());
                   setOpenPanel(null);
                 }}
                 className="rounded-full px-3 py-1.5 font-sans text-xs font-medium transition-opacity hover:opacity-80 active:opacity-60"
                 style={{
                   background:
-                    todo.dueDate === tomorrow()
+                    thread.dueDate === tomorrow()
                       ? "var(--accent-soft)"
                       : "var(--border)",
                   color:
-                    todo.dueDate === tomorrow()
+                    thread.dueDate === tomorrow()
                       ? "var(--accent)"
                       : "var(--fg-muted)",
                 }}
@@ -873,10 +873,10 @@ const TodoItem = memo(function TodoItem({
               {/* Visible date input — works natively on iOS/Android PWA */}
               <input
                 type="date"
-                value={todo.dueDate ?? ""}
+                value={thread.dueDate ?? ""}
                 onChange={(e) => {
                   if (e.target.value) {
-                    onUpdateDueDate(todo, e.target.value);
+                    onUpdateDueDate(thread, e.target.value);
                     setOpenPanel(null);
                   }
                 }}
@@ -884,13 +884,13 @@ const TodoItem = memo(function TodoItem({
                 style={{
                   background: "var(--bg)",
                   border: "1px solid var(--border)",
-                  color: todo.dueDate ? "var(--fg)" : "var(--fg-placeholder)",
+                  color: thread.dueDate ? "var(--fg)" : "var(--fg-placeholder)",
                 }}
               />
-              {todo.dueDate && (
+              {thread.dueDate && (
                 <button
                   onClick={() => {
-                    onUpdateDueDate(todo, undefined);
+                    onUpdateDueDate(thread, undefined);
                     setOpenPanel(null);
                   }}
                   className="rounded-full px-3 py-1.5 font-sans text-xs transition-opacity hover:opacity-60 active:opacity-40"

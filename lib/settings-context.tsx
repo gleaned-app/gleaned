@@ -5,7 +5,7 @@ import { getSettings, saveSettings, startSync, stopSync } from "./db";
 
 export type Theme = "system" | "light" | "dark" | "sepia";
 export type BodyFont = "sans" | "serif" | "playfair" | "handwriting";
-export type AppView = "journal" | "calendar" | "todos" | "review";
+export type AppView = "journal" | "calendar" | "threads" | "review";
 
 export interface AppSettings {
   language: "de" | "en";

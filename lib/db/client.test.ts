@@ -39,8 +39,8 @@ describe("isEntry", () => {
     expect(isEntry(validEntry)).toBe(true);
   });
 
-  it("returns false for a Todo", () => {
-    expect(isEntry({ _id: "todo_1", type: "todo", text: "x", done: false, createdAt: "" })).toBe(false);
+  it("returns false for a Thread", () => {
+    expect(isEntry({ _id: "thread_1", type: "thread", text: "x", done: false, createdAt: "" })).toBe(false);
   });
 
   it("returns false for null", () => {

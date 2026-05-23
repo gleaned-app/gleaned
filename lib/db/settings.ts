@@ -17,7 +17,7 @@ export interface Settings {
   couchdbUsername?: string;
   couchdbPassword?: string;    // never stored — ephemeral, only returned by getSettings
   couchdbPasswordEnc?: string; // AES-GCM ciphertext stored in DB
-  defaultView?: "journal" | "calendar" | "todos" | "review";
+  defaultView?: "journal" | "calendar" | "threads" | "review";
   migratedAttachmentsV2?: boolean; // set after one-shot native-attachment migration
   customEntryTypes?: string[];     // user-defined types beyond the built-in five
   contextSources?: string[];       // quick-fill source chips (Arbeit, Schule, …)

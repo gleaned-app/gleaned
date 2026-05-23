@@ -253,7 +253,7 @@ export default function SettingsModal({ onClose }: Props) {
               options={[
                 { value: "journal",  label: t.navJournal },
                 { value: "calendar", label: t.navCalendar },
-                { value: "todos",    label: t.navLearn },
+                { value: "threads",  label: t.navLearn },
                 { value: "review",   label: t.navReview },
               ]}
               onChange={(v) => update({ defaultView: v })}

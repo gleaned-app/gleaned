@@ -1,7 +1,7 @@
-export interface Todo {
+export interface Thread {
   _id: string;
   _rev?: string;
-  type: "todo";
+  type: "thread";
   text: string;
   done: boolean;
   createdAt: string;
