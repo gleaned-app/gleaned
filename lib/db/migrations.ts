@@ -1,13 +1,10 @@
 import { getDB } from "./client";
 import type { AnyDoc } from "./client";
 import { loadKey, encryptText, decryptText, encryptBytes } from "../crypto";
-import { encryptEntry, decryptEntry } from "./entry-crypto";
 import type { EncPayload, AttachmentMeta, PouchAttachments } from "./entry-crypto";
-import { encryptTodo } from "./todo-crypto";
 import { getSettings, saveSettings } from "./settings";
 import { invalidateSearchCache } from "./entries";
 import type { Entry } from "@/types/entry";
-import type { Todo } from "@/types/todo";
 
 // One-shot migration: base64-in-enc → PouchDB native attachments.
 // Runs fire-and-forget after every login but exits immediately once the settings
