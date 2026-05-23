@@ -161,6 +161,9 @@ export interface Translations {
   customTypesLabel: string;
   customTypesPlaceholder: string;
   customTypesEmpty: string;
+  contextSourcesLabel: string;
+  contextSourcesPlaceholder: string;
+  contextSourcesEmpty: string;
   genericError: string;
 
   // Entry context panel (source / stake / gap / type) — form labels
@@ -343,6 +346,9 @@ const de: Translations = {
   customTypesLabel: "Eigene Typen",
   customTypesPlaceholder: "Neuer Typ…",
   customTypesEmpty: "Noch keine eigenen Typen.",
+  contextSourcesLabel: "Lernorte",
+  contextSourcesPlaceholder: "Neuer Ort…",
+  contextSourcesEmpty: "Noch keine Lernorte.",
   genericError: "Fehler — Seite neu laden.",
 
   search: "Suchen",
@@ -521,6 +527,9 @@ const en: Translations = {
   customTypesLabel: "Custom types",
   customTypesPlaceholder: "New type…",
   customTypesEmpty: "No custom types yet.",
+  contextSourcesLabel: "Learning contexts",
+  contextSourcesPlaceholder: "New context…",
+  contextSourcesEmpty: "No learning contexts yet.",
   genericError: "Error — reload the page.",
 
   search: "Search",

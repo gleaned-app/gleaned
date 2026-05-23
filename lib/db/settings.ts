@@ -20,6 +20,7 @@ export interface Settings {
   defaultView?: "journal" | "calendar" | "todos" | "review";
   migratedAttachmentsV2?: boolean; // set after one-shot native-attachment migration
   customEntryTypes?: string[];     // user-defined types beyond the built-in five
+  contextSources?: string[];       // quick-fill source chips (Arbeit, Schule, …)
 }
 
 export async function getSettings(): Promise<Settings | null> {

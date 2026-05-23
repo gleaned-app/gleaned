@@ -289,7 +289,7 @@ export default function EntryForm({ onSaved }: Props) {
               ))}
             </div>
 
-            {/* Source */}
+            {/* Source + context chips */}
             <div style={{ borderBottom: "1px solid var(--border)" }}>
               <input
                 type="text"
@@ -299,6 +299,25 @@ export default function EntryForm({ onSaved }: Props) {
                 className="journal-input w-full bg-transparent py-2 font-sans text-sm outline-none"
                 style={{ color: "var(--fg)", caretColor: "var(--accent)" }}
               />
+              {settings.contextSources.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pb-2">
+                  {settings.contextSources.map((ctx) => (
+                    <button
+                      key={ctx}
+                      type="button"
+                      onClick={() => setSource((prev) => prev === ctx ? "" : ctx)}
+                      className="btn-3d-subtle rounded-full px-3 font-sans text-xs"
+                      style={{
+                        color: source === ctx ? "var(--accent)" : "var(--fg-muted)",
+                        minHeight: "2rem",
+                        transition: "color 120ms ease",
+                      }}
+                    >
+                      {ctx}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Stake */}
