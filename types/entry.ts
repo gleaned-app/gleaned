@@ -40,6 +40,7 @@ export interface Entry {
   difficulty?: number;      // FSRS difficulty D ∈ [1, 10]
   // learning model v2 — unencrypted metadata (queryable for scheduling/filtering)
   entryType?: string;
+  context?: string;   // where the learning happened (Arbeit, Schule, …); unencrypted for filtering
   gapStatus?: GapStatus;
   lastReviewOutcome?: ReviewOutcome;
   reviewHistory?: ReviewEvent[];  // append-only log used for calibration scoring
@@ -55,6 +56,7 @@ export interface EntryDraft {
   tags: string[];
   attachments?: Attachment[];
   entryType?: string;
+  context?: string;
   source?: string;
   stake?: string;
   gap?: string;
@@ -70,6 +72,7 @@ export interface EntryUpdate {
   content: string;
   tags: string[];
   entryType?: string;
+  context?: string;
   source?: string;
   stake?: string;
   gap?: string;

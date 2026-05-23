@@ -164,6 +164,7 @@ export interface Translations {
   contextSourcesLabel: string;
   contextSourcesPlaceholder: string;
   contextSourcesEmpty: string;
+  contextLabel: string;
   genericError: string;
 
   // Entry context panel (source / stake / gap / type) — form labels
@@ -349,6 +350,7 @@ const de: Translations = {
   contextSourcesLabel: "Lernorte",
   contextSourcesPlaceholder: "Neuer Ort…",
   contextSourcesEmpty: "Noch keine Lernorte.",
+  contextLabel: "Lernort",
   genericError: "Fehler — Seite neu laden.",
 
   search: "Suchen",
@@ -530,6 +532,7 @@ const en: Translations = {
   contextSourcesLabel: "Learning contexts",
   contextSourcesPlaceholder: "New context…",
   contextSourcesEmpty: "No learning contexts yet.",
+  contextLabel: "Context",
   genericError: "Error — reload the page.",
 
   search: "Search",
