@@ -812,6 +812,26 @@ export default function LockScreen({ onAuth }: Props) {
               {t.back}
             </button>
           )}
+
+          {mode === "login" && hasLocalAccount && (
+            <button
+              type="button"
+              onClick={() => {
+                if (!window.confirm(t.connectOverwriteWarning)) return;
+                setMode("connect");
+                setHint("");
+                setError("");
+                setConnectError("");
+                setConnectUrl("");
+                setConnectUser("");
+                setConnectPass("");
+              }}
+              className="font-sans text-xs transition-opacity hover:opacity-60"
+              style={{ color: "var(--fg-muted)", opacity: 0.5, textAlign: "left" }}
+            >
+              {t.connectAccount}
+            </button>
+          )}
         </form>
         )}
       </div>
