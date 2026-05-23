@@ -1,5 +1,6 @@
 export * from "./client";
 export * from "./sync";
+export * from "./bootstrap";
 export * from "./entry-crypto";
 export * from "./thread-crypto";
 export * from "./entries";
