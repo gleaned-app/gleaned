@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { isAuthenticated, logout, login, setupPassword, hasPassword } from "./auth";
 import { getSettings, saveSettings } from "./db";
-import { decryptText, storeKey, clearKey } from "./crypto";
+import { decryptText, storeKey, clearKey, PBKDF2_ITERATIONS } from "./crypto";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 // auth.ts imports from ./db (PouchDB) and ./crypto (SubtleCrypto).
@@ -14,6 +14,7 @@ vi.mock("./db", () => ({
 }));
 
 vi.mock("./crypto", () => ({
+  PBKDF2_ITERATIONS: 600_000,
   deriveKey:    vi.fn(async () => ({ type: "secret" })),
   generateSalt: vi.fn(() => new Uint8Array(16)),
   saltToBase64: vi.fn(() => "base64salt"),
@@ -35,6 +36,15 @@ const SETTINGS_WITH_PASSWORD = {
   type: "settings" as const,
   encryptionSalt: "base64salt",
   encryptionVerification: "encrypted",
+  encryptionIterations: 600_000,
+};
+
+const SETTINGS_LEGACY = {
+  _id: "gleaned_settings" as const,
+  type: "settings" as const,
+  encryptionSalt: "base64salt",
+  encryptionVerification: "encrypted",
+  // no encryptionIterations — simulates pre-v0.2 data
 };
 
 beforeEach(() => {
@@ -135,12 +145,34 @@ describe("login", () => {
 
     expect(mockStoreKey).not.toHaveBeenCalled();
   });
+
+  it("silently upgrades PBKDF2 iterations when legacy settings have no encryptionIterations", async () => {
+    mockGetSettings.mockResolvedValue(SETTINGS_LEGACY);
+    mockSaveSettings.mockResolvedValue(undefined);
+    mockDecryptText.mockResolvedValue("gleaned-v1");
+
+    const result = await login("correctpassword");
+
+    expect(result).toBe(true);
+    expect(mockSaveSettings).toHaveBeenCalledOnce();
+    const saved = mockSaveSettings.mock.calls[0][0];
+    expect(saved).toHaveProperty("encryptionIterations", PBKDF2_ITERATIONS);
+  });
+
+  it("does not call saveSettings when encryptionIterations is already current", async () => {
+    mockGetSettings.mockResolvedValue(SETTINGS_WITH_PASSWORD);
+    mockDecryptText.mockResolvedValue("gleaned-v1");
+
+    await login("correctpassword");
+
+    expect(mockSaveSettings).not.toHaveBeenCalled();
+  });
 });
 
 // ─── setupPassword ────────────────────────────────────────────────────────────
 
 describe("setupPassword", () => {
-  it("calls saveSettings with salt and verification ciphertext", async () => {
+  it("calls saveSettings with salt, verification ciphertext, and current PBKDF2 iterations", async () => {
     mockSaveSettings.mockResolvedValue(undefined);
 
     await setupPassword("newpassword");
@@ -149,6 +181,7 @@ describe("setupPassword", () => {
     const arg = mockSaveSettings.mock.calls[0][0];
     expect(arg).toHaveProperty("encryptionSalt", "base64salt");
     expect(arg).toHaveProperty("encryptionVerification", "encrypted");
+    expect(arg).toHaveProperty("encryptionIterations", PBKDF2_ITERATIONS);
   });
 
   it("stores the derived key after setup", async () => {

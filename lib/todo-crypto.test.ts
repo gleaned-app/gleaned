@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { deriveKey, generateSalt, storeKey, clearKey } from "./crypto";
-import { encryptTodo, decryptTodo, withoutPlaintext } from "./db";
+import { encryptTodo, decryptTodo, withoutPlaintext } from "./db/todo-crypto";
 import type { Todo } from "@/types/todo";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

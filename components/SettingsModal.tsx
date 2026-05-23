@@ -72,6 +72,8 @@ export default function SettingsModal({ onClose }: Props) {
   const [syncSaved, setSyncSaved] = useState(false);
   const [syncTestStatus, setSyncTestStatus] = useState<null | "testing" | "ok" | "error-auth" | "error-unreachable">(null);
   const [importMsg, setImportMsg] = useState<string | null>(null);
+  const [customTypeInput, setCustomTypeInput] = useState("");
+  const [contextSourceInput, setContextSourceInput] = useState("");
   const [tagMap, setTagMap] = useState<Map<string, number>>(new Map());
   const [showTags, setShowTags] = useState(false);
   const [pushStatus, setPushStatus] = useState<"unsupported" | "denied" | "subscribed" | "unsubscribed">("unsubscribed");
@@ -112,6 +114,35 @@ export default function SettingsModal({ onClose }: Props) {
         setPushStatus(ok ? "subscribed" : await getPushStatus());
       }
     } finally { setPushLoading(false); }
+  }
+
+  function handleAddCustomType() {
+    const val = customTypeInput.trim().toLowerCase();
+    if (!val) return;
+    const BUILTIN = ["insight", "technique", "framework", "fact", "observation"];
+    const existing = settings.customEntryTypes ?? [];
+    if (BUILTIN.includes(val) || existing.includes(val)) return;
+    if (existing.length >= 10) return;
+    update({ customEntryTypes: [...existing, val] });
+    setCustomTypeInput("");
+  }
+
+  function handleDeleteCustomType(val: string) {
+    update({ customEntryTypes: (settings.customEntryTypes ?? []).filter((t) => t !== val) });
+  }
+
+  function handleAddContextSource() {
+    const val = contextSourceInput.trim();
+    if (!val) return;
+    const existing = settings.contextSources ?? [];
+    if (existing.some((s) => s.toLowerCase() === val.toLowerCase())) return;
+    if (existing.length >= 10) return;
+    update({ contextSources: [...existing, val] });
+    setContextSourceInput("");
+  }
+
+  function handleDeleteContextSource(val: string) {
+    update({ contextSources: (settings.contextSources ?? []).filter((s) => s !== val) });
   }
 
   async function handleDeleteTag(tag: string) {
@@ -227,6 +258,96 @@ export default function SettingsModal({ onClose }: Props) {
               ]}
               onChange={(v) => update({ defaultView: v })}
             />
+          </Field>
+          <Field label={t.customTypesLabel}>
+            <div className="flex gap-2">
+              <input
+                value={customTypeInput}
+                onChange={(e) => setCustomTypeInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddCustomType(); } }}
+                placeholder={t.customTypesPlaceholder}
+                maxLength={30}
+                className="journal-input min-w-0 flex-1 rounded-xl px-3 py-2 font-sans text-xs outline-none"
+                style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--fg)" }}
+              />
+              <button
+                onClick={handleAddCustomType}
+                disabled={!customTypeInput.trim() || (settings.customEntryTypes ?? []).length >= 10}
+                className="btn-3d rounded-xl px-4 py-2 font-sans text-sm font-medium transition-opacity disabled:opacity-40"
+                style={{ color: "var(--accent)" }}
+              >
+                +
+              </button>
+            </div>
+            {(settings.customEntryTypes ?? []).length === 0 ? (
+              <p className="font-sans text-xs" style={{ color: "var(--fg-muted)", opacity: 0.6 }}>
+                {t.customTypesEmpty}
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {(settings.customEntryTypes ?? []).map((v) => (
+                  <div
+                    key={v}
+                    className="flex items-center gap-1 rounded-full px-2.5 py-0.5 font-sans text-xs"
+                    style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+                  >
+                    {v.charAt(0).toUpperCase() + v.slice(1)}
+                    <button
+                      onClick={() => handleDeleteCustomType(v)}
+                      className="opacity-50 transition-opacity hover:opacity-90 leading-none"
+                      aria-label={t.remove}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Field>
+          <Field label={t.contextSourcesLabel}>
+            <div className="flex gap-2">
+              <input
+                value={contextSourceInput}
+                onChange={(e) => setContextSourceInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddContextSource(); } }}
+                placeholder={t.contextSourcesPlaceholder}
+                maxLength={30}
+                className="journal-input min-w-0 flex-1 rounded-xl px-3 py-2 font-sans text-xs outline-none"
+                style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--fg)" }}
+              />
+              <button
+                onClick={handleAddContextSource}
+                disabled={!contextSourceInput.trim() || (settings.contextSources ?? []).length >= 10}
+                className="btn-3d rounded-xl px-4 py-2 font-sans text-sm font-medium transition-opacity disabled:opacity-40"
+                style={{ color: "var(--accent)" }}
+              >
+                +
+              </button>
+            </div>
+            {(settings.contextSources ?? []).length === 0 ? (
+              <p className="font-sans text-xs" style={{ color: "var(--fg-muted)", opacity: 0.6 }}>
+                {t.contextSourcesEmpty}
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {(settings.contextSources ?? []).map((v) => (
+                  <div
+                    key={v}
+                    className="flex items-center gap-1 rounded-full px-2.5 py-0.5 font-sans text-xs"
+                    style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--fg-muted)" }}
+                  >
+                    {v}
+                    <button
+                      onClick={() => handleDeleteContextSource(v)}
+                      className="opacity-50 transition-opacity hover:opacity-90 leading-none"
+                      aria-label={t.remove}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </Field>
         </div>
       );
