@@ -139,7 +139,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         couchdbPassword: s?.couchdbPassword ?? "",
         defaultView: (s?.defaultView as AppView | undefined) ?? DEFAULTS.defaultView,
         customEntryTypes: s?.customEntryTypes ?? [],
-        contextSources: s?.contextSources ?? CONTEXT_DEFAULTS[s?.language ?? DEFAULTS.language],
+        contextSources: s?.contextSources ?? CONTEXT_DEFAULTS[s?.language ?? DEFAULTS.language] ?? CONTEXT_DEFAULTS[DEFAULTS.language],
       };
       setSettings(next);
       applyTheme(next.theme);

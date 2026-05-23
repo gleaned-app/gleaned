@@ -299,9 +299,9 @@ export default function EntryForm({ onSaved }: Props) {
                 className="journal-input w-full bg-transparent py-2 font-sans text-sm outline-none"
                 style={{ color: "var(--fg)", caretColor: "var(--accent)" }}
               />
-              {settings.contextSources.length > 0 && (
+              {(settings.contextSources ?? []).length > 0 && (
                 <div className="flex flex-wrap gap-1.5 pb-2">
-                  {settings.contextSources.map((ctx) => (
+                  {(settings.contextSources ?? []).map((ctx) => (
                     <button
                       key={ctx}
                       type="button"
