@@ -1,7 +1,7 @@
 import type { Entry } from "@/types/entry";
-import type { Todo } from "@/types/todo";
+import type { Thread } from "@/types/thread";
 
-export type AnyDoc = Entry | Todo;
+export type AnyDoc = Entry | Thread;
 
 export const QUERY_METADATA_LIMIT = 5000;
 export const QUERY_DECRYPT_LIMIT = 2000;

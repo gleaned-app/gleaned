@@ -1,9 +1,9 @@
 import type { Entry, Attachment } from "@/types/entry";
-import type { Todo } from "@/types/todo";
+import type { Thread } from "@/types/thread";
 import { getDB, requireAuth } from "./client";
 import type { AnyDoc } from "./client";
 import { encryptEntry, decryptEntry } from "./entry-crypto";
-import { encryptTodo, decryptTodo } from "./todo-crypto";
+import { encryptThread, decryptThread } from "./thread-crypto";
 
 export async function exportData(): Promise<string> {
   requireAuth();
@@ -13,7 +13,7 @@ export async function exportData(): Promise<string> {
   // Decrypt entries so the export is portable across devices and passwords.
   const docs = await Promise.all(
     result.rows
-      .filter((r) => r.doc && (r.doc.type === "entry" || r.doc.type === "todo"))
+      .filter((r) => r.doc && (r.doc.type === "entry" || r.doc.type === "thread"))
       .map(async (r) => {
         const raw = r.doc as AnyDoc & { _rev?: string; encrypted?: boolean; enc?: string; textEnc?: string };
         const { _rev: _, _attachments: __, ...doc } = raw as typeof raw & { _attachments?: unknown };
@@ -22,9 +22,9 @@ export async function exportData(): Promise<string> {
           const { encrypted: _e, enc: _f, ...plain } = decrypted as Entry & { encrypted?: boolean; enc?: string };
           return plain;
         }
-        if (doc.type === "todo" && doc.encrypted) {
-          const decrypted = await decryptTodo(doc as Todo);
-          const { encrypted: _e, textEnc: _f, ...plain } = decrypted as Todo & { encrypted?: boolean; textEnc?: string };
+        if (doc.type === "thread" && doc.encrypted) {
+          const decrypted = await decryptThread(doc as Thread);
+          const { encrypted: _e, textEnc: _f, ...plain } = decrypted as Thread & { encrypted?: boolean; textEnc?: string };
           return plain;
         }
         return doc;
@@ -44,8 +44,8 @@ export async function importData(json: string): Promise<{ imported: number; skip
 
   // Allow only IDs that match gleaned's own generation pattern.
   // Blocks _design/*, _local/*, gleaned_settings, and any other internal docs.
-  const VALID_ID = /^(entry|todo)_\d+_[a-z0-9]+$/;
-  const IMPORTABLE_TYPES = new Set(["entry", "todo"]);
+  const VALID_ID = /^(entry|thread)_\d+_[a-z0-9]+$/;
+  const IMPORTABLE_TYPES = new Set(["entry", "thread"]);
   const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
   for (const raw of rawDocs) {
@@ -68,7 +68,7 @@ export async function importData(json: string): Promise<{ imported: number; skip
       if (!valid) { skipped++; continue; }
     }
 
-    if (type === "todo") {
+    if (type === "thread") {
       const valid =
         typeof doc.text === "string" &&
         typeof doc.done === "boolean" &&
@@ -103,7 +103,7 @@ export async function importData(json: string): Promise<{ imported: number; skip
           delete mutable._rev;
           delete mutable.encrypted;
           delete mutable.textEnc;
-          const toStore = await encryptTodo(mutable as Omit<Todo, "_rev" | "encrypted" | "textEnc">);
+          const toStore = await encryptThread(mutable as Omit<Thread, "_rev" | "encrypted" | "textEnc">);
           await db.put(toStore as unknown as AnyDoc);
         }
         imported++;

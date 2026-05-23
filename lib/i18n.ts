@@ -55,13 +55,13 @@ export interface Translations {
   noEntriesOnDay: string;
   entryCount(n: number): string;
 
-  // Todos
-  toLearn: string;
-  whatToLearn: string;
+  // Threads
+  threadsTitle: string;
+  threadsPlaceholder: string;
+  threadsEmpty: string;
   setDueDate: string;
   pickDate: string;
   remove: string;
-  addFirstGoal: string;
   done: string;
   markOpen: string;
   markDone: string;
@@ -246,12 +246,12 @@ const de: Translations = {
   noEntriesOnDay: "Keine Einträge an diesem Tag.",
   entryCount: (n) => `${n} Eintr${n === 1 ? "ag" : "äge"}`,
 
-  toLearn: "Noch zu lernen",
-  whatToLearn: "Was willst du noch lernen?",
+  threadsTitle: "Threads",
+  threadsPlaceholder: "Was willst du verfolgen?",
+  threadsEmpty: "Füge deinen ersten Thread hinzu.",
   setDueDate: "Fälligkeit setzen",
   pickDate: "Datum wählen…",
   remove: "Entfernen",
-  addFirstGoal: "Füge dein erstes Lernziel hinzu.",
   done: "Erledigt",
   markOpen: "Als offen markieren",
   markDone: "Als erledigt markieren",
@@ -293,7 +293,7 @@ const de: Translations = {
   weeksAgo: (n) => n === 1 ? "Vor 1 Woche" : `Vor ${n} Wochen`,
 
   navCalendar: "Kalender",
-  navLearn: "Lernen",
+  navLearn: "Threads",
   navJournal: "Journal",
 
   settings: "Einstellungen",
@@ -428,12 +428,12 @@ const en: Translations = {
   noEntriesOnDay: "No entries on this day.",
   entryCount: (n) => `${n} entr${n === 1 ? "y" : "ies"}`,
 
-  toLearn: "Still to learn",
-  whatToLearn: "What do you want to learn?",
+  threadsTitle: "Threads",
+  threadsPlaceholder: "What do you want to follow up on?",
+  threadsEmpty: "Add your first thread.",
   setDueDate: "Set due date",
   pickDate: "Pick a date…",
   remove: "Remove",
-  addFirstGoal: "Add your first learning goal.",
   done: "Done",
   markOpen: "Mark as open",
   markDone: "Mark as done",
@@ -475,7 +475,7 @@ const en: Translations = {
   weeksAgo: (n) => n === 1 ? "1 week ago" : `${n} weeks ago`,
 
   navCalendar: "Calendar",
-  navLearn: "Learn",
+  navLearn: "Threads",
   navJournal: "Journal",
 
   settings: "Settings",

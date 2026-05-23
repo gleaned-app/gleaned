@@ -8,7 +8,7 @@ import { useConflictCount } from "@/lib/use-conflict-count";
 import { useT } from "@/lib/i18n";
 import JournalView from "./JournalView";
 import CalendarView from "./CalendarView";
-import TodoView from "./TodoView";
+import ThreadsView from "./ThreadsView";
 import ReviewView from "./ReviewView";
 import BottomNav, { type View } from "./BottomNav";
 import { getReviewCount } from "@/lib/db";
@@ -89,7 +89,7 @@ function useInstallPrompt() {
   return { canInstall: !!prompt, install };
 }
 
-const VIEWS: View[] = ["journal", "calendar", "todos", "review"];
+const VIEWS: View[] = ["journal", "calendar", "threads", "review"];
 
 function AppContentWithLock({ onLock }: { onLock: () => void }) {
   const [view, setView] = useState<View>(() => {
@@ -312,8 +312,8 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
             </ErrorBoundary>
           )}
         </div>
-        <div style={{ display: view === "todos" ? "block" : "none" }}>
-          {visited.has("todos") && <ErrorBoundary key="todos"><TodoView /></ErrorBoundary>}
+        <div style={{ display: view === "threads" ? "block" : "none" }}>
+          {visited.has("threads") && <ErrorBoundary key="threads"><ThreadsView /></ErrorBoundary>}
         </div>
         <div style={{ display: view === "review" ? "block" : "none" }}>
           {visited.has("review") && <ErrorBoundary key="review"><ReviewView onCountChange={setReviewCount} onNavigate={handleNavigate} /></ErrorBoundary>}

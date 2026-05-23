@@ -20,9 +20,9 @@ vi.mock("./entry-crypto", () => ({
   decryptEntry: vi.fn(async (doc: unknown) => doc),
 }));
 
-vi.mock("./todo-crypto", () => ({
-  encryptTodo: vi.fn(async (doc: unknown) => doc),
-  decryptTodo: vi.fn(async (doc: unknown) => doc),
+vi.mock("./thread-crypto", () => ({
+  encryptThread: vi.fn(async (doc: unknown) => doc),
+  decryptThread: vi.fn(async (doc: unknown) => doc),
 }));
 
 import { getDB } from "./client";
@@ -161,45 +161,45 @@ describe("importData — entry field validation", () => {
 
 // ─── importData — todo validation ─────────────────────────────────────────────
 
-describe("importData — todo field validation", () => {
+describe("importData — thread field validation", () => {
   beforeEach(() => {
     mockGetDB.mockResolvedValue(makeFakeDb() as unknown as PouchDB.Database<AnyDoc>);
   });
 
-  const validTodo = {
-    _id: "todo_2000_zzzzz",
-    type: "todo",
-    text: "learn something",
+  const validThread = {
+    _id: "thread_2000_zzzzz",
+    type: "thread",
+    text: "follow up on something",
     done: false,
     createdAt: "2026-01-01T10:00:00.000Z",
   };
 
-  it("imports a valid todo", async () => {
-    const json = JSON.stringify([validTodo]);
+  it("imports a valid thread", async () => {
+    const json = JSON.stringify([validThread]);
     const result = await importData(json);
     expect(result.imported).toBe(1);
   });
 
-  it("skips todo with non-boolean done", async () => {
-    const json = JSON.stringify([{ ...validTodo, done: "false" }]);
+  it("skips thread with non-boolean done", async () => {
+    const json = JSON.stringify([{ ...validThread, done: "false" }]);
     const result = await importData(json);
     expect(result.skipped).toBe(1);
   });
 
-  it("skips todo with invalid dueDate format", async () => {
-    const json = JSON.stringify([{ ...validTodo, dueDate: "2026/01/01" }]);
+  it("skips thread with invalid dueDate format", async () => {
+    const json = JSON.stringify([{ ...validThread, dueDate: "2026/01/01" }]);
     const result = await importData(json);
     expect(result.skipped).toBe(1);
   });
 
-  it("accepts todo with valid optional dueDate", async () => {
-    const json = JSON.stringify([{ ...validTodo, dueDate: "2026-12-31" }]);
+  it("accepts thread with valid optional dueDate", async () => {
+    const json = JSON.stringify([{ ...validThread, dueDate: "2026-12-31" }]);
     const result = await importData(json);
     expect(result.imported).toBe(1);
   });
 
-  it("skips todo with missing text field", async () => {
-    const json = JSON.stringify([{ ...validTodo, text: undefined }]);
+  it("skips thread with missing text field", async () => {
+    const json = JSON.stringify([{ ...validThread, text: undefined }]);
     const result = await importData(json);
     expect(result.skipped).toBe(1);
   });

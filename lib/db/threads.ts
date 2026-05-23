@@ -1,113 +1,113 @@
-import type { Todo } from "@/types/todo";
+import type { Thread } from "@/types/thread";
 import { getDB, requireAuth } from "./client";
 import type { AnyDoc } from "./client";
-import { encryptTodo, decryptTodo, withoutPlaintext } from "./todo-crypto";
+import { encryptThread, decryptThread, withoutPlaintext } from "./thread-crypto";
 import { loadKey } from "../crypto";
 
-export async function saveTodo(text: string, dueDate?: string, color?: string): Promise<Todo> {
+export async function saveThread(text: string, dueDate?: string, color?: string): Promise<Thread> {
   requireAuth();
   const db = await getDB();
   const now = new Date();
-  const base: Omit<Todo, "_rev" | "encrypted" | "textEnc"> = {
-    _id: `todo_${now.getTime()}_${Math.random().toString(36).slice(2, 7)}`,
-    type: "todo",
+  const base: Omit<Thread, "_rev" | "encrypted" | "textEnc"> = {
+    _id: `thread_${now.getTime()}_${Math.random().toString(36).slice(2, 7)}`,
+    type: "thread",
     text,
     done: false,
     createdAt: now.toISOString(),
     ...(dueDate ? { dueDate } : {}),
     ...(color ? { color } : {}),
   };
-  const doc = await encryptTodo(base);
+  const doc = await encryptThread(base);
   await db.put(doc as unknown as AnyDoc);
-  return { ...doc, text } as Todo;
+  return { ...doc, text } as Thread;
 }
 
-export async function getTodos(): Promise<Todo[]> {
+export async function getThreads(): Promise<Thread[]> {
   requireAuth();
   const db = await getDB();
   const result = await db.find({
-    selector: { type: "todo" },
+    selector: { type: "thread" },
     sort: [{ type: "asc" }, { createdAt: "asc" }],
   });
-  return Promise.all((result.docs as Todo[]).map(decryptTodo));
+  return Promise.all((result.docs as Thread[]).map(decryptThread));
 }
 
-export async function updateTodoDoc(todo: Todo): Promise<Todo> {
+export async function updateThreadDoc(thread: Thread): Promise<Thread> {
   requireAuth();
   const db = await getDB();
-  const targetDone = !todo.done;
+  const targetDone = !thread.done;
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
-      const latest = attempt === 0 ? todo : (await db.get(todo._id)) as unknown as Todo;
+      const latest = attempt === 0 ? thread : (await db.get(thread._id)) as unknown as Thread;
       const updated = { ...withoutPlaintext(latest), done: targetDone };
       const res = await db.put(updated as unknown as AnyDoc);
-      return { ...updated, _rev: res.rev, text: todo.text } as Todo;
+      return { ...updated, _rev: res.rev, text: thread.text } as Thread;
     } catch (err) {
       if ((err as { status?: number }).status !== 409) throw err;
     }
   }
-  throw new Error("gleaned: too many conflicts updating todo");
+  throw new Error("gleaned: too many conflicts updating thread");
 }
 
-export async function updateTodoDueDate(todo: Todo, dueDate: string | undefined): Promise<Todo> {
+export async function updateThreadDueDate(thread: Thread, dueDate: string | undefined): Promise<Thread> {
   requireAuth();
   const db = await getDB();
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
-      const latest = attempt === 0 ? todo : (await db.get(todo._id)) as unknown as Todo;
-      const updated: Todo = { ...withoutPlaintext(latest) };
+      const latest = attempt === 0 ? thread : (await db.get(thread._id)) as unknown as Thread;
+      const updated: Thread = { ...withoutPlaintext(latest) };
       if (dueDate) updated.dueDate = dueDate;
       else delete updated.dueDate;
       const res = await db.put(updated as unknown as AnyDoc);
-      return { ...updated, _rev: res.rev, text: todo.text } as Todo;
+      return { ...updated, _rev: res.rev, text: thread.text } as Thread;
     } catch (err) {
       if ((err as { status?: number }).status !== 409) throw err;
     }
   }
-  throw new Error("gleaned: too many conflicts updating todo dueDate");
+  throw new Error("gleaned: too many conflicts updating thread dueDate");
 }
 
-export async function updateTodoColor(todo: Todo, color: string | undefined): Promise<Todo> {
+export async function updateThreadColor(thread: Thread, color: string | undefined): Promise<Thread> {
   requireAuth();
   const db = await getDB();
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
-      const latest = attempt === 0 ? todo : (await db.get(todo._id)) as unknown as Todo;
-      const updated: Todo = { ...withoutPlaintext(latest) };
+      const latest = attempt === 0 ? thread : (await db.get(thread._id)) as unknown as Thread;
+      const updated: Thread = { ...withoutPlaintext(latest) };
       if (color) updated.color = color;
       else delete updated.color;
       const res = await db.put(updated as unknown as AnyDoc);
-      return { ...updated, _rev: res.rev, text: todo.text } as Todo;
+      return { ...updated, _rev: res.rev, text: thread.text } as Thread;
     } catch (err) {
       if ((err as { status?: number }).status !== 409) throw err;
     }
   }
-  throw new Error("gleaned: too many conflicts updating todo color");
+  throw new Error("gleaned: too many conflicts updating thread color");
 }
 
-export async function updateTodoText(todo: Todo, text: string): Promise<Todo> {
+export async function updateThreadText(thread: Thread, text: string): Promise<Thread> {
   requireAuth();
   const db = await getDB();
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
-      const latest = attempt === 0 ? todo : (await db.get(todo._id)) as unknown as Todo;
-      const base: Omit<Todo, "_rev" | "encrypted" | "textEnc"> = {
-        _id: latest._id, type: "todo",
+      const latest = attempt === 0 ? thread : (await db.get(thread._id)) as unknown as Thread;
+      const base: Omit<Thread, "_rev" | "encrypted" | "textEnc"> = {
+        _id: latest._id, type: "thread",
         text, done: latest.done, createdAt: latest.createdAt,
         ...(latest.dueDate ? { dueDate: latest.dueDate } : {}),
         ...(latest.color  ? { color:  latest.color  } : {}),
       };
-      const enc = await encryptTodo(base);
+      const enc = await encryptThread(base);
       const res = await db.put({ ...enc, _rev: latest._rev } as unknown as AnyDoc);
-      return { ...enc, _rev: res.rev, text } as Todo;
+      return { ...enc, _rev: res.rev, text } as Thread;
     } catch (err) {
       if ((err as { status?: number }).status !== 409) throw err;
     }
   }
-  throw new Error("gleaned: too many conflicts updating todo text");
+  throw new Error("gleaned: too many conflicts updating thread text");
 }
 
-export async function deleteTodo(id: string): Promise<void> {
+export async function deleteThread(id: string): Promise<void> {
   requireAuth();
   const db = await getDB();
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -120,29 +120,29 @@ export async function deleteTodo(id: string): Promise<void> {
       if ((err as { status?: number }).status !== 409) throw err;
     }
   }
-  throw new Error("gleaned: too many conflicts deleting todo");
+  throw new Error("gleaned: too many conflicts deleting thread");
 }
 
-// One-shot migration: re-encrypts any todos that were created before encryption
+// One-shot migration: re-encrypts any threads that were created before encryption
 // was added. Runs fire-and-forget in the background after every login.
-export async function migrateTodosEncryption(): Promise<void> {
+export async function migrateThreadsEncryption(): Promise<void> {
   const key = await loadKey();
   if (!key) return;
   const db = await getDB();
-  const result = await db.find({ selector: { type: "todo" } });
-  const plain = (result.docs as Todo[]).filter((t) => !t.encrypted && t.text);
-  for (const todo of plain) {
+  const result = await db.find({ selector: { type: "thread" } });
+  const plain = (result.docs as Thread[]).filter((t) => !t.encrypted && t.text);
+  for (const thread of plain) {
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
-        const latest = attempt === 0 ? todo : (await db.get(todo._id)) as unknown as Todo;
+        const latest = attempt === 0 ? thread : (await db.get(thread._id)) as unknown as Thread;
         if ((latest as { encrypted?: boolean }).encrypted) break;
-        const base: Omit<Todo, "_rev" | "encrypted" | "textEnc"> = {
-          _id: latest._id, type: "todo",
+        const base: Omit<Thread, "_rev" | "encrypted" | "textEnc"> = {
+          _id: latest._id, type: "thread",
           text: latest.text, done: latest.done, createdAt: latest.createdAt,
           ...(latest.dueDate ? { dueDate: latest.dueDate } : {}),
           ...(latest.color  ? { color:  latest.color  } : {}),
         };
-        const enc = await encryptTodo(base);
+        const enc = await encryptThread(base);
         await db.put({ ...enc, _rev: latest._rev } as unknown as AnyDoc);
         break;
       } catch (err) {

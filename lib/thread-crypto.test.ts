@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { deriveKey, generateSalt, storeKey, clearKey } from "./crypto";
-import { encryptTodo, decryptTodo, withoutPlaintext } from "./db/todo-crypto";
-import type { Todo } from "@/types/todo";
+import { encryptThread, decryptThread, withoutPlaintext } from "./db/thread-crypto";
+import type { Thread } from "@/types/thread";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -11,10 +11,10 @@ async function setupKey(): Promise<CryptoKey> {
   return key;
 }
 
-function baseTodo(overrides: Partial<Omit<Todo, "_rev">> = {}): Omit<Todo, "_rev" | "encrypted" | "textEnc"> {
+function baseThread(overrides: Partial<Omit<Thread, "_rev">> = {}): Omit<Thread, "_rev" | "encrypted" | "textEnc"> {
   return {
-    _id: "todo_1234_abcde",
-    type: "todo",
+    _id: "thread_1234_abcde",
+    type: "thread",
     text: "Learn TypeScript generics",
     done: false,
     createdAt: "2026-01-01T10:00:00.000Z",
@@ -26,12 +26,12 @@ beforeEach(() => {
   clearKey();
 });
 
-// ─── encryptTodo ─────────────────────────────────────────────────────────────
+// ─── encryptThread ────────────────────────────────────────────────────────────
 
-describe("encryptTodo", () => {
+describe("encryptThread", () => {
   it("sets encrypted=true and populates textEnc", async () => {
     await setupKey();
-    const doc = await encryptTodo(baseTodo());
+    const doc = await encryptThread(baseThread());
     expect(doc.encrypted).toBe(true);
     expect(typeof doc.textEnc).toBe("string");
     expect(doc.textEnc!.length).toBeGreaterThan(0);
@@ -39,16 +39,16 @@ describe("encryptTodo", () => {
 
   it("clears the plaintext text field", async () => {
     await setupKey();
-    const doc = await encryptTodo(baseTodo({ text: "secret goal" }));
+    const doc = await encryptThread(baseThread({ text: "secret goal" }));
     expect(doc.text).toBe("");
   });
 
   it("preserves all non-text fields unchanged", async () => {
     await setupKey();
-    const input = baseTodo({ done: true, dueDate: "2026-06-01", color: "#ff0000" });
-    const doc = await encryptTodo(input);
+    const input = baseThread({ done: true, dueDate: "2026-06-01", color: "#ff0000" });
+    const doc = await encryptThread(input);
     expect(doc._id).toBe(input._id);
-    expect(doc.type).toBe("todo");
+    expect(doc.type).toBe("thread");
     expect(doc.done).toBe(true);
     expect(doc.dueDate).toBe("2026-06-01");
     expect(doc.color).toBe("#ff0000");
@@ -57,23 +57,23 @@ describe("encryptTodo", () => {
 
   it("omits dueDate and color when not provided", async () => {
     await setupKey();
-    const doc = await encryptTodo(baseTodo());
+    const doc = await encryptThread(baseThread());
     expect(doc.dueDate).toBeUndefined();
     expect(doc.color).toBeUndefined();
   });
 
   it("produces different ciphertext on each call (random IV per encrypt)", async () => {
     await setupKey();
-    const input = baseTodo();
-    const doc1 = await encryptTodo(input);
-    const doc2 = await encryptTodo(input);
+    const input = baseThread();
+    const doc1 = await encryptThread(input);
+    const doc2 = await encryptThread(input);
     expect(doc1.textEnc).not.toBe(doc2.textEnc);
   });
 
   it("is a no-op (returns doc unchanged) when no key is loaded", async () => {
     // No storeKey call — key cache is empty.
-    const input = baseTodo({ text: "plaintext" });
-    const doc = await encryptTodo(input) as Todo;
+    const input = baseThread({ text: "plaintext" });
+    const doc = await encryptThread(input) as Thread;
     expect(doc.encrypted).toBeUndefined();
     expect(doc.textEnc).toBeUndefined();
     expect(doc.text).toBe("plaintext");
@@ -81,73 +81,73 @@ describe("encryptTodo", () => {
 
   it("encrypts empty string text", async () => {
     await setupKey();
-    const doc = await encryptTodo(baseTodo({ text: "" }));
+    const doc = await encryptThread(baseThread({ text: "" }));
     expect(doc.encrypted).toBe(true);
     expect(typeof doc.textEnc).toBe("string");
   });
 
   it("encrypts unicode and emoji text", async () => {
     await setupKey();
-    const doc = await encryptTodo(baseTodo({ text: "Lernziel: 🧠 Konzept verstehen" }));
-    const decrypted = await decryptTodo(doc as Todo);
+    const doc = await encryptThread(baseThread({ text: "Lernziel: 🧠 Konzept verstehen" }));
+    const decrypted = await decryptThread(doc as Thread);
     expect(decrypted.text).toBe("Lernziel: 🧠 Konzept verstehen");
   });
 });
 
-// ─── decryptTodo ─────────────────────────────────────────────────────────────
+// ─── decryptThread ────────────────────────────────────────────────────────────
 
-describe("decryptTodo", () => {
+describe("decryptThread", () => {
   it("round-trip: decrypted text matches original", async () => {
     await setupKey();
-    const encrypted = await encryptTodo(baseTodo({ text: "original text" }));
-    const decrypted = await decryptTodo(encrypted as Todo);
+    const encrypted = await encryptThread(baseThread({ text: "original text" }));
+    const decrypted = await decryptThread(encrypted as Thread);
     expect(decrypted.text).toBe("original text");
   });
 
-  it("returns todo unchanged when encrypted=false", async () => {
+  it("returns thread unchanged when encrypted=false", async () => {
     await setupKey();
-    const plain: Todo = { ...baseTodo(), text: "not encrypted" };
-    const result = await decryptTodo(plain);
+    const plain: Thread = { ...baseThread(), text: "not encrypted" };
+    const result = await decryptThread(plain);
     expect(result).toBe(plain);
     expect(result.text).toBe("not encrypted");
   });
 
-  it("returns todo unchanged when textEnc is missing (corrupted doc)", async () => {
+  it("returns thread unchanged when textEnc is missing (corrupted doc)", async () => {
     await setupKey();
-    const corrupt = { ...baseTodo(), encrypted: true } as unknown as Todo;
-    const result = await decryptTodo(corrupt);
+    const corrupt = { ...baseThread(), encrypted: true } as unknown as Thread;
+    const result = await decryptThread(corrupt);
     expect(result).toBe(corrupt);
   });
 
-  it("returns todo unchanged when no key is loaded", async () => {
+  it("returns thread unchanged when no key is loaded", async () => {
     const key = await setupKey();
-    const encrypted = await encryptTodo(baseTodo({ text: "secret" })) as Todo;
+    const encrypted = await encryptThread(baseThread({ text: "secret" })) as Thread;
     clearKey();
-    const result = await decryptTodo(encrypted);
+    const result = await decryptThread(encrypted);
     // No key → returns as-is with text still ""
     expect(result.text).toBe("");
     expect(result.encrypted).toBe(true);
     // Restore and verify the ciphertext is still valid
     await storeKey(key);
-    const recovered = await decryptTodo(encrypted);
+    const recovered = await decryptThread(encrypted);
     expect(recovered.text).toBe("secret");
   });
 
-  it("returns todo unchanged when ciphertext is tampered (graceful fail)", async () => {
+  it("returns thread unchanged when ciphertext is tampered (graceful fail)", async () => {
     await setupKey();
-    const encrypted = await encryptTodo(baseTodo({ text: "fragile" })) as Todo;
-    const tampered: Todo = { ...encrypted, textEnc: btoa("not-a-valid-ciphertext") };
-    const result = await decryptTodo(tampered);
-    // decryptTodo catches the error and returns the todo with empty text
+    const encrypted = await encryptThread(baseThread({ text: "fragile" })) as Thread;
+    const tampered: Thread = { ...encrypted, textEnc: btoa("not-a-valid-ciphertext") };
+    const result = await decryptThread(tampered);
+    // decryptThread catches the error and returns the thread with empty text
     expect(result.text).toBe("");
     expect(result.encrypted).toBe(true);
   });
 
   it("round-trip preserves all non-text fields", async () => {
     await setupKey();
-    const input = baseTodo({ done: true, dueDate: "2026-07-15", color: "#00ff00" });
-    const encrypted = await encryptTodo(input) as Todo;
-    const decrypted = await decryptTodo(encrypted);
+    const input = baseThread({ done: true, dueDate: "2026-07-15", color: "#00ff00" });
+    const encrypted = await encryptThread(input) as Thread;
+    const decrypted = await decryptThread(encrypted);
     expect(decrypted.done).toBe(true);
     expect(decrypted.dueDate).toBe("2026-07-15");
     expect(decrypted.color).toBe("#00ff00");
@@ -159,24 +159,24 @@ describe("decryptTodo", () => {
 // ─── withoutPlaintext ─────────────────────────────────────────────────────────
 
 describe("withoutPlaintext", () => {
-  it("clears text to '' when todo is encrypted", () => {
-    const todo: Todo = {
-      _id: "todo_1",
-      type: "todo",
+  it("clears text to '' when thread is encrypted", () => {
+    const thread: Thread = {
+      _id: "thread_1",
+      type: "thread",
       text: "decrypted plaintext",
       done: false,
       createdAt: "2026-01-01T00:00:00.000Z",
       encrypted: true,
       textEnc: "somebase64ciphertext",
     };
-    const result = withoutPlaintext(todo);
+    const result = withoutPlaintext(thread);
     expect(result.text).toBe("");
   });
 
   it("preserves all other fields when encrypted", () => {
-    const todo: Todo = {
-      _id: "todo_2",
-      type: "todo",
+    const thread: Thread = {
+      _id: "thread_2",
+      type: "thread",
       text: "should be cleared",
       done: true,
       createdAt: "2026-02-01T00:00:00.000Z",
@@ -185,53 +185,53 @@ describe("withoutPlaintext", () => {
       encrypted: true,
       textEnc: "cipher",
     };
-    const result = withoutPlaintext(todo);
+    const result = withoutPlaintext(thread);
     expect(result.done).toBe(true);
     expect(result.dueDate).toBe("2026-03-01");
     expect(result.color).toBe("#abc123");
     expect(result.encrypted).toBe(true);
     expect(result.textEnc).toBe("cipher");
-    expect(result._id).toBe("todo_2");
+    expect(result._id).toBe("thread_2");
   });
 
-  it("leaves text unchanged when todo is NOT encrypted", () => {
-    const todo: Todo = {
-      _id: "todo_3",
-      type: "todo",
-      text: "plaintext todo",
+  it("leaves text unchanged when thread is NOT encrypted", () => {
+    const thread: Thread = {
+      _id: "thread_3",
+      type: "thread",
+      text: "plaintext thread",
       done: false,
       createdAt: "2026-01-01T00:00:00.000Z",
     };
-    const result = withoutPlaintext(todo);
-    expect(result.text).toBe("plaintext todo");
-    expect(result).toBe(todo);
+    const result = withoutPlaintext(thread);
+    expect(result.text).toBe("plaintext thread");
+    expect(result).toBe(thread);
   });
 
-  it("does not mutate the original todo", () => {
-    const todo: Todo = {
-      _id: "todo_4",
-      type: "todo",
+  it("does not mutate the original thread", () => {
+    const thread: Thread = {
+      _id: "thread_4",
+      type: "thread",
       text: "original",
       done: false,
       createdAt: "2026-01-01T00:00:00.000Z",
       encrypted: true,
       textEnc: "cipher",
     };
-    withoutPlaintext(todo);
-    expect(todo.text).toBe("original");
+    withoutPlaintext(thread);
+    expect(thread.text).toBe("original");
   });
 
   it("is idempotent: calling twice produces same result", () => {
-    const todo: Todo = {
-      _id: "todo_5",
-      type: "todo",
+    const thread: Thread = {
+      _id: "thread_5",
+      type: "thread",
       text: "some text",
       done: false,
       createdAt: "2026-01-01T00:00:00.000Z",
       encrypted: true,
       textEnc: "cipher",
     };
-    const once = withoutPlaintext(todo);
+    const once = withoutPlaintext(thread);
     const twice = withoutPlaintext(once);
     expect(twice.text).toBe("");
   });
@@ -240,12 +240,12 @@ describe("withoutPlaintext", () => {
 // ─── encrypt → withoutPlaintext → decrypt (update flow) ─────────────────────
 
 describe("update-without-text-leak flow", () => {
-  it("withoutPlaintext on a decrypted todo never leaks plaintext to DB", async () => {
+  it("withoutPlaintext on a decrypted thread never leaks plaintext to DB", async () => {
     await setupKey();
-    const encrypted = await encryptTodo(baseTodo({ text: "sensitive goal" })) as Todo;
+    const encrypted = await encryptThread(baseThread({ text: "sensitive goal" })) as Thread;
 
-    // Simulate decryption (UI has the todo in memory)
-    const decrypted = await decryptTodo(encrypted);
+    // Simulate decryption (UI has the thread in memory)
+    const decrypted = await decryptThread(encrypted);
     expect(decrypted.text).toBe("sensitive goal");
 
     // Simulate a done-toggle update: strip plaintext before writing to DB
@@ -257,15 +257,15 @@ describe("update-without-text-leak flow", () => {
 
   it("text remains recoverable after a non-text update round-trip", async () => {
     const key = await setupKey();
-    const encrypted = await encryptTodo(baseTodo({ text: "recoverable" })) as Todo;
+    const encrypted = await encryptThread(baseThread({ text: "recoverable" })) as Thread;
 
-    const decrypted = await decryptTodo(encrypted);
+    const decrypted = await decryptThread(encrypted);
     const forDb = withoutPlaintext({ ...decrypted, dueDate: "2026-12-31" });
 
     // Simulate re-loading from DB (forDb is what was persisted)
     clearKey();
     await storeKey(key);
-    const reloaded = await decryptTodo(forDb);
+    const reloaded = await decryptThread(forDb);
     expect(reloaded.text).toBe("recoverable");
     expect(reloaded.dueDate).toBe("2026-12-31");
   });

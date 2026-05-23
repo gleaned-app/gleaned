@@ -6,7 +6,7 @@ function haptic(ms = 8) {
   if (typeof navigator !== "undefined") navigator.vibrate?.(ms);
 }
 
-export type View = "journal" | "calendar" | "todos" | "review";
+export type View = "journal" | "calendar" | "threads" | "review";
 
 interface Props {
   current: View;
@@ -37,7 +37,7 @@ export default function BottomNav({ current, onChange, reviewCount = 0 }: Props)
       ),
     },
     {
-      id: "todos",
+      id: "threads",
       label: t.navLearn,
       icon: (
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

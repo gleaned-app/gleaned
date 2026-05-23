@@ -1,9 +1,9 @@
 export * from "./client";
 export * from "./sync";
 export * from "./entry-crypto";
-export * from "./todo-crypto";
+export * from "./thread-crypto";
 export * from "./entries";
-export * from "./todos";
+export * from "./threads";
 export * from "./review";
 export * from "./settings";
 export * from "./conflicts";
@@ -11,7 +11,7 @@ export * from "./data";
 
 import { setAuthState } from "./client";
 import { invalidateSearchCache } from "./entries";
-import { migrateTodosEncryption } from "./todos";
+import { migrateThreadsEncryption } from "./threads";
 import { migrateAttachmentsToNative } from "./migrations";
 
 // Orchestrates auth state + post-login migrations. Called by auth.ts on every
@@ -21,7 +21,7 @@ export function setDbAuthenticated(authenticated: boolean): void {
   setAuthState(authenticated ? "authenticated" : "locked");
   if (!authenticated) invalidateSearchCache();
   if (authenticated) {
-    migrateTodosEncryption().catch(() => {});
+    migrateThreadsEncryption().catch(() => {});
     migrateAttachmentsToNative().catch(() => {});
   }
 }
