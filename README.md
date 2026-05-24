@@ -49,7 +49,7 @@ It works for small things too — a single sentence, a word you looked up, a tho
 </p>
 <p align="center">
   <img src="docs/screenshot-review.png" width="49%" alt="Spaced repetition" />
-  <img src="docs/screenshot-todo.png" width="49%" alt="Learning list" />
+  <img src="docs/screenshot-todo.png" width="49%" alt="Threads" />
 </p>
 <p align="center">
   <img src="docs/screenshot-settings.png" width="60%" alt="Settings" />
@@ -84,37 +84,51 @@ On first launch you'll be asked to set a password. This password encrypts all yo
 
 ## CouchDB sync (optional)
 
-Sync lets you share your journal across browsers and devices. Each browser has its own local IndexedDB; CouchDB merges them including the password hash, so you only need to register once.
+Sync lets you share your journal across browsers and devices. Each browser has its own local PouchDB; CouchDB merges them so all your devices see the same entries.
 
 **Development** — run only CouchDB locally, Next.js on the host:
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d
+docker compose -f docker/compose.dev.yml up -d
 pnpm dev
 ```
 
-**Production** — app + CouchDB together:
+**Production (port-based):**
 
 ```bash
-cp .env.example .env
-# edit .env with your credentials
-docker compose up -d
+cp docker/.env.example .env
+# edit .env — set COUCHDB_USER, COUCHDB_PASSWORD at minimum
+docker compose -f docker/compose.yml up -d
 # → http://localhost:3000
-# → http://localhost:5984/_utils  (CouchDB admin)
 ```
 
-Then open Settings → Sync and enter your CouchDB URL.
-In production the app proxies CouchDB through nginx — no extra port needed:
+**Production (Traefik + TLS):**
+
+```bash
+cp docker/.env.example .env
+# edit .env — set DOMAIN, TRAEFIK_NETWORK, COUCHDB_USER, COUCHDB_PASSWORD
+docker compose -f docker/compose.traefik.yml up -d
+```
+
+Then open **Settings → Sync**. The URL is always your domain with `/db/gleaned` — the app proxies CouchDB through nginx so CouchDB is never exposed directly:
 
 ```
-http://localhost:3000/db/gleaned
+https://gleaned.example.com/db/gleaned
 ```
 
-Enter username and password in the separate fields. For local development with `docker-compose.dev.yml`, CouchDB is accessible directly on port 5984:
+The Settings page shows a clickable hint with the correct URL for your current deployment. Enter your CouchDB username and password in the separate fields.
+
+For local development with `docker/compose.dev.yml`, use the direct CouchDB port instead:
 
 ```
 http://localhost:5984/gleaned
 ```
+
+### Adding a second device
+
+On a device that has no local account yet, tap **Connect device** on the welcome screen. Enter the sync URL and CouchDB credentials — the app pulls your settings (including the encryption salt) from CouchDB, then asks for your app password. No re-registration needed.
+
+If a device already has a local account with the wrong encryption key, use the **Connect device** link at the bottom of the login screen. Export your data first (Settings → Export) if you have local entries that have not yet synced.
 
 ---
 
@@ -139,7 +153,7 @@ http://localhost:5984/gleaned
 Everything you write is encrypted with AES-GCM-256 before it is stored in IndexedDB. The key is derived from your password using PBKDF2-HMAC-SHA-256 (600 000 iterations, 128-bit random salt). The key never leaves your device and is never written to storage — it lives only in JS memory for the duration of the session.
 
 Encrypted fields per entry: content, tags, source, stake, gap, attachment binaries, attachment metadata. The `context` (learning location) field is intentionally stored unencrypted — see the metadata tradeoff section below.
-Encrypted fields per todo: text.
+Encrypted fields per thread: text.
 The CouchDB password (if configured) is also stored encrypted.
 
 ### What is not encrypted — metadata tradeoff
