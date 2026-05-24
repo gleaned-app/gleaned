@@ -2,7 +2,19 @@ name: CI
 
 on:
   push:
+    paths-ignore:
+      - '**/*.md'
+      - 'docker/compose*.yml'
+      - 'docker/couchdb/**'
+      - 'docker/.env.example'
+      - 'docs/**'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docker/compose*.yml'
+      - 'docker/couchdb/**'
+      - 'docker/.env.example'
+      - 'docs/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
