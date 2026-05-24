@@ -364,11 +364,21 @@ export default function SettingsModal({ onClose }: Props) {
             <input
               value={couchdbInput}
               onChange={(e) => { setCouchdbInput(e.target.value); setSyncTestStatus(null); }}
-              placeholder="http://localhost:5984/gleaned"
+              placeholder="https://gleaned.example.com/db/gleaned"
               className="journal-input w-full rounded-xl px-3 py-2.5 font-sans text-xs outline-none"
               style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--fg)" }}
               spellCheck={false} autoCapitalize="none" autoCorrect="off"
             />
+            {!couchdbInput && (
+              <button
+                type="button"
+                onClick={() => { setCouchdbInput(window.location.origin + "/db/gleaned"); setSyncTestStatus(null); }}
+                className="mt-1 font-sans text-[10px] transition-opacity hover:opacity-70"
+                style={{ color: "var(--accent)" }}
+              >
+                {window.location.origin}/db/gleaned ↵
+              </button>
+            )}
           </Field>
           <div className="grid grid-cols-2 gap-2">
             <Field label={t.username}>
