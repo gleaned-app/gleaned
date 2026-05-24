@@ -41,7 +41,7 @@ services:
       COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:-changeme}
     volumes:
       - couchdb_data:/opt/couchdb/data
-      - ./couchdb/local.ini:/opt/couchdb/etc/local.d/local.ini:ro
+      - ./docker/couchdb/local.ini:/opt/couchdb/etc/local.d/local.ini:ro
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:5984/"]
       interval: 10s
