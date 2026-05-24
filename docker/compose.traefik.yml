@@ -4,11 +4,10 @@
 #   - Traefik running with an external Docker network
 #   - A cert resolver configured in Traefik
 #   - A .env file (see .env.example)
-#   - The couchdb/local.ini file present (for CORS config)
 #
 # Usage:
-#   docker compose -f docker-compose.traefik.yml pull
-#   docker compose -f docker-compose.traefik.yml up -d
+#   docker compose -f docker/compose.traefik.yml pull
+#   docker compose -f docker/compose.traefik.yml up -d
 
 services:
   app:
@@ -70,7 +69,7 @@ services:
       COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:-changeme}
     volumes:
       - couchdb_data:/opt/couchdb/data
-      - ./couchdb/local.ini:/opt/couchdb/etc/local.d/local.ini:ro
+      - ./docker/couchdb/local.ini:/opt/couchdb/etc/local.d/local.ini:ro
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:5984/"]
       interval: 10s
