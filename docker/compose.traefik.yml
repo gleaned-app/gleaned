@@ -19,8 +19,6 @@ services:
     depends_on:
       couchdb:
         condition: service_healthy
-      pusher:
-        condition: service_healthy
     environment:
       COUCHDB_USER: ${COUCHDB_USER:-admin}
       GLEANED_SYNC_URL: https://${DOMAIN}/db/gleaned
@@ -89,7 +87,7 @@ services:
       COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:-changeme}
     volumes:
       - couchdb_data:/opt/couchdb/data
-      - ./docker/couchdb/local.ini:/opt/couchdb/etc/local.d/local.ini
+      - ./couchdb/local.ini:/opt/couchdb/etc/local.d/local.ini
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:5984/"]
       interval: 10s
