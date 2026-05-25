@@ -49,4 +49,4 @@ pnpm dev
 - Cloud sync to anything other than CouchDB (no Firebase, Supabase, etc.)
 - Account systems or server-side user management
 - Mobile-native builds (the PWA covers mobile)
-- AI-generated content or suggestions inside the journal
+- AI writing features inside the app (writing assistance, content suggestions, summaries)
