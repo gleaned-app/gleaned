@@ -38,6 +38,7 @@ services:
       PUSH_MINUTE: ${PUSH_MINUTE:-0}
       DUE_HOUR: ${DUE_HOUR:-9}
       DUE_MINUTE: ${DUE_MINUTE:-0}
+      SEND_SECRET: ${SEND_SECRET}
     depends_on:
       couchdb:
         condition: service_healthy
