@@ -74,6 +74,9 @@ self.addEventListener("fetch", (e) => {
   // these change without URL changes and cause stale module errors if cached.
   if (url.pathname.startsWith("/_next/")) return;
 
+  // Dynamic server config — must not be cached; skip so the browser fetches directly
+  if (url.pathname === "/config.json") return;
+
   // Other same-origin assets (icons, manifest): stale-while-revalidate
   e.respondWith(
     caches.open(CACHE).then(async (cache) => {
