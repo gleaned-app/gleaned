@@ -146,8 +146,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       applyBodyFont(next.bodyFont);
       applyLanguage(next.language);
       try { localStorage.setItem("gleaned-view", next.defaultView); } catch {}
-      if (next.couchdbUrl) startSync(next.couchdbUrl, next.couchdbUsername, next.couchdbPassword);
+      if (next.couchdbUrl && next.couchdbPassword) startSync(next.couchdbUrl, next.couchdbUsername, next.couchdbPassword);
     });
+    return () => stopSync();
   }, []);
 
   async function update(patch: Partial<AppSettings>) {
