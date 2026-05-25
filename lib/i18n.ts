@@ -156,6 +156,7 @@ export interface Translations {
   syncTestOk: string;
   syncTestFail: string;
   syncTestAuth: string;
+  syncConnecting: string;
   username: string;
   dbPassword: string;
   exportImport: string;
@@ -358,6 +359,7 @@ const de: Translations = {
   syncTestOk: "Verbunden ✓",
   syncTestFail: "Nicht erreichbar — CouchDB-CORS prüfen",
   syncTestAuth: "Zugangsdaten falsch",
+  syncConnecting: "Verbinde…",
   username: "Benutzer",
   dbPassword: "Passwort",
   exportImport: "Export / Import",
@@ -556,6 +558,7 @@ const en: Translations = {
   syncTestOk: "Connected ✓",
   syncTestFail: "Unreachable — check CouchDB CORS config",
   syncTestAuth: "Wrong credentials",
+  syncConnecting: "Connecting…",
   username: "Username",
   dbPassword: "Password",
   exportImport: "Export / Import",

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useSettings } from "@/lib/settings-context";
 import type { AppSettings, Theme, BodyFont, AppView } from "@/lib/settings-context";
 import { useT } from "@/lib/i18n";
-import { exportData, importData, getAllTags, deleteTag } from "@/lib/db";
+import { exportData, importData, getAllTags, deleteTag, subscribeSyncStatus } from "@/lib/db";
 import { getPushStatus, subscribeToPush, unsubscribeFromPush } from "@/lib/notifications";
 import { fetchServerConfig } from "@/lib/server-config";
 
@@ -72,6 +72,8 @@ export default function SettingsModal({ onClose }: Props) {
   const [couchdbPass, setCouchdbPass] = useState(settings.couchdbPassword ?? "");
   const [syncSaved, setSyncSaved] = useState(false);
   const [syncTestStatus, setSyncTestStatus] = useState<null | "testing" | "ok" | "error-auth" | "error-unreachable">(null);
+  const [syncSaveStatus, setSyncSaveStatus] = useState<null | "saving" | "connected" | "error">(null);
+  const syncUnsubRef = useRef<(() => void) | null>(null);
   const [autoFilledFields, setAutoFilledFields] = useState<Set<"url" | "username">>(new Set());
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [customTypeInput, setCustomTypeInput] = useState("");
@@ -98,11 +100,49 @@ export default function SettingsModal({ onClose }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Cancel pending sync-status subscription when the modal unmounts
+  useEffect(() => () => { syncUnsubRef.current?.(); }, []);
+
   function handleSyncSave() {
-    update({ couchdbUrl: couchdbInput.trim(), couchdbUsername: couchdbUser, couchdbPassword: couchdbPass });
-    setSyncSaved(true);
+    // Cancel any subscription from a previous save attempt
+    syncUnsubRef.current?.();
+    syncUnsubRef.current = null;
     setSyncTestStatus(null);
-    setTimeout(() => setSyncSaved(false), 2000);
+
+    const url = couchdbInput.trim();
+
+    if (!url) {
+      // Disconnecting sync — just save, no status tracking needed
+      update({ couchdbUrl: "", couchdbUsername: couchdbUser, couchdbPassword: couchdbPass });
+      setSyncSaveStatus(null);
+      setSyncSaved(true);
+      setTimeout(() => setSyncSaved(false), 2000);
+      return;
+    }
+
+    setSyncSaveStatus("saving");
+    update({ couchdbUrl: url, couchdbUsername: couchdbUser, couchdbPassword: couchdbPass });
+
+    // Give up and show error if no resolution within 12 s
+    const giveUpTimer = setTimeout(() => {
+      syncUnsubRef.current?.();
+      syncUnsubRef.current = null;
+      setSyncSaveStatus("error");
+    }, 12000);
+
+    syncUnsubRef.current = subscribeSyncStatus((status) => {
+      if (status !== "synced" && status !== "error") return;
+      clearTimeout(giveUpTimer);
+      syncUnsubRef.current?.();
+      syncUnsubRef.current = null;
+      setSyncSaveStatus(status === "synced" ? "connected" : "error");
+    });
+  }
+
+  function resetSyncSaveStatus() {
+    syncUnsubRef.current?.();
+    syncUnsubRef.current = null;
+    setSyncSaveStatus(null);
   }
 
   async function handleSyncTest() {
@@ -393,6 +433,7 @@ export default function SettingsModal({ onClose }: Props) {
               onChange={(e) => {
                 setCouchdbInput(e.target.value);
                 setSyncTestStatus(null);
+                resetSyncSaveStatus();
                 setAutoFilledFields((prev) => { const n = new Set(prev); n.delete("url"); return n; });
               }}
               placeholder="https://gleaned.example.com/db/gleaned"
@@ -430,6 +471,7 @@ export default function SettingsModal({ onClose }: Props) {
                 onChange={(e) => {
                   setCouchdbUser(e.target.value);
                   setSyncTestStatus(null);
+                  resetSyncSaveStatus();
                   setAutoFilledFields((prev) => { const n = new Set(prev); n.delete("username"); return n; });
                 }}
                 placeholder={t.username}
@@ -442,7 +484,7 @@ export default function SettingsModal({ onClose }: Props) {
               <input
                 type="password"
                 value={couchdbPass}
-                onChange={(e) => { setCouchdbPass(e.target.value); setSyncTestStatus(null); }}
+                onChange={(e) => { setCouchdbPass(e.target.value); setSyncTestStatus(null); resetSyncSaveStatus(); }}
                 placeholder="••••••••"
                 className="journal-input w-full rounded-xl px-3 py-2.5 font-sans text-xs outline-none"
                 style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--fg)" }}
@@ -453,10 +495,20 @@ export default function SettingsModal({ onClose }: Props) {
           <div className="flex gap-2">
             <button
               onClick={handleSyncSave}
-              className="btn-3d flex-1 rounded-xl py-2.5 font-sans text-sm font-medium"
-              style={{ color: syncSaved ? "var(--accent)" : "var(--fg-muted)" }}
+              disabled={syncSaveStatus === "saving"}
+              className="btn-3d flex-1 rounded-xl py-2.5 font-sans text-sm font-medium transition-opacity disabled:opacity-60"
+              style={{
+                color: syncSaveStatus === "connected"
+                  ? "var(--accent)"
+                  : syncSaved
+                  ? "var(--accent)"
+                  : "var(--fg-muted)",
+              }}
             >
-              {syncSaved ? "✓" : t.save}
+              {syncSaveStatus === "saving" ? "…"
+                : syncSaveStatus === "connected" ? "✓"
+                : syncSaved ? "✓"
+                : t.save}
             </button>
             <button
               onClick={handleSyncTest}
@@ -467,7 +519,24 @@ export default function SettingsModal({ onClose }: Props) {
               {syncTestStatus === "testing" ? "…" : t.syncTest}
             </button>
           </div>
-          {syncTestStatus && syncTestStatus !== "testing" && (
+
+          {/* Status line — save result takes priority over test result */}
+          {syncSaveStatus === "saving" && (
+            <p className="text-center font-sans text-xs" style={{ color: "var(--fg-muted)" }}>
+              {t.syncConnecting}
+            </p>
+          )}
+          {syncSaveStatus === "connected" && (
+            <p className="text-center font-sans text-xs" style={{ color: "var(--accent)" }}>
+              {t.syncTestOk}
+            </p>
+          )}
+          {syncSaveStatus === "error" && (
+            <p className="text-center font-sans text-xs" style={{ color: "var(--due-overdue)" }}>
+              {t.syncTestFail}
+            </p>
+          )}
+          {syncSaveStatus === null && syncTestStatus && syncTestStatus !== "testing" && (
             <p className="text-center font-sans text-xs" style={{
               color: syncTestStatus === "ok" ? "var(--accent)" : "var(--due-overdue)",
             }}>
