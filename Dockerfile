@@ -16,7 +16,7 @@ RUN corepack enable pnpm && pnpm build
 # output: "export" writes to out/
 
 # ── 3. Serve with nginx ───────────────────────────────────────────────────────
-FROM nginx:1.31.1-alpine3.21 AS runner
+FROM nginx:1.31.1-alpine3.23 AS runner
 COPY --from=builder /app/out /usr/share/nginx/html
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 COPY docker/nginx-entrypoint.sh /docker-entrypoint.d/50-gleaned-config.sh
