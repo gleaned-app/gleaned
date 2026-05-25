@@ -56,7 +56,7 @@ services:
       COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:-changeme}
     volumes:
       - couchdb_data:/opt/couchdb/data
-      - ./couchdb/cors.ini:/opt/couchdb/etc/local.d/cors.ini:ro
+      - ./couchdb/cors.ini:/opt/couchdb/etc/local.d/cors.ini
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:5984/"]
       interval: 10s
