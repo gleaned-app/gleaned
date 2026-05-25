@@ -151,6 +151,7 @@ export interface Translations {
   monday: string;
   sunday: string;
   syncDesc: string;
+  syncAutoDetected: string;
   syncTest: string;
   syncTestOk: string;
   syncTestFail: string;
@@ -352,6 +353,7 @@ const de: Translations = {
   monday: "Montag",
   sunday: "Sonntag",
   syncDesc: "Jeder Browser hat eine eigene lokale Datenbank. CouchDB synchronisiert sie geräteübergreifend. Bei Docker-Deployment ist die URL immer deine-domain.de/db/gleaned — CouchDB läuft intern, der /db/-Pfad ist der nginx-Proxy.",
+  syncAutoDetected: "Automatisch",
   syncTest: "Testen",
   syncTestOk: "Verbunden ✓",
   syncTestFail: "Nicht erreichbar — CouchDB-CORS prüfen",
@@ -549,6 +551,7 @@ const en: Translations = {
   monday: "Monday",
   sunday: "Sunday",
   syncDesc: "Each browser has its own local database. CouchDB syncs them across devices. With Docker deployment the URL is always your-domain.com/db/gleaned — CouchDB runs internally, /db/ is the nginx proxy.",
+  syncAutoDetected: "Auto-detected",
   syncTest: "Test",
   syncTestOk: "Connected ✓",
   syncTestFail: "Unreachable — check CouchDB CORS config",
