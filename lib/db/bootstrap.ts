@@ -26,20 +26,19 @@ export async function bootstrapFromCouchDB(
   if (!trimmed) return "network-error";
 
   let fetchUrl: string;
+  const headers: Record<string, string> = {};
   try {
-    const parsed = new URL(`${trimmed}/gleaned_settings`);
+    fetchUrl = new URL(`${trimmed}/gleaned_settings`).toString();
     if (username.trim()) {
-      parsed.username = encodeURIComponent(username.trim());
-      parsed.password = encodeURIComponent(password.trim());
+      headers["Authorization"] = "Basic " + btoa(`${username.trim()}:${password.trim()}`);
     }
-    fetchUrl = parsed.toString();
   } catch {
     return "network-error";
   }
 
   let doc: Record<string, unknown>;
   try {
-    const res = await fetch(fetchUrl);
+    const res = await fetch(fetchUrl, { headers });
     if (res.status === 401 || res.status === 403) return "auth-error";
     if (res.status === 404) return "not-found";
     if (!res.ok) return "network-error";
