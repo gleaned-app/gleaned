@@ -86,17 +86,13 @@ export default function SettingsModal({ onClose }: Props) {
   useEffect(() => { getPushStatus().then(setPushStatus); }, []);
 
   useEffect(() => {
+    // couchdbInput/couchdbUser here are their initial mount-time values — safe to read
+    // since this effect runs once before any user interaction.
     fetchServerConfig().then((cfg) => {
       if (!cfg) return;
       const filled = new Set<"url" | "username">();
-      if (!settings.couchdbUrl && cfg.syncUrl) {
-        setCouchdbInput(cfg.syncUrl);
-        filled.add("url");
-      }
-      if (!settings.couchdbUsername && cfg.syncUsername) {
-        setCouchdbUser(cfg.syncUsername);
-        filled.add("username");
-      }
+      if (!couchdbInput && cfg.syncUrl) { setCouchdbInput(cfg.syncUrl); filled.add("url"); }
+      if (!couchdbUser && cfg.syncUsername) { setCouchdbUser(cfg.syncUsername); filled.add("username"); }
       if (filled.size > 0) setAutoFilledFields(filled);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
