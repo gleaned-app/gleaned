@@ -351,7 +351,7 @@ export default function LockScreen({ onAuth }: Props) {
 
   return (
     <div
-      className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-8 py-16"
+      className="relative flex min-h-screen flex-col items-center justify-center overflow-x-hidden overflow-y-auto px-8 py-16"
       style={{ background: "var(--bg)" }}
     >
       {/* Canvas — full-screen wheat field */}
