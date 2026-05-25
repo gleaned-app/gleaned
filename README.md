@@ -98,8 +98,8 @@ pnpm dev
 **Production (port-based):**
 
 ```bash
-cp docker/.env.example .env
-# edit .env — set COUCHDB_USER, COUCHDB_PASSWORD at minimum
+sh docker/setup.sh          # creates docker/.env and generates secrets
+# edit docker/.env — set COUCHDB_PASSWORD at minimum
 docker compose -f docker/compose.yml up -d
 # → http://localhost:3000
 ```
@@ -107,8 +107,9 @@ docker compose -f docker/compose.yml up -d
 **Production (Traefik + TLS):**
 
 ```bash
-cp docker/.env.example .env
-# edit .env — set DOMAIN, TRAEFIK_NETWORK, COUCHDB_USER, COUCHDB_PASSWORD
+sh docker/setup.sh          # creates docker/.env and generates secrets
+# edit docker/.env — set DOMAIN and COUCHDB_PASSWORD
+docker compose -f docker/compose.traefik.yml pull
 docker compose -f docker/compose.traefik.yml up -d
 ```
 
