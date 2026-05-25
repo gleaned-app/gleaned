@@ -50,8 +50,6 @@ services:
   couchdb:
     image: couchdb:3
     restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
     ports:
       - "127.0.0.1:5984:5984"
     environment:
