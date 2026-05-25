@@ -39,7 +39,7 @@ jobs:
 
       - name: Docker metadata — app
         id: meta-app
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
@@ -50,7 +50,7 @@ jobs:
 
       - name: Docker metadata — pusher
         id: meta-pusher
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}-pusher
           tags: |
