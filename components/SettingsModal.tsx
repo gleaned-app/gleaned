@@ -6,6 +6,7 @@ import type { AppSettings, Theme, BodyFont, AppView } from "@/lib/settings-conte
 import { useT } from "@/lib/i18n";
 import { exportData, importData, getAllTags, deleteTag } from "@/lib/db";
 import { getPushStatus, subscribeToPush, unsubscribeFromPush } from "@/lib/notifications";
+import { fetchServerConfig } from "@/lib/server-config";
 
 interface Props {
   onClose: () => void;
@@ -66,11 +67,12 @@ export default function SettingsModal({ onClose }: Props) {
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const [couchdbInput, setCouchdbInput] = useState(settings.couchdbUrl);
-  const [couchdbUser, setCouchdbUser] = useState(settings.couchdbUsername);
-  const [couchdbPass, setCouchdbPass] = useState(settings.couchdbPassword);
+  const [couchdbInput, setCouchdbInput] = useState(settings.couchdbUrl ?? "");
+  const [couchdbUser, setCouchdbUser] = useState(settings.couchdbUsername ?? "");
+  const [couchdbPass, setCouchdbPass] = useState(settings.couchdbPassword ?? "");
   const [syncSaved, setSyncSaved] = useState(false);
   const [syncTestStatus, setSyncTestStatus] = useState<null | "testing" | "ok" | "error-auth" | "error-unreachable">(null);
+  const [autoFilledFields, setAutoFilledFields] = useState<Set<"url" | "username">>(new Set());
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [customTypeInput, setCustomTypeInput] = useState("");
   const [contextSourceInput, setContextSourceInput] = useState("");
@@ -82,6 +84,23 @@ export default function SettingsModal({ onClose }: Props) {
 
   useEffect(() => { if (showTags) getAllTags().then(setTagMap); }, [showTags]);
   useEffect(() => { getPushStatus().then(setPushStatus); }, []);
+
+  useEffect(() => {
+    fetchServerConfig().then((cfg) => {
+      if (!cfg) return;
+      const filled = new Set<"url" | "username">();
+      if (!settings.couchdbUrl && cfg.syncUrl) {
+        setCouchdbInput(cfg.syncUrl);
+        filled.add("url");
+      }
+      if (!settings.couchdbUsername && cfg.syncUsername) {
+        setCouchdbUser(cfg.syncUsername);
+        filled.add("username");
+      }
+      if (filled.size > 0) setAutoFilledFields(filled);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleSyncSave() {
     update({ couchdbUrl: couchdbInput.trim(), couchdbUsername: couchdbUser, couchdbPassword: couchdbPass });
@@ -360,10 +379,26 @@ export default function SettingsModal({ onClose }: Props) {
           <p className="font-sans text-xs leading-relaxed" style={{ color: "var(--fg-muted)" }}>
             {t.syncDesc}
           </p>
-          <Field label="URL">
+
+          {/* URL field */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <p className="font-sans text-[11px] font-medium uppercase tracking-[0.12em]" style={{ color: "var(--fg-muted)" }}>
+                URL
+              </p>
+              {autoFilledFields.has("url") && (
+                <span className="rounded-full px-1.5 py-0.5 font-sans text-[9px] font-medium" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+                  {t.syncAutoDetected}
+                </span>
+              )}
+            </div>
             <input
               value={couchdbInput}
-              onChange={(e) => { setCouchdbInput(e.target.value); setSyncTestStatus(null); }}
+              onChange={(e) => {
+                setCouchdbInput(e.target.value);
+                setSyncTestStatus(null);
+                setAutoFilledFields((prev) => { const n = new Set(prev); n.delete("url"); return n; });
+              }}
               placeholder="https://gleaned.example.com/db/gleaned"
               className="journal-input w-full rounded-xl px-3 py-2.5 font-sans text-xs outline-none"
               style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--fg)" }}
@@ -379,18 +414,34 @@ export default function SettingsModal({ onClose }: Props) {
                 {window.location.origin}/db/gleaned ↵
               </button>
             )}
-          </Field>
+          </div>
+
           <div className="grid grid-cols-2 gap-2">
-            <Field label={t.username}>
+            {/* Username field */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <p className="font-sans text-[11px] font-medium uppercase tracking-[0.12em]" style={{ color: "var(--fg-muted)" }}>
+                  {t.username}
+                </p>
+                {autoFilledFields.has("username") && (
+                  <span className="rounded-full px-1.5 py-0.5 font-sans text-[9px] font-medium" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+                    {t.syncAutoDetected}
+                  </span>
+                )}
+              </div>
               <input
                 value={couchdbUser}
-                onChange={(e) => { setCouchdbUser(e.target.value); setSyncTestStatus(null); }}
+                onChange={(e) => {
+                  setCouchdbUser(e.target.value);
+                  setSyncTestStatus(null);
+                  setAutoFilledFields((prev) => { const n = new Set(prev); n.delete("username"); return n; });
+                }}
                 placeholder={t.username}
                 className="journal-input w-full rounded-xl px-3 py-2.5 font-sans text-xs outline-none"
                 style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--fg)" }}
                 autoCapitalize="none" autoCorrect="off" spellCheck={false}
               />
-            </Field>
+            </div>
             <Field label={t.dbPassword}>
               <input
                 type="password"

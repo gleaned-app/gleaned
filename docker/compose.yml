@@ -9,6 +9,9 @@ services:
         condition: service_healthy
       pusher:
         condition: service_healthy
+    environment:
+      COUCHDB_USER: ${COUCHDB_USER:-admin}
+      # GLEANED_SYNC_URL: not set — app derives it from window.location.origin/db/gleaned
     security_opt:
       - no-new-privileges:true
     cap_drop:
