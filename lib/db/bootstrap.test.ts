@@ -43,12 +43,14 @@ describe("bootstrapFromCouchDB", () => {
       expect(stored._id).toBe("gleaned_settings");
     });
 
-    it("embeds credentials in the fetch URL when username is provided", async () => {
+    it("sends credentials as Authorization header when username is provided", async () => {
       mockFetch(200, REMOTE_DOC);
       await bootstrapFromCouchDB("http://localhost:5984/gleaned", "admin", "s3cr3t");
-      const url = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
-      expect(url).toContain("admin");
-      expect(url).toContain("s3cr3t");
+      const [url, options] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [string, RequestInit];
+      expect(url).not.toContain("admin");
+      expect(url).not.toContain("s3cr3t");
+      const auth = (options?.headers as Record<string, string>)?.["Authorization"] ?? "";
+      expect(auth).toBe("Basic " + btoa("admin:s3cr3t"));
     });
 
     it("works without credentials when username is empty", async () => {
