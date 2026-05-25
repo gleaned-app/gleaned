@@ -50,10 +50,13 @@ services:
   couchdb:
     image: couchdb:3
     restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
     cap_drop:
       - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - CHOWN
+      - FOWNER
     ports:
       - "127.0.0.1:5984:5984"
     environment:
