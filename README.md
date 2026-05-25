@@ -23,6 +23,8 @@ The belief behind it is simple: every day you learn something. Most of it evapor
 
 It works for small things too — a single sentence, a word you looked up, a thought you don't want to lose. The bar is intentionally low. The point is the habit of noticing, not the size of the insight.
 
+I'm 18. This is the first project I've shipped. [Read the full story →](docs/story.md)
+
 ---
 
 ## Features
