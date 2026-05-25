@@ -8,6 +8,9 @@
 # Usage:
 #   docker compose -f docker/compose.traefik.yml pull
 #   docker compose -f docker/compose.traefik.yml up -d
+#
+# CouchDB is NOT exposed to the internet — nginx inside the app container
+# proxies /db/ to CouchDB internally. Sync URL: https://${DOMAIN}/db/gleaned
 
 services:
   app:
@@ -20,7 +23,7 @@ services:
         condition: service_healthy
     environment:
       COUCHDB_USER: ${COUCHDB_USER:-admin}
-      GLEANED_SYNC_URL: https://db.${DOMAIN}/gleaned
+      GLEANED_SYNC_URL: https://${DOMAIN}/db/gleaned
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -97,17 +100,7 @@ services:
       retries: 10
       start_period: 15s
     networks:
-      - traefik
       - internal
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=${TRAEFIK_NETWORK:-frontend}"
-      # CouchDB — needed for multi-device sync
-      # Configure in app settings: https://db.${DOMAIN}/gleaned
-      - "traefik.http.routers.gleaned-db.rule=Host(`db.${DOMAIN}`)"
-      - "traefik.http.routers.gleaned-db.entrypoints=websecure"
-      - "traefik.http.routers.gleaned-db.tls.certresolver=${CERT_RESOLVER:-letsencrypt}"
-      - "traefik.http.services.gleaned-db.loadbalancer.server.port=5984"
 
 networks:
   traefik:
