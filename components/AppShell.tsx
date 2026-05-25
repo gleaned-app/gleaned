@@ -57,14 +57,14 @@ export default function AppShell() {
 
   if (!authed) {
     return (
-      <SettingsProvider>
+      <SettingsProvider key="locked">
         <LockScreen onAuth={() => setAuthed(true)} />
       </SettingsProvider>
     );
   }
 
   return (
-    <SettingsProvider>
+    <SettingsProvider key="authed">
       <AppContentWithLock onLock={() => setAuthed(false)} />
     </SettingsProvider>
   );
