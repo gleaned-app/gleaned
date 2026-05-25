@@ -64,5 +64,15 @@ services:
       retries: 10
       start_period: 15s
 
+  couchdb-init:
+    image: couchdb:3
+    restart: "no"
+    entrypoint: ["sh", "-c"]
+    command:
+      - 'curl -sX PUT "http://${COUCHDB_USER:-admin}:${COUCHDB_PASSWORD:-changeme}@couchdb:5984/gleaned"; echo'
+    depends_on:
+      couchdb:
+        condition: service_healthy
+
 volumes:
   couchdb_data:

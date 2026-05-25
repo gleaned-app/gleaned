@@ -97,6 +97,18 @@ services:
     networks:
       - internal
 
+  couchdb-init:
+    image: couchdb:3
+    restart: "no"
+    entrypoint: ["sh", "-c"]
+    command:
+      - 'curl -sX PUT "http://${COUCHDB_USER:-admin}:${COUCHDB_PASSWORD:-changeme}@couchdb:5984/gleaned"; echo'
+    depends_on:
+      couchdb:
+        condition: service_healthy
+    networks:
+      - internal
+
 networks:
   traefik:
     external: true
