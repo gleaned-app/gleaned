@@ -83,13 +83,8 @@ services:
   couchdb:
     image: couchdb:3
     restart: unless-stopped
-    cap_drop:
-      - ALL
-    cap_add:
-      - SETUID
-      - SETGID
-      - CHOWN
-      - FOWNER
+    security_opt:
+      - no-new-privileges:true
     environment:
       COUCHDB_USER: ${COUCHDB_USER:-admin}
       COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:-changeme}
