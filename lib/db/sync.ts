@@ -50,14 +50,11 @@ export async function startSync(url: string, username?: string, password?: strin
   const trimmed = url.trim();
   if (!trimmed) return;
 
-  let syncUrl = trimmed;
+  // Never embed credentials in the URL — Chrome 130+ blocks fetch() with URL
+  // credentials for subresource requests. Pass via Authorization header instead.
+  const headers: Record<string, string> = {};
   if (username?.trim()) {
-    try {
-      const parsed = new URL(trimmed);
-      parsed.username = encodeURIComponent(username.trim());
-      parsed.password = encodeURIComponent(password?.trim() ?? "");
-      syncUrl = parsed.toString();
-    } catch { /* invalid URL — use as-is */ }
+    headers["Authorization"] = "Basic " + btoa(`${username.trim()}:${password ?? ""}`);
   }
 
   // Pre-flight: reject non-CouchDB endpoints before starting live sync.
@@ -67,8 +64,15 @@ export async function startSync(url: string, username?: string, password?: strin
   if (!valid) { setSyncStatus("error"); return; }
 
   const db = await getDB();
+  // PouchDB's TypeScript types don't expose ajax.headers on SyncOptions but the
+  // HTTP adapter reads and forwards it for every request including _changes feed.
+  const syncOpts = {
+    live: true,
+    retry: true,
+    ...(Object.keys(headers).length > 0 ? { ajax: { headers } } : {}),
+  } as PouchDB.Replication.SyncOptions;
   _syncHandler = db
-    .sync(syncUrl, { live: true, retry: true })
+    .sync(trimmed, syncOpts)
     .on("active",  () => setSyncStatus("syncing"))
     .on("paused",  (err) => setSyncStatus(err ? "error" : "synced"))
     .on("error",   () => setSyncStatus("error"))
