@@ -77,6 +77,9 @@ self.addEventListener("fetch", (e) => {
   // Dynamic server config — must not be cached; skip so the browser fetches directly
   if (url.pathname === "/config.json") return;
 
+  // CouchDB proxy and push API — never cache; PouchDB needs live responses
+  if (url.pathname.startsWith("/db/") || url.pathname.startsWith("/push/")) return;
+
   // Other same-origin assets (icons, manifest): stale-while-revalidate
   e.respondWith(
     caches.open(CACHE).then(async (cache) => {
