@@ -33,6 +33,7 @@ export interface Translations {
   acceptShortPw: string;
   wrongPassword: string;
   noLocalAccount: string;
+  resetAccountWarning: string;
   tooManyAttempts(secs: number): string;
 
   // Connect-existing-account flow
@@ -249,6 +250,7 @@ const de: Translations = {
   acceptShortPw: "Kurzes Passwort akzeptieren — ich verstehe das erhöhte Risiko.",
   wrongPassword: "Falsches Passwort.",
   noLocalAccount: "Kein Konto in diesem Browser. CouchDB-Sync einrichten oder Registrieren.",
+  resetAccountWarning: "Achtung: Hiermit wird das bestehende lokale Konto ersetzt. Alle gespeicherten Einträge auf diesem Gerät werden unlesbar.",
   tooManyAttempts: (secs) => `Zu viele Versuche — bitte ${secs}s warten.`,
   connectAccount: "Gerät verbinden",
   connectPrompt: "Server-URL und CouchDB-Zugangsdaten eingeben, um den bestehenden Account auf dieses Gerät zu holen.",
@@ -452,6 +454,7 @@ const en: Translations = {
   acceptShortPw: "Accept short password — I understand the increased risk.",
   wrongPassword: "Wrong password.",
   noLocalAccount: "No account in this browser. Set up CouchDB sync or register.",
+  resetAccountWarning: "Warning: This will replace the existing local account. All stored entries on this device will become unreadable.",
   tooManyAttempts: (secs) => `Too many attempts — please wait ${secs}s.`,
   connectAccount: "Connect device",
   connectPrompt: "Enter your server URL and CouchDB credentials to bring your existing account to this device.",
