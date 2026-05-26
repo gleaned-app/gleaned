@@ -29,7 +29,7 @@ test("back button returns to the choose screen", async ({ page }) => {
   await page.getByRole("button", { name: "Zurück" }).click();
 
   await expect(page.getByRole("button", { name: "Registrieren" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Anmelden" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Gerät verbinden" })).toBeVisible();
 });
 
 test("locks and unlocks via the profile menu", async ({ page }) => {
