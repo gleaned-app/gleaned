@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useSettings } from "@/lib/settings-context";
 import type { AppSettings, Theme, BodyFont, AppView } from "@/lib/settings-context";
 import { useT } from "@/lib/i18n";
-import { exportData, importData, getAllTags, deleteTag, subscribeSyncStatus } from "@/lib/db";
+import { exportData, importData, getAllTags, deleteTag, subscribeSyncStatus, getLastSynced, subscribeLastSynced } from "@/lib/db";
 import { getPushStatus, subscribeToPush, unsubscribeFromPush } from "@/lib/notifications";
 import { fetchServerConfig } from "@/lib/server-config";
 
@@ -67,6 +67,7 @@ export default function SettingsModal({ onClose }: Props) {
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const [lastSynced, setLastSynced] = useState<Date | null>(() => getLastSynced());
   const [couchdbInput, setCouchdbInput] = useState(settings.couchdbUrl ?? "");
   const [couchdbUser, setCouchdbUser] = useState(settings.couchdbUsername ?? "");
   const [couchdbPass, setCouchdbPass] = useState(settings.couchdbPassword ?? "");
@@ -100,6 +101,8 @@ export default function SettingsModal({ onClose }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => subscribeLastSynced(setLastSynced), []);
+
   // Cancel pending sync-status subscription when the modal unmounts
   useEffect(() => () => { syncUnsubRef.current?.(); }, []);
 
@@ -123,19 +126,23 @@ export default function SettingsModal({ onClose }: Props) {
     setSyncSaveStatus("saving");
     update({ couchdbUrl: url, couchdbUsername: couchdbUser, couchdbPassword: couchdbPass });
 
-    // Give up and show error if no resolution within 12 s
+    // Give up and show error if no resolution within 8 s
     const giveUpTimer = setTimeout(() => {
       syncUnsubRef.current?.();
       syncUnsubRef.current = null;
       setSyncSaveStatus("error");
-    }, 12000);
+    }, 8000);
 
     syncUnsubRef.current = subscribeSyncStatus((status) => {
-      if (status !== "synced" && status !== "error") return;
+      // Only resolve on "synced" — PouchDB with retry:true may fire transient
+      // "error" events (e.g. expired CORS preflight cache) and then recover.
+      // Unsubscribing on the first error would permanently miss the recovery.
+      // Persistent failures are handled by the give-up timer above.
+      if (status !== "synced") return;
       clearTimeout(giveUpTimer);
       syncUnsubRef.current?.();
       syncUnsubRef.current = null;
-      setSyncSaveStatus(status === "synced" ? "connected" : "error");
+      setSyncSaveStatus("connected");
     });
   }
 
@@ -151,7 +158,7 @@ export default function SettingsModal({ onClose }: Props) {
     if (!url) { setSyncTestStatus("error-unreachable"); return; }
     try {
       const headers: Record<string, string> = {};
-      if (couchdbUser) headers["Authorization"] = "Basic " + btoa(`${couchdbUser}:${couchdbPass}`);
+      if (couchdbUser) headers["Authorization"] = "Basic " + btoa(unescape(encodeURIComponent(`${couchdbUser}:${couchdbPass}`)));
       const res = await fetch(url, { method: "GET", headers, signal: AbortSignal.timeout(5000) });
       if (!res.ok) { setSyncTestStatus(res.status === 401 ? "error-auth" : "error-unreachable"); return; }
       const json = await res.json() as Record<string, unknown>;
@@ -543,6 +550,13 @@ export default function SettingsModal({ onClose }: Props) {
               {syncTestStatus === "ok" ? t.syncTestOk
                 : syncTestStatus === "error-auth" ? t.syncTestAuth
                 : t.syncTestFail}
+            </p>
+          )}
+
+          {/* Last-synced timestamp — shown when sync is configured and has succeeded */}
+          {couchdbInput.trim() && lastSynced && syncSaveStatus === null && (
+            <p className="text-center font-sans text-[11px]" style={{ color: "var(--fg-muted)", opacity: 0.6 }}>
+              {t.syncLastSynced(lastSynced.toLocaleString())}
             </p>
           )}
         </div>
