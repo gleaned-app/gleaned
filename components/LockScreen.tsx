@@ -498,17 +498,6 @@ export default function LockScreen({ onAuth }: Props) {
               >
                 {t.connectAccount}
               </button>
-              <button
-                onClick={() => { setMode("login"); setError(""); setPassword(""); }}
-                className="w-full rounded-full py-2.5 font-sans text-sm font-medium tracking-wide transition-all"
-                style={{
-                  background: "transparent",
-                  color: "var(--fg-muted)",
-                  border: "1.5px solid var(--border-focus)",
-                }}
-              >
-                {t.signin}
-              </button>
             </div>
           </div>
         ) : mode === "connect" ? (
