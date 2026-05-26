@@ -46,3 +46,6 @@ next-env.d.ts
 # claude
 CLAUDE.md
 AGENTS.md
+
+# draft docs (German originals — English versions are tracked)
+docs/native-app-plan-v1.md
