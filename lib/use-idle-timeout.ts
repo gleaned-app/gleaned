@@ -13,7 +13,7 @@ const ACTIVITY_EVENTS = [
  */
 export function useIdleTimeout(minutes: number, onTimeout: () => void) {
   const onTimeoutRef = useRef(onTimeout);
-  onTimeoutRef.current = onTimeout;
+  useEffect(() => { onTimeoutRef.current = onTimeout; });
 
   useEffect(() => {
     if (minutes <= 0) return;
