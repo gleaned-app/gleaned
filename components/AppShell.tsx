@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { isAuthenticated, logout } from "@/lib/auth";
 import { SettingsProvider } from "@/lib/settings-context";
 import { useSyncStatus } from "@/lib/use-sync-status";
+import { getLastSynced, subscribeLastSynced } from "@/lib/db";
 import { useConflictCount } from "@/lib/use-conflict-count";
 import { useT } from "@/lib/i18n";
 import JournalView from "./JournalView";
@@ -22,22 +23,50 @@ import SWUpdatePrompt from "./SWUpdatePrompt";
 
 function SyncDot() {
   const status = useSyncStatus();
+  const [lastSynced, setLastSynced] = useState<Date | null>(() => getLastSynced());
+  const [isOnline, setIsOnline] = useState(() =>
+    typeof navigator !== "undefined" ? navigator.onLine : true
+  );
   const t = useT();
+
+  useEffect(() => subscribeLastSynced(setLastSynced), []);
+
+  useEffect(() => {
+    const onOnline  = () => setIsOnline(true);
+    const onOffline = () => setIsOnline(false);
+    window.addEventListener("online",  onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => {
+      window.removeEventListener("online",  onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, []);
+
   if (status === "idle") return null;
 
+  const offline = !isOnline;
+
   const color =
+    offline              ? "oklch(58% 0 0)" :
     status === "error"   ? "oklch(55% 0.19 25)" :
-    status === "syncing" ? "oklch(62% 0.17 145)" :
+    status === "syncing" ? "oklch(68% 0.18 55)" :
                            "oklch(62% 0.17 145)";
 
-  const label =
+  const baseLabel =
+    offline              ? t.syncStatusOffline :
     status === "error"   ? t.syncStatusError :
     status === "syncing" ? t.syncStatusSyncing :
                            t.syncStatusSynced;
 
+  const tooltip =
+    lastSynced && !offline && status !== "syncing"
+      ? `${baseLabel} · ${t.syncLastSynced(lastSynced.toLocaleTimeString())}`
+      : baseLabel;
+
   return (
     <span
-      title={label}
+      title={tooltip}
+      aria-label={tooltip}
       style={{
         display: "inline-block",
         width: 7,
@@ -46,7 +75,8 @@ function SyncDot() {
         background: color,
         flexShrink: 0,
         cursor: "default",
-        animation: status === "syncing" ? "pulse 1.2s ease-in-out infinite" : "none",
+        animation: status === "syncing" && !offline ? "pulse 1.2s ease-in-out infinite" : "none",
+        opacity: offline ? 0.6 : 1,
       }}
     />
   );
