@@ -5,7 +5,7 @@ test("app loads and shows the lock screen", async ({ page }) => {
 
   await expect(page.locator("h1")).toContainText("gleaned");
   await expect(page.getByRole("button", { name: "Registrieren" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Anmelden" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Gerät verbinden" })).toBeVisible();
 });
 
 test("page title is set", async ({ page }) => {
