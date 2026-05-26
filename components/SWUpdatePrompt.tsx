@@ -3,6 +3,10 @@
 import { useState, useEffect } from "react";
 import { useT } from "@/lib/i18n";
 
+// Key stored in sessionStorage to avoid re-showing the banner for the SW
+// we already told to skip waiting. Survives the reload, cleared on next mount.
+const SKIP_SENT_KEY = "gleaned-sw-skip-sent";
+
 export default function SWUpdatePrompt() {
   const t = useT();
   const [waitingSW, setWaitingSW] = useState<ServiceWorker | null>(null);
@@ -10,9 +14,15 @@ export default function SWUpdatePrompt() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
+    // If we already sent SKIP_WAITING in this session, clear the marker and
+    // don't re-show the banner for the same update cycle.
+    if (sessionStorage.getItem(SKIP_SENT_KEY)) {
+      sessionStorage.removeItem(SKIP_SENT_KEY);
+      return;
+    }
+
     function trackInstalling(sw: ServiceWorker) {
       sw.addEventListener("statechange", () => {
-        // installed = waiting; only show prompt if an old SW is already controlling the page
         if (sw.state === "installed" && navigator.serviceWorker.controller) {
           setWaitingSW(sw);
         }
@@ -20,7 +30,6 @@ export default function SWUpdatePrompt() {
     }
 
     navigator.serviceWorker.ready.then((reg) => {
-      // Already waiting from a previous load?
       if (reg.waiting && navigator.serviceWorker.controller) {
         setWaitingSW(reg.waiting);
       }
@@ -29,7 +38,6 @@ export default function SWUpdatePrompt() {
       });
     });
 
-    // After SKIP_WAITING fires, reload to apply the new SW
     let refreshing = false;
     function onControllerChange() {
       if (!refreshing) { refreshing = true; window.location.reload(); }
@@ -41,6 +49,10 @@ export default function SWUpdatePrompt() {
   if (!waitingSW) return null;
 
   function handleReload() {
+    // Hide immediately so a soft-reload doesn't re-show the stale banner.
+    setWaitingSW(null);
+    // Survive the reload: on next mount the effect will see this key and bail out.
+    sessionStorage.setItem(SKIP_SENT_KEY, "1");
     waitingSW!.postMessage({ type: "SKIP_WAITING" });
   }
 
