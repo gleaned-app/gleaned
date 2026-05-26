@@ -302,10 +302,12 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
         ref={mainRef}
         className="flex-1 min-h-0 overflow-y-auto"
         style={{
-          paddingBottom: "calc(100px + env(safe-area-inset-bottom))",
+          paddingBottom: "calc(120px + env(safe-area-inset-bottom))",
+          scrollPaddingBottom: "calc(120px + env(safe-area-inset-bottom))",
           overscrollBehavior: "contain",
           overflowAnchor: "none",
           touchAction: "pan-y",
+          WebkitOverflowScrolling: "touch",
         }}
       >
         {/* Views bleiben im DOM sobald erstmalig besucht — kein Re-fetch, kein Skeleton-Flash */}

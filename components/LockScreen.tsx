@@ -530,7 +530,7 @@ export default function LockScreen({ onAuth }: Props) {
               <label className="mb-1.5 block font-sans text-[10px] uppercase tracking-[0.18em]" style={{ color: "var(--fg-muted)" }}>
                 {t.connectCouchdbUrl}
               </label>
-              <div style={{ borderBottom: `1.5px solid ${focused === "pw" ? "var(--accent)" : "var(--border-focus)"}`, transition: "border-color 200ms" }}>
+              <div style={{ borderBottom: `2px solid ${focused === "pw" ? "var(--accent)" : "var(--border-rule)"}`, transition: "border-color 200ms" }}>
                 <input
                   type="url"
                   value={connectUrl}
@@ -550,7 +550,7 @@ export default function LockScreen({ onAuth }: Props) {
               <label className="mb-1.5 block font-sans text-[10px] uppercase tracking-[0.18em]" style={{ color: "var(--fg-muted)" }}>
                 {t.connectCouchdbUser}
               </label>
-              <div style={{ borderBottom: `1.5px solid var(--border-focus)` }}>
+              <div style={{ borderBottom: `2px solid var(--border-rule)` }}>
                 <input
                   type="text"
                   autoComplete="username"
@@ -567,7 +567,7 @@ export default function LockScreen({ onAuth }: Props) {
               <label className="mb-1.5 block font-sans text-[10px] uppercase tracking-[0.18em]" style={{ color: "var(--fg-muted)" }}>
                 {t.connectCouchdbPass}
               </label>
-              <div className="relative" style={{ borderBottom: `1.5px solid var(--border-focus)` }}>
+              <div className="relative" style={{ borderBottom: `2px solid var(--border-rule)` }}>
                 <input
                   type={showConnectPass ? "text" : "password"}
                   autoComplete="current-password"
@@ -652,7 +652,7 @@ export default function LockScreen({ onAuth }: Props) {
               {mode === "setup" ? t.choosePassword : t.password}
             </label>
             <div className="relative" style={{
-              borderBottom: `1.5px solid ${focused === "pw" ? "var(--accent)" : "var(--border-focus)"}`,
+              borderBottom: `2px solid ${focused === "pw" ? "var(--accent)" : "var(--border-rule)"}`,
               transition: "border-color 200ms",
             }}>
               <input
@@ -749,7 +749,7 @@ export default function LockScreen({ onAuth }: Props) {
                 {t.confirm}
               </label>
               <div className="relative" style={{
-                borderBottom: `1.5px solid ${focused === "confirm" ? "var(--accent)" : "var(--border-focus)"}`,
+                borderBottom: `2px solid ${focused === "confirm" ? "var(--accent)" : "var(--border-rule)"}`,
                 transition: "border-color 200ms",
               }}>
                 <input

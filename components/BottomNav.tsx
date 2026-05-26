@@ -59,27 +59,23 @@ export default function BottomNav({ current, onChange, reviewCount = 0 }: Props)
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 flex justify-center"
+      className="fixed bottom-0 left-0 right-0 z-50"
       style={{
-        paddingBottom: "max(14px, env(safe-area-inset-bottom))",
+        paddingBottom: "max(10px, env(safe-area-inset-bottom))",
         paddingTop: "8px",
-        paddingInline: "20px",
-        // Lass Touch/Click durch den transparenten Wrapper hindurch — sonst
-        // blockiert Chrome's PWA Hit-Testing das Scrollen überall, wo das
-        // nav-Rechteck liegt (auch links/rechts neben der Glas-Insel).
+        paddingInline: "16px",
         pointerEvents: "none",
       }}
     >
-      {/* Liquid glass island — wider than button group, deep 3D shadow */}
+      {/* Full-width liquid glass island — buttons spread evenly across the bar */}
       <div
-        className="relative flex items-center gap-1 px-4 py-2 sm:gap-2 sm:px-5"
+        className="relative flex items-stretch"
         style={{
-          // Pointer-Events nur auf der sichtbaren Insel reaktivieren.
           pointerEvents: "auto",
           background: "color-mix(in oklch, var(--bg-glass) 60%, transparent)",
           backdropFilter: "blur(40px) saturate(2.4) brightness(1.06)",
           WebkitBackdropFilter: "blur(40px) saturate(2.4) brightness(1.06)",
-          borderRadius: "28px",
+          borderRadius: "24px",
           border: "1px solid oklch(100% 0 0 / 0.18)",
           borderBottomColor: "oklch(0% 0 0 / 0.06)",
           boxShadow: [
@@ -91,13 +87,13 @@ export default function BottomNav({ current, onChange, reviewCount = 0 }: Props)
           ].join(", "),
         }}
       >
-        {/* Glass face gradient — simulates light refraction on the surface */}
+        {/* Glass face gradient */}
         <div
           aria-hidden
           style={{
             position: "absolute",
             inset: 0,
-            borderRadius: "28px",
+            borderRadius: "24px",
             background: "linear-gradient(160deg, oklch(100% 0 0 / 0.08) 0%, oklch(100% 0 0 / 0.02) 45%, transparent 100%)",
             pointerEvents: "none",
           }}
@@ -111,7 +107,7 @@ export default function BottomNav({ current, onChange, reviewCount = 0 }: Props)
               key={tab.id}
               data-active={active}
               onClick={() => { haptic(); onChange(tab.id); }}
-              className="btn-3d relative z-10 flex flex-col items-center gap-1 rounded-2xl px-3 py-2.5 font-sans sm:px-4"
+              className="btn-3d relative z-10 flex flex-1 flex-col items-center justify-center gap-1.5 rounded-[22px] py-3 font-sans"
               style={{ color: active ? "var(--accent)" : "var(--fg-muted)" }}
             >
               <span className="relative">
@@ -126,7 +122,7 @@ export default function BottomNav({ current, onChange, reviewCount = 0 }: Props)
                   </span>
                 )}
               </span>
-              <span className="text-[10px] font-medium tracking-wide">{tab.label}</span>
+              <span className="text-[11px] font-medium tracking-wide">{tab.label}</span>
             </button>
           );
         })}
