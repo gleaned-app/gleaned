@@ -7,22 +7,65 @@ let _syncStatus: SyncStatus = "idle";
 let _syncHandler: PouchDB.Replication.Sync<AnyDoc> | null = null;
 const _syncListeners = new Set<(s: SyncStatus) => void>();
 
+let _lastSynced: Date | null = null;
+const _lastSyncedListeners = new Set<(d: Date | null) => void>();
+
+// Debounce "synced" so PouchDB's rapid active→paused→active cycles during bulk
+// syncs don't flicker the status dot amber↔green. Only emits "synced" after 450 ms
+// of quiet. Any new event during that window cancels and reschedules.
+let _syncedDebounce: ReturnType<typeof setTimeout> | null = null;
+
 function setSyncStatus(s: SyncStatus) {
+  if (_syncedDebounce) {
+    clearTimeout(_syncedDebounce);
+    _syncedDebounce = null;
+  }
+
+  if (s === "synced") {
+    _syncedDebounce = setTimeout(() => {
+      _syncedDebounce = null;
+      _syncStatus = "synced";
+      _lastSynced = new Date();
+      _lastSyncedListeners.forEach((l) => l(_lastSynced));
+      _syncListeners.forEach((l) => l("synced"));
+    }, 450);
+    return;
+  }
+
   _syncStatus = s;
   _syncListeners.forEach((l) => l(s));
 }
 
 export function getSyncStatus(): SyncStatus { return _syncStatus; }
+export function getLastSynced(): Date | null { return _lastSynced; }
 
 export function subscribeSyncStatus(cb: (s: SyncStatus) => void): () => void {
   _syncListeners.add(cb);
   return () => _syncListeners.delete(cb);
 }
 
+export function subscribeLastSynced(cb: (d: Date | null) => void): () => void {
+  _lastSyncedListeners.add(cb);
+  return () => _lastSyncedListeners.delete(cb);
+}
+
 export function stopSync() {
   _syncHandler?.cancel();
   _syncHandler = null;
   setSyncStatus("idle");
+}
+
+// Cache the last URL+credentials that passed pre-flight validation. On app
+// reload with unchanged settings we skip the round-trip entirely — sync starts
+// immediately instead of waiting up to 3 s for the pre-flight.
+let _validatedKey: string | null = null;
+
+function credKey(url: string, username?: string, password?: string): string {
+  return `${url}||${username ?? ""}||${password ?? ""}`;
+}
+
+function basicAuth(username: string, password: string): string {
+  return "Basic " + btoa(unescape(encodeURIComponent(`${username.trim()}:${password}`)));
 }
 
 /**
@@ -34,9 +77,10 @@ async function isCouchDB(url: string, username?: string, password?: string): Pro
   try {
     const headers: Record<string, string> = {};
     if (username?.trim()) {
-      headers["Authorization"] = "Basic " + btoa(`${username.trim()}:${password ?? ""}`);
+      headers["Authorization"] = basicAuth(username, password ?? "");
     }
-    const res = await fetch(url, { headers, signal: AbortSignal.timeout(5000) });
+    // 3 s is enough for a healthy server — 5 s caused noticeable startup lag.
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(3000) });
     if (!res.ok) return false;
     const json = await res.json() as Record<string, unknown>;
     return typeof json.db_name === "string";
@@ -54,14 +98,23 @@ export async function startSync(url: string, username?: string, password?: strin
   // credentials for subresource requests. Pass via Authorization header instead.
   const headers: Record<string, string> = {};
   if (username?.trim()) {
-    headers["Authorization"] = "Basic " + btoa(`${username.trim()}:${password ?? ""}`);
+    headers["Authorization"] = basicAuth(username, password ?? "");
   }
 
-  // Pre-flight: reject non-CouchDB endpoints before starting live sync.
-  // Prevents false-green status when any HTTP 200 server is entered as URL.
   setSyncStatus("syncing");
-  const valid = await isCouchDB(trimmed, username, password);
-  if (!valid) { setSyncStatus("error"); return; }
+
+  // Pre-flight: skip if URL+credentials already validated this session to avoid
+  // a 3 s round-trip on every page reload with unchanged settings.
+  const key = credKey(trimmed, username, password);
+  if (key !== _validatedKey) {
+    const valid = await isCouchDB(trimmed, username, password);
+    if (!valid) {
+      _validatedKey = null; // clear cache so next attempt re-validates
+      setSyncStatus("error");
+      return;
+    }
+    _validatedKey = key;
+  }
 
   const db = await getDB();
   // PouchDB's TypeScript types don't expose ajax.headers on SyncOptions but the
@@ -75,6 +128,6 @@ export async function startSync(url: string, username?: string, password?: strin
     .sync(trimmed, syncOpts)
     .on("active",  () => setSyncStatus("syncing"))
     .on("paused",  (err) => setSyncStatus(err ? "error" : "synced"))
-    .on("error",   () => setSyncStatus("error"))
-    .on("denied",  () => setSyncStatus("error")) as PouchDB.Replication.Sync<AnyDoc>;
+    .on("error",   () => { _validatedKey = null; setSyncStatus("error"); })
+    .on("denied",  () => { _validatedKey = null; setSyncStatus("error"); }) as PouchDB.Replication.Sync<AnyDoc>;
 }
