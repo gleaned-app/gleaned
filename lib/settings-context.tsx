@@ -146,7 +146,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       applyBodyFont(next.bodyFont);
       applyLanguage(next.language);
       try { localStorage.setItem("gleaned-view", next.defaultView); } catch {}
-      if (next.couchdbUrl && next.couchdbPassword) startSync(next.couchdbUrl, next.couchdbUsername, next.couchdbPassword);
+      if (next.couchdbUrl) startSync(next.couchdbUrl, next.couchdbUsername, next.couchdbPassword);
     });
     return () => stopSync();
   }, []);
@@ -160,7 +160,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     if (patch.defaultView) { try { localStorage.setItem("gleaned-view", patch.defaultView); } catch {} }
     const syncChanged = "couchdbUrl" in patch || "couchdbUsername" in patch || "couchdbPassword" in patch;
     if (syncChanged) {
-      if (next.couchdbUrl) startSync(next.couchdbUrl, next.couchdbUsername, next.couchdbPassword);
+      if (next.couchdbUrl) startSync(next.couchdbUrl, next.couchdbUsername, next.couchdbPassword ?? "");
       else stopSync();
     }
     await saveSettings(next);
