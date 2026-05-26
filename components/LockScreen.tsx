@@ -321,6 +321,16 @@ export default function LockScreen({ onAuth }: Props) {
     }
   }
 
+  function handleGoToConnect() {
+    setMode("connect");
+    setHint("");
+    setError("");
+    setConnectError("");
+    setConnectUrl("");
+    setConnectUser("");
+    setConnectPass("");
+  }
+
   async function handleConnect(e: React.FormEvent) {
     e.preventDefault();
     if (!connectUrl.trim()) return;
@@ -330,6 +340,7 @@ export default function LockScreen({ onAuth }: Props) {
       const result = await bootstrapFromCouchDB(connectUrl, connectUser, connectPass);
       if (result === "ok") {
         setMode("login");
+        setHasLocalAccount(true);
         setHint(t.connectSuccess);
         setError("");
         setPassword("");
@@ -514,6 +525,20 @@ export default function LockScreen({ onAuth }: Props) {
               {t.connectPrompt}
             </p>
 
+            {hasLocalAccount && (
+              <div
+                className="rounded-xl p-3"
+                style={{
+                  background: "var(--due-overdue-bg)",
+                  border: "1px solid color-mix(in oklch, var(--due-overdue), transparent 55%)",
+                }}
+              >
+                <p className="font-sans text-xs leading-relaxed" style={{ color: "var(--due-overdue)" }}>
+                  {t.connectOverwriteWarning}
+                </p>
+              </div>
+            )}
+
             {/* Server URL */}
             <div>
               <label className="mb-1.5 block font-sans text-[10px] uppercase tracking-[0.18em]" style={{ color: "var(--fg-muted)" }}>
@@ -597,7 +622,10 @@ export default function LockScreen({ onAuth }: Props) {
             <div className="flex items-center justify-between pt-1">
               <button
                 type="button"
-                onClick={() => { setMode("choose"); setConnectError(""); }}
+                onClick={() => {
+                  setConnectError("");
+                  setMode(hasLocalAccount ? "login" : "choose");
+                }}
                 className="font-sans text-xs transition-opacity hover:opacity-60"
                 style={{ color: "var(--fg-muted)" }}
               >
@@ -632,6 +660,19 @@ export default function LockScreen({ onAuth }: Props) {
             <p className="font-serif text-sm leading-relaxed" style={{ color: "var(--fg-muted)", opacity: 0.7 }}>
               {t.encryptionNotice}
             </p>
+          )}
+          {mode === "setup" && hasLocalAccount && (
+            <div
+              className="rounded-xl p-3"
+              style={{
+                background: "var(--due-overdue-bg)",
+                border: "1px solid color-mix(in oklch, var(--due-overdue), transparent 55%)",
+              }}
+            >
+              <p className="font-sans text-xs leading-relaxed" style={{ color: "var(--due-overdue)" }}>
+                {t.resetAccountWarning}
+              </p>
+            </div>
           )}
           <div>
             <label
@@ -791,36 +832,52 @@ export default function LockScreen({ onAuth }: Props) {
             );
           })()}
 
-          {!hasLocalAccount && (
-            <button
-              type="button"
-              onClick={() => { setMode("choose"); setError(""); setPassword(""); setConfirm(""); }}
-              className="font-sans text-xs transition-opacity hover:opacity-60"
-              style={{ color: "var(--fg-muted)", textAlign: "left" }}
-            >
-              {t.back}
-            </button>
-          )}
+          <div className="flex items-center justify-between pt-1">
+            {/* LEFT: back (setup→choose or setup→login) / register (login→setup) */}
+            {mode === "setup" ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setMode(hasLocalAccount ? "login" : "choose");
+                  setError(""); setPassword(""); setConfirm("");
+                }}
+                className="font-sans text-xs transition-opacity hover:opacity-60"
+                style={{ color: "var(--fg-muted)" }}
+              >
+                {t.back}
+              </button>
+            ) : mode === "login" && hasLocalAccount ? (
+              <button
+                type="button"
+                onClick={() => { setMode("setup"); setError(""); setPassword(""); setConfirm(""); }}
+                className="font-sans text-xs transition-opacity hover:opacity-70"
+                style={{ color: "var(--fg-muted)" }}
+              >
+                {t.register}
+              </button>
+            ) : !hasLocalAccount ? (
+              <button
+                type="button"
+                onClick={() => { setMode("choose"); setError(""); setPassword(""); setConfirm(""); }}
+                className="font-sans text-xs transition-opacity hover:opacity-60"
+                style={{ color: "var(--fg-muted)" }}
+              >
+                {t.back}
+              </button>
+            ) : <span />}
 
-          {mode === "login" && hasLocalAccount && (
-            <button
-              type="button"
-              onClick={() => {
-                if (!window.confirm(t.connectOverwriteWarning)) return;
-                setMode("connect");
-                setHint("");
-                setError("");
-                setConnectError("");
-                setConnectUrl("");
-                setConnectUser("");
-                setConnectPass("");
-              }}
-              className="font-sans text-xs transition-opacity hover:opacity-60"
-              style={{ color: "var(--fg-muted)", opacity: 0.5, textAlign: "left" }}
-            >
-              {t.connectAccount}
-            </button>
-          )}
+            {/* RIGHT: connect (login mode only) */}
+            {mode === "login" && (
+              <button
+                type="button"
+                onClick={handleGoToConnect}
+                className="font-sans text-xs transition-opacity hover:opacity-70"
+                style={{ color: "var(--fg-muted)" }}
+              >
+                {t.connectAccount} →
+              </button>
+            )}
+          </div>
         </form>
         )}
       </div>
