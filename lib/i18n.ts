@@ -130,6 +130,8 @@ export interface Translations {
   syncStatusSyncing: string;
   syncStatusSynced: string;
   syncStatusError: string;
+  syncStatusOffline: string;
+  syncLastSynced(time: string): string;
 
   // Settings modal
   settingsTitle: string;
@@ -226,7 +228,7 @@ const de: Translations = {
   cancel: "Abbrechen",
   tagPlaceholder: "Tag...",
 
-  firstTimePrompt: "Zum ersten Mal auf diesem Gerät — oder möchtest du dich anmelden?",
+  firstTimePrompt: "Noch kein Konto auf diesem Gerät.",
   register: "Registrieren",
   signin: "Anmelden",
   encryptionNotice: "Alles was du schreibst wird verschlüsselt — nur du kannst es lesen.",
@@ -334,6 +336,8 @@ const de: Translations = {
   syncStatusSyncing: "Synchronisiert gerade …",
   syncStatusSynced: "Synchronisiert",
   syncStatusError: "Synchronisierungsfehler — URL oder Zugangsdaten prüfen",
+  syncStatusOffline: "Kein Netzwerk",
+  syncLastSynced: (time) => `Zuletzt: ${time}`,
 
   settingsTitle: "Einstellungen",
   catAppearance: "Darstellung",
@@ -425,7 +429,7 @@ const en: Translations = {
   cancel: "Cancel",
   tagPlaceholder: "Tag...",
 
-  firstTimePrompt: "First time on this device — or would you like to sign in?",
+  firstTimePrompt: "No account on this device yet.",
   register: "Register",
   signin: "Sign in",
   encryptionNotice: "Everything you write is encrypted — only you can read it.",
@@ -533,6 +537,8 @@ const en: Translations = {
   syncStatusSyncing: "Syncing …",
   syncStatusSynced: "Synced",
   syncStatusError: "Sync error — check URL and credentials",
+  syncStatusOffline: "Offline",
+  syncLastSynced: (time) => `Last synced: ${time}`,
 
   settingsTitle: "Settings",
   catAppearance: "Appearance",
