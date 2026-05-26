@@ -11,7 +11,7 @@ Thanks for your interest in contributing. gleaned is a personal project — cont
 ## Setup
 
 ```bash
-git clone https://github.com/brunodeanoz/gleaned.git
+git clone https://github.com/gleaned-app/gleaned.git
 cd gleaned
 pnpm install
 pnpm dev
