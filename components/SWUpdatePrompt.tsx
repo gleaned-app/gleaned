@@ -1,21 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useT } from "@/lib/i18n";
 
-// Key stored in sessionStorage to avoid re-showing the banner for the SW
-// we already told to skip waiting. Survives the reload, cleared on next mount.
+// Survives the page reload triggered by skipWaiting so the banner does not
+// re-appear for the same update cycle on the next mount.
 const SKIP_SENT_KEY = "gleaned-sw-skip-sent";
 
 export default function SWUpdatePrompt() {
   const t = useT();
   const [waitingSW, setWaitingSW] = useState<ServiceWorker | null>(null);
+  // True only after the user explicitly clicks "Reload". Prevents the
+  // controllerchange listener from reloading on the initial clients.claim()
+  // call that fires when the SW first installs — that fires controllerchange
+  // even though the user took no action and would cause a spurious reload.
+  const skipSentRef = useRef(false);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
-    // If we already sent SKIP_WAITING in this session, clear the marker and
-    // don't re-show the banner for the same update cycle.
     if (sessionStorage.getItem(SKIP_SENT_KEY)) {
       sessionStorage.removeItem(SKIP_SENT_KEY);
       return;
@@ -40,7 +43,10 @@ export default function SWUpdatePrompt() {
 
     let refreshing = false;
     function onControllerChange() {
-      if (!refreshing) { refreshing = true; window.location.reload(); }
+      if (skipSentRef.current && !refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
     }
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
     return () => navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
@@ -49,9 +55,8 @@ export default function SWUpdatePrompt() {
   if (!waitingSW) return null;
 
   function handleReload() {
-    // Hide immediately so a soft-reload doesn't re-show the stale banner.
     setWaitingSW(null);
-    // Survive the reload: on next mount the effect will see this key and bail out.
+    skipSentRef.current = true;
     sessionStorage.setItem(SKIP_SENT_KEY, "1");
     waitingSW!.postMessage({ type: "SKIP_WAITING" });
   }
