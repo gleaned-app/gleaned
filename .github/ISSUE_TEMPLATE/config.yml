@@ -4,5 +4,5 @@ contact_links:
     url: mailto:gleaned.security@proton.me?subject=%5Bgleaned%5D%20Security
     about: Please report security issues privately by email — do not open a public issue.
   - name: Questions & discussions
-    url: https://github.com/brunodeanoz/gleaned/discussions
+    url: https://github.com/gleaned-app/gleaned/discussions
     about: Not a bug or feature request? Start a discussion instead.
