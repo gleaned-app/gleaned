@@ -1,4 +1,4 @@
-const CACHE = "gleaned-v3";
+const CACHE = "gleaned-v4";
 
 let swLang = "en";
 
