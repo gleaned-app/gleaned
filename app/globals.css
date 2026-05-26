@@ -21,8 +21,9 @@ html {
   --fg:              oklch(16% 0.03 55);
   --fg-muted:        oklch(16% 0.03 55 / 0.42);
   --fg-placeholder:  oklch(16% 0.03 55 / 0.26);
-  --border:          oklch(16% 0.03 55 / 0.09);
-  --border-focus:    oklch(16% 0.03 55 / 0.2);
+  --border:          oklch(16% 0.03 55 / 0.11);
+  --border-focus:    oklch(16% 0.03 55 / 0.25);
+  --border-rule:     oklch(16% 0.03 55 / 0.18);
   --accent:          oklch(52% 0.13 55);
   --accent-light:    oklch(60% 0.13 55);
   --accent-soft:     oklch(52% 0.13 55 / 0.1);
@@ -63,8 +64,9 @@ html.theme-dark {
   --fg:              oklch(91% 0.022 76);
   --fg-muted:        oklch(91% 0.022 76 / 0.42);
   --fg-placeholder:  oklch(91% 0.022 76 / 0.25);
-  --border:          oklch(91% 0.022 76 / 0.07);
-  --border-focus:    oklch(91% 0.022 76 / 0.18);
+  --border:          oklch(91% 0.022 76 / 0.11);
+  --border-focus:    oklch(91% 0.022 76 / 0.24);
+  --border-rule:     oklch(91% 0.022 76 / 0.20);
   --accent:          oklch(68% 0.13 58);
   --accent-light:    oklch(75% 0.13 60);
   --accent-soft:     oklch(68% 0.13 58 / 0.12);
@@ -105,8 +107,9 @@ html.theme-sepia {
   --fg:              oklch(22% 0.04 60);
   --fg-muted:        oklch(22% 0.04 60 / 0.45);
   --fg-placeholder:  oklch(22% 0.04 60 / 0.28);
-  --border:          oklch(22% 0.04 60 / 0.1);
-  --border-focus:    oklch(22% 0.04 60 / 0.22);
+  --border:          oklch(22% 0.04 60 / 0.12);
+  --border-focus:    oklch(22% 0.04 60 / 0.26);
+  --border-rule:     oklch(22% 0.04 60 / 0.22);
   --accent:          oklch(48% 0.14 42);
   --accent-light:    oklch(56% 0.14 44);
   --accent-soft:     oklch(48% 0.14 42 / 0.12);
@@ -148,8 +151,9 @@ html.theme-sepia {
     --fg:              oklch(91% 0.022 76);
     --fg-muted:        oklch(91% 0.022 76 / 0.42);
     --fg-placeholder:  oklch(91% 0.022 76 / 0.25);
-    --border:          oklch(91% 0.022 76 / 0.07);
-    --border-focus:    oklch(91% 0.022 76 / 0.18);
+    --border:          oklch(91% 0.022 76 / 0.11);
+    --border-focus:    oklch(91% 0.022 76 / 0.24);
+    --border-rule:     oklch(91% 0.022 76 / 0.20);
     --accent:          oklch(68% 0.13 58);
     --accent-light:    oklch(75% 0.13 60);
     --accent-soft:     oklch(68% 0.13 58 / 0.12);

@@ -139,11 +139,11 @@ export default function CalendarView({ initialDate, entryVersion }: { initialDat
           </div>
 
           {/* Weekday headers */}
-          <div className="grid grid-cols-7 gap-1.5">
+          <div className="grid grid-cols-7 gap-2">
             {DAYS.map((d) => (
               <div
                 key={d}
-                className="flex items-center justify-center py-1 font-sans text-[10px] font-medium uppercase tracking-wider"
+                className="flex items-center justify-center py-1.5 font-sans text-[11px] font-medium uppercase tracking-wider"
                 style={{ color: "var(--fg-muted)" }}
               >
                 {d}
@@ -157,8 +157,8 @@ export default function CalendarView({ initialDate, entryVersion }: { initialDat
 
       {/* Calendar grid — extra padding-bottom so btn shadows aren't clipped */}
       <div
-        className="grid grid-cols-7 gap-1.5 pb-2"
-        style={{ gridAutoRows: "clamp(34px, min(7vw, 9vh), 52px)" }}
+        className="grid grid-cols-7 gap-2 pb-2"
+        style={{ gridAutoRows: "clamp(44px, min(9.5vw, 11vh), 64px)" }}
       >
         {cells.map((day, i) => {
           if (day === null) return <div key={`empty-${i}`} />;

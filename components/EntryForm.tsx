@@ -214,7 +214,7 @@ export default function EntryForm({ onSaved }: Props) {
             minHeight: "clamp(5rem, 16dvh, 11rem)",
             padding: "0",
             backgroundImage:
-              "repeating-linear-gradient(to bottom, transparent, transparent calc(1.625em - 1px), var(--border) calc(1.625em - 1px), var(--border) 1.625em)",
+              "repeating-linear-gradient(to bottom, transparent, transparent calc(1.625em - 1px), var(--border-rule) calc(1.625em - 1px), var(--border-rule) 1.625em)",
             backgroundAttachment: "local",
             backgroundPositionY: "0px",
           }}
@@ -293,7 +293,7 @@ export default function EntryForm({ onSaved }: Props) {
             </div>
 
             {/* Source */}
-            <div style={{ borderBottom: "1px solid var(--border)" }}>
+            <div style={{ borderBottom: "1.5px solid var(--border-rule)" }}>
               <input
                 type="text"
                 value={source}
@@ -306,7 +306,7 @@ export default function EntryForm({ onSaved }: Props) {
 
             {/* Lernort — compact chip strip, only shown when chips are configured */}
             {(settings.contextSources ?? []).length > 0 && (
-              <div className="flex flex-wrap gap-1 py-1.5" style={{ borderBottom: "1px solid var(--border)" }}>
+              <div className="flex flex-wrap gap-1 py-1.5" style={{ borderBottom: "1.5px solid var(--border-rule)" }}>
                 {(settings.contextSources ?? []).map((ctx) => (
                   <button
                     key={ctx}
@@ -327,7 +327,7 @@ export default function EntryForm({ onSaved }: Props) {
             )}
 
             {/* Stake */}
-            <div style={{ borderBottom: "1px solid var(--border)" }}>
+            <div style={{ borderBottom: "1.5px solid var(--border-rule)" }}>
               <input
                 type="text"
                 value={stake}
