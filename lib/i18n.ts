@@ -179,6 +179,8 @@ export interface Translations {
   swUpdateReload: string;
 
   defaultViewLabel: string;
+  autoLockLabel: string;
+  autoLockNever: string;
   customTypesLabel: string;
   customTypesPlaceholder: string;
   customTypesEmpty: string;
@@ -384,6 +386,8 @@ const de: Translations = {
   swUpdateReload: "Neu laden",
 
   defaultViewLabel: "Standard-Ansicht",
+  autoLockLabel: "Auto-Sperre",
+  autoLockNever: "Nie",
   customTypesLabel: "Eigene Typen",
   customTypesPlaceholder: "Neuer Typ…",
   customTypesEmpty: "Noch keine eigenen Typen.",
@@ -585,6 +589,8 @@ const en: Translations = {
   swUpdateReload: "Reload",
 
   defaultViewLabel: "Default view",
+  autoLockLabel: "Auto-lock",
+  autoLockNever: "Never",
   customTypesLabel: "Custom types",
   customTypesPlaceholder: "New type…",
   customTypesEmpty: "No custom types yet.",

@@ -324,6 +324,18 @@ export default function SettingsModal({ onClose }: Props) {
               onChange={(v) => update({ defaultView: v })}
             />
           </Field>
+          <Field label={t.autoLockLabel}>
+            <SegmentedControl<string>
+              value={String(settings.autoLockAfter)}
+              options={[
+                { value: "5",  label: "5 min" },
+                { value: "15", label: "15 min" },
+                { value: "30", label: "30 min" },
+                { value: "0",  label: t.autoLockNever },
+              ]}
+              onChange={(v) => update({ autoLockAfter: Number(v) })}
+            />
+          </Field>
           <Field label={t.customTypesLabel}>
             <div className="flex gap-2">
               <input
