@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { isAuthenticated, logout } from "@/lib/auth";
-import { SettingsProvider } from "@/lib/settings-context";
+import { SettingsProvider, useSettings } from "@/lib/settings-context";
 import { useSyncStatus } from "@/lib/use-sync-status";
 import { getLastSynced, subscribeLastSynced } from "@/lib/db";
+import { useIdleTimeout } from "@/lib/use-idle-timeout";
 import { useConflictCount } from "@/lib/use-conflict-count";
 import { useT } from "@/lib/i18n";
 import JournalView from "./JournalView";
@@ -145,7 +146,10 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
   const [scrolled, setScrolled] = useState(false);
   const conflictCount = useConflictCount();
   const { canInstall, install } = useInstallPrompt();
+  const { settings } = useSettings();
   const t = useT();
+
+  useIdleTimeout(settings.autoLockAfter, () => { logout(); onLock(); });
   const mainRef = useRef<HTMLElement>(null);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);

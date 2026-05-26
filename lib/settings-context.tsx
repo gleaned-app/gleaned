@@ -18,6 +18,7 @@ export interface AppSettings {
   defaultView: AppView;
   customEntryTypes: string[];
   contextSources: string[];
+  autoLockAfter: number; // minutes; 0 = never
 }
 
 const CONTEXT_DEFAULTS: Record<"de" | "en", string[]> = {
@@ -38,6 +39,7 @@ export const DEFAULTS: AppSettings = {
   defaultView: "journal",
   customEntryTypes: [],
   contextSources: [],
+  autoLockAfter: 15,
 };
 
 const FONT_MAP: Record<BodyFont, string> = {
@@ -140,6 +142,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         defaultView: (s?.defaultView as AppView | undefined) ?? DEFAULTS.defaultView,
         customEntryTypes: s?.customEntryTypes ?? [],
         contextSources: s?.contextSources ?? CONTEXT_DEFAULTS[s?.language ?? DEFAULTS.language] ?? CONTEXT_DEFAULTS[DEFAULTS.language],
+        autoLockAfter: (s as { autoLockAfter?: number })?.autoLockAfter ?? DEFAULTS.autoLockAfter,
       };
       setSettings(next);
       applyTheme(next.theme);
