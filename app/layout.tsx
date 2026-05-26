@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Lora, DM_Sans, Playfair_Display, Caveat } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 
 const lora = Lora({
@@ -57,9 +56,11 @@ export default function RootLayout({
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
         <link rel="apple-touch-icon" href="/icon-apple.png" />
-        {/* Apply theme/font/lang before React hydrates to prevent flash */}
-        <Script id="gleaned-init" strategy="beforeInteractive" src="/init.js" />
-        <Script id="gleaned-sw" strategy="afterInteractive" src="/sw-register.js" />
+        {/* Inline script runs synchronously before first paint — prevents FOUC.
+            strategy="beforeInteractive" with src in App Router does NOT inline;
+            it pushes to __next_s queue which runs after hydration. */}
+        <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem("gleaned-theme")||"system",pd=window.matchMedia("(prefers-color-scheme:dark)").matches;if(t!=="system")document.documentElement.classList.add("theme-"+t);else if(pd)document.documentElement.classList.add("theme-dark");var f=localStorage.getItem("gleaned-font")||"sans",fm={sans:"var(--font-dm-sans),ui-sans-serif,system-ui,sans-serif",serif:"var(--font-lora),Georgia,serif",playfair:"var(--font-playfair),Georgia,serif",handwriting:"var(--font-caveat),cursive"};document.documentElement.style.setProperty("--font-body",fm[f]||fm.sans);document.documentElement.lang=localStorage.getItem("gleaned-lang")||"de";var tc={light:"#F3EDE3",dark:"#15100C",sepia:"#DDD0A8"},eff=t==="system"?(pd?"dark":null):t;if(eff&&tc[eff]){var m=document.createElement("meta");m.name="theme-color";m.content=tc[eff];m.dataset.dynamic="true";document.head.appendChild(m)}}catch(e){}` }} />
+        <script src="/sw-register.js" async />
       </head>
       <body>{children}</body>
     </html>
