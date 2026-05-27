@@ -1,4 +1,4 @@
-const CACHE = "gleaned-v4";
+const CACHE = "gleaned-v5";
 
 let swLang = "en";
 
@@ -41,10 +41,14 @@ self.addEventListener("fetch", (e) => {
 
   const url = new URL(request.url);
 
-  // Navigation (HTML page): network-first, fallback to cached "/"
+  // Navigation (HTML page): network-first, fallback to cached "/".
+  // { cache: 'no-store' } bypasses the browser's HTTP cache so we always get
+  // the latest HTML even when the server hasn't set Cache-Control headers on it.
+  // Without this, Chrome can serve a heuristically-cached old HTML that references
+  // old content-hashed chunk filenames → those chunks 404 → blank page.
   if (request.mode === "navigate") {
     e.respondWith(
-      fetch(request)
+      fetch(request, { cache: "no-store" })
         .then((r) => {
           if (r.ok) caches.open(CACHE).then((c) => c.put(request, r.clone()));
           return r;
