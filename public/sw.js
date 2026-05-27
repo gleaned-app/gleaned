@@ -1,7 +1,7 @@
 // Bump this on every deploy. Each new version triggers a full cache wipe in
 // the activate handler below, eliminating any chance that old content-hashed
 // chunks linger after a deployment.
-const CACHE = "gleaned-v7";
+const CACHE = "gleaned-v8";
 
 let swLang = "en";
 
@@ -129,7 +129,7 @@ self.addEventListener("fetch", (e) => {
       const fetchPromise = fetch(request).then((r) => {
         if (r.ok) cache.put(request, r.clone());
         return r;
-      }).catch(() => cached);
+      }).catch(() => cached ?? new Response("", { status: 503 }));
       return cached ?? fetchPromise;
     })
   );
