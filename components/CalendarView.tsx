@@ -110,7 +110,7 @@ export default function CalendarView({ initialDate, entryVersion }: { initialDat
           <div className="mb-3 flex items-center justify-between gap-3">
             <button
               onClick={prev}
-              className="btn-3d flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl"
+              className="btn-3d flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl"
               style={{ color: "var(--fg-muted)" }}
               aria-label={t.prevMonth}
             >
@@ -128,7 +128,7 @@ export default function CalendarView({ initialDate, entryVersion }: { initialDat
 
             <button
               onClick={next}
-              className="btn-3d flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl"
+              className="btn-3d flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl"
               style={{ color: "var(--fg-muted)" }}
               aria-label={t.nextMonth}
             >
@@ -139,7 +139,7 @@ export default function CalendarView({ initialDate, entryVersion }: { initialDat
           </div>
 
           {/* Weekday headers */}
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
             {DAYS.map((d) => (
               <div
                 key={d}
@@ -157,8 +157,8 @@ export default function CalendarView({ initialDate, entryVersion }: { initialDat
 
       {/* Calendar grid — extra padding-bottom so btn shadows aren't clipped */}
       <div
-        className="grid grid-cols-7 gap-2 pb-2"
-        style={{ gridAutoRows: "clamp(44px, min(9.5vw, 11vh), 64px)" }}
+        className="grid grid-cols-7 gap-1.5 pb-2 sm:gap-2"
+        style={{ gridAutoRows: "clamp(46px, min(10vw, 11.5vh), 68px)" }}
       >
         {cells.map((day, i) => {
           if (day === null) return <div key={`empty-${i}`} />;

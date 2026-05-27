@@ -319,7 +319,7 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
           )}
           <button
             onClick={() => setShowSearch(true)}
-            className="btn-3d flex h-8 w-8 items-center justify-center rounded-full"
+            className="btn-3d flex h-10 w-10 items-center justify-center rounded-full"
             style={{ color: "var(--fg-muted)" }}
             aria-label={t.search}
           >
