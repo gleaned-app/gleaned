@@ -59,7 +59,7 @@ export default function BottomNav({ current, onChange, reviewCount = 0 }: Props)
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50"
+      className="fixed bottom-0 left-0 right-0 z-50 flex justify-center"
       style={{
         paddingBottom: "max(10px, env(safe-area-inset-bottom))",
         paddingTop: "8px",
@@ -67,9 +67,9 @@ export default function BottomNav({ current, onChange, reviewCount = 0 }: Props)
         pointerEvents: "none",
       }}
     >
-      {/* Full-width liquid glass island — buttons spread evenly across the bar */}
+      {/* Full-width on mobile, compact centered pill on desktop */}
       <div
-        className="relative flex items-stretch"
+        className="relative flex w-full items-stretch sm:w-auto sm:min-w-[360px]"
         style={{
           pointerEvents: "auto",
           background: "color-mix(in oklch, var(--bg-glass) 60%, transparent)",
@@ -107,7 +107,7 @@ export default function BottomNav({ current, onChange, reviewCount = 0 }: Props)
               key={tab.id}
               data-active={active}
               onClick={() => { haptic(); onChange(tab.id); }}
-              className="btn-3d relative z-10 flex flex-1 flex-col items-center justify-center gap-1.5 rounded-[22px] py-3 sm:gap-1 sm:py-2 font-sans"
+              className="btn-3d relative z-10 flex flex-1 flex-col items-center justify-center gap-1.5 rounded-[22px] py-3 sm:gap-0.5 sm:py-1.5 font-sans"
               style={{ color: active ? "var(--accent)" : "var(--fg-muted)" }}
             >
               <span className="relative">
