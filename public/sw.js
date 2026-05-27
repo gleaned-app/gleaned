@@ -1,13 +1,16 @@
-const CACHE = "gleaned-v6";
+// Bump this on every deploy. Each new version triggers a full cache wipe in
+// the activate handler below, eliminating any chance that old content-hashed
+// chunks linger after a deployment.
+const CACHE = "gleaned-v7";
 
 let swLang = "en";
 
-// "/" is intentionally NOT pre-cached during install.
-// caches.addAll() uses the browser's HTTP cache, which can return stale HTML
-// after a new deployment. Stale HTML references old content-hashed chunk URLs
-// that no longer exist on the server → 404 → blank page in Chrome/Edge.
-// The navigation fetch handler below uses { cache: 'no-store' } and stores the
-// response itself, so "/" is always fresh and the offline fallback still works.
+// Only static, content-stable assets here. The HTML page ("/") is intentionally
+// NEVER cached during install — caches.addAll() goes through the browser's HTTP
+// cache and would happily store a stale heuristically-cached HTML, which then
+// references content-hashed chunk URLs that no longer exist on the server →
+// 404 → blank page. The navigation handler below uses cache: "no-store" and
+// does not write the response back to the cache, so the HTML is always fresh.
 const APP_SHELL = [
   "/manifest.json",
   "/icon-192.png",
@@ -39,6 +42,25 @@ self.addEventListener("activate", (e) => {
   self.clients.claim();
 });
 
+// ── Self-heal: when a deployed HTML references chunks that no longer exist on
+// the server (mismatched build, partial deploy, browser-cached HTML, etc.) the
+// resulting 404 leaves the page blank. Detect that case here and tell every
+// open client to wipe its caches and reload exactly once.
+let healing = false;
+async function selfHeal() {
+  if (healing) return;
+  healing = true;
+  try {
+    const keys = await caches.keys();
+    await Promise.all(keys.map((k) => caches.delete(k)));
+    const list = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const c of list) c.postMessage({ type: "SW_RELOAD_FOR_RECOVERY" });
+  } finally {
+    // Allow another heal attempt later if things are still broken after reload.
+    setTimeout(() => { healing = false; }, 30_000);
+  }
+}
+
 // ── Fetch strategy ───────────────────────────────────────────────────────────
 self.addEventListener("fetch", (e) => {
   const { request } = e;
@@ -46,36 +68,44 @@ self.addEventListener("fetch", (e) => {
 
   const url = new URL(request.url);
 
-  // Navigation (HTML page): network-first, fallback to cached "/".
-  // { cache: 'no-store' } bypasses the browser's HTTP cache so we always get
-  // the latest HTML even when the server hasn't set Cache-Control headers on it.
-  // Without this, Chrome can serve a heuristically-cached old HTML that references
-  // old content-hashed chunk filenames → those chunks 404 → blank page.
+  // Navigation (HTML page): network-only with cache: "no-store" so the browser's
+  // HTTP cache can't return a heuristically-cached old HTML. We deliberately do
+  // NOT write the response into the SW cache — caching HTML across deploys is
+  // exactly how stale chunk references end up haunting users for hours.
   if (request.mode === "navigate") {
     e.respondWith(
-      fetch(request, { cache: "no-store" })
-        .then((r) => {
-          // Clone synchronously before returning r — once the browser starts
-          // reading r's body the clone() call inside caches.open().then() would
-          // throw "Response body is already used".
-          if (r.ok) { const clone = r.clone(); caches.open(CACHE).then((c) => c.put(request, clone)); }
-          return r;
-        })
-        .catch(() => caches.match("/"))
+      fetch(request, { cache: "no-store" }).catch(() => {
+        // Last-resort offline page: a bare 503. We avoid serving stale HTML on
+        // purpose; the user can hit reload once they're back online.
+        return new Response(
+          "<!doctype html><meta charset=utf-8><title>Offline</title>" +
+          "<p style=font:16px/1.5 system-ui;padding:2rem>" +
+          "Offline — please reconnect and reload.</p>",
+          { status: 503, headers: { "Content-Type": "text/html; charset=utf-8" } }
+        );
+      })
     );
     return;
   }
 
   if (url.origin !== self.location.origin) return;
 
-  // Next.js immutable chunks (content-hashed): cache-first, never stale
+  // Next.js immutable chunks (content-hashed): cache-first. If the network
+  // returns 404, the chunk is permanently gone — trigger a self-heal so every
+  // open tab wipes caches and reloads. Without this the page stays blank
+  // forever even after the deploy completes.
   if (url.pathname.startsWith("/_next/static/")) {
     e.respondWith(
       caches.open(CACHE).then(async (cache) => {
         const cached = await cache.match(request);
         if (cached) return cached;
         const res = await fetch(request);
-        if (res.ok) cache.put(request, res.clone());
+        if (res.ok) {
+          cache.put(request, res.clone());
+        } else if (res.status === 404) {
+          // Stale HTML is referencing a chunk that no longer exists. Heal.
+          selfHeal();
+        }
         return res;
       })
     );
