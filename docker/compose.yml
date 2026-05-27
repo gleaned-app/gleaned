@@ -3,22 +3,16 @@ services:
     image: ghcr.io/gleaned-app/gleaned:latest
     restart: unless-stopped
     ports:
-      - "3000:80"
-    depends_on:
-      couchdb:
-        condition: service_healthy
+      - "3000:3000"
     environment:
-      COUCHDB_USER: ${COUCHDB_USER:-admin}
-      # GLEANED_SYNC_URL: not set — app derives it from window.location.origin/db/gleaned
+      DB_PATH: /data/gleaned.db
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+    volumes:
+      - gleaned_data:/data
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    cap_add:
-      - NET_BIND_SERVICE
-      - SETUID
-      - SETGID
-      - CHOWN
 
   pusher:
     image: ghcr.io/gleaned-app/gleaned-pusher:latest
@@ -31,6 +25,7 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@gleaned.local}
+      # TODO(Phase 6): remove COUCHDB_URL after CouchDB is removed
       COUCHDB_URL: http://${COUCHDB_USER:-admin}:${COUCHDB_PASSWORD:-changeme}@couchdb:5984
       PUSH_HOUR: ${PUSH_HOUR:-20}
       PUSH_MINUTE: ${PUSH_MINUTE:-0}
@@ -46,6 +41,7 @@ services:
       timeout: 5s
       retries: 5
 
+  # TODO(Phase 6): remove couchdb and couchdb-init after data migration is verified
   couchdb:
     image: couchdb:3
     restart: unless-stopped
@@ -64,6 +60,7 @@ services:
       retries: 10
       start_period: 15s
 
+  # TODO(Phase 6): remove after CouchDB is removed
   couchdb-init:
     image: couchdb:3
     restart: "no"
@@ -75,4 +72,5 @@ services:
         condition: service_healthy
 
 volumes:
+  gleaned_data:
   couchdb_data:

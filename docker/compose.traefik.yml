@@ -8,9 +8,6 @@
 # Usage:
 #   docker compose -f docker/compose.traefik.yml pull
 #   docker compose -f docker/compose.traefik.yml up -d
-#
-# CouchDB is NOT exposed to the internet — nginx inside the app container
-# proxies /db/ to CouchDB internally. Sync URL: https://${DOMAIN}/db/gleaned
 
 # Pin the Compose project name so the stack is identified the same way no
 # matter which directory `docker compose` is invoked from. Without this,
@@ -25,21 +22,15 @@ services:
   app:
     image: ghcr.io/gleaned-app/gleaned:latest
     restart: unless-stopped
-    depends_on:
-      couchdb:
-        condition: service_healthy
     environment:
-      COUCHDB_USER: ${COUCHDB_USER:-admin}
-      GLEANED_SYNC_URL: https://${DOMAIN}/db/gleaned
+      DB_PATH: /data/gleaned.db
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+    volumes:
+      - gleaned_data:/data
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    cap_add:
-      - NET_BIND_SERVICE
-      - SETUID
-      - SETGID
-      - CHOWN
     networks:
       - traefik
       - internal
@@ -50,7 +41,7 @@ services:
       - "traefik.http.routers.gleaned.rule=Host(`${DOMAIN}`)"
       - "traefik.http.routers.gleaned.entrypoints=websecure"
       - "traefik.http.routers.gleaned.tls.certresolver=${CERT_RESOLVER:-letsencrypt}"
-      - "traefik.http.services.gleaned.loadbalancer.server.port=80"
+      - "traefik.http.services.gleaned.loadbalancer.server.port=3000"
       # www → non-www redirect
       - "traefik.http.routers.gleaned-www.rule=Host(`www.${DOMAIN}`)"
       - "traefik.http.routers.gleaned-www.entrypoints=websecure"
@@ -71,6 +62,7 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@${DOMAIN}}
+      # TODO(Phase 6): remove COUCHDB_URL after CouchDB is removed
       COUCHDB_URL: http://${COUCHDB_USER:-admin}:${COUCHDB_PASSWORD:-changeme}@couchdb:5984
       PUSH_HOUR: ${PUSH_HOUR:-20}
       PUSH_MINUTE: ${PUSH_MINUTE:-0}
@@ -88,6 +80,7 @@ services:
     networks:
       - internal
 
+  # TODO(Phase 6): remove couchdb and couchdb-init after data migration is verified
   couchdb:
     image: couchdb:3
     restart: unless-stopped
@@ -106,6 +99,7 @@ services:
     networks:
       - internal
 
+  # TODO(Phase 6): remove after CouchDB is removed
   couchdb-init:
     image: couchdb:3
     restart: "no"
@@ -118,6 +112,19 @@ services:
     networks:
       - internal
 
+  # Backup sidecar: runs nightly, safe under concurrent writes.
+  # Uncomment and adjust BACKUP_DIR to enable automated SQLite backups.
+  #
+  # backup:
+  #   image: keinos/sqlite3:latest
+  #   restart: unless-stopped
+  #   volumes:
+  #     - gleaned_data:/data:ro
+  #     - /path/to/backups:/backups
+  #   entrypoint: ["sh", "-c"]
+  #   command:
+  #     - 'while true; do sqlite3 /data/gleaned.db "VACUUM INTO /backups/gleaned-$(date +%Y%m%d).db"; sleep 86400; done'
+
 networks:
   traefik:
     external: true
@@ -126,4 +133,5 @@ networks:
     internal: true
 
 volumes:
+  gleaned_data:
   couchdb_data:
