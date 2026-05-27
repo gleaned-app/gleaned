@@ -50,7 +50,10 @@ self.addEventListener("fetch", (e) => {
     e.respondWith(
       fetch(request, { cache: "no-store" })
         .then((r) => {
-          if (r.ok) caches.open(CACHE).then((c) => c.put(request, r.clone()));
+          // Clone synchronously before returning r — once the browser starts
+          // reading r's body the clone() call inside caches.open().then() would
+          // throw "Response body is already used".
+          if (r.ok) { const clone = r.clone(); caches.open(CACHE).then((c) => c.put(request, clone)); }
           return r;
         })
         .catch(() => caches.match("/"))
