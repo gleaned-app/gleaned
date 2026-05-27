@@ -1,9 +1,14 @@
-const CACHE = "gleaned-v5";
+const CACHE = "gleaned-v6";
 
 let swLang = "en";
 
+// "/" is intentionally NOT pre-cached during install.
+// caches.addAll() uses the browser's HTTP cache, which can return stale HTML
+// after a new deployment. Stale HTML references old content-hashed chunk URLs
+// that no longer exist on the server → 404 → blank page in Chrome/Edge.
+// The navigation fetch handler below uses { cache: 'no-store' } and stores the
+// response itself, so "/" is always fresh and the offline fallback still works.
 const APP_SHELL = [
-  "/",
   "/manifest.json",
   "/icon-192.png",
   "/icon-512.png",
@@ -11,7 +16,7 @@ const APP_SHELL = [
   "/icon-apple.png",
 ];
 
-// ── Install: pre-cache app shell (wait for explicit skipWaiting from app) ───
+// ── Install: pre-cache static assets (icons, manifest — not the HTML page) ──
 self.addEventListener("install", (e) => {
   e.waitUntil(
     caches.open(CACHE).then((c) => c.addAll(APP_SHELL))
