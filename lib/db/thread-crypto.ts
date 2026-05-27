@@ -1,5 +1,5 @@
 import type { Thread } from "@/types/thread";
-import { loadKey, encryptText, decryptText } from "../crypto";
+import { loadKey, encryptText, decryptText, bytesToBase64 } from "../crypto";
 
 /* @internal — exported for unit tests only */
 export async function encryptThread(
@@ -36,4 +36,57 @@ export async function decryptThread(thread: Thread): Promise<Thread> {
 /* @internal */
 export function withoutPlaintext(thread: Thread): Thread {
   return thread.encrypted ? { ...thread, text: "" } : thread;
+}
+
+// ─── API crypto (SQLite wire format) ─────────────────────────────────────────
+
+// Wire format returned by the threads API (same shape for request body and response).
+export interface ThreadApiRow {
+  id: string;
+  done: number; // 0 or 1
+  due_date: string | null;
+  color: string | null;
+  created_at: string;
+  updated_at: string;
+  data_enc: string; // base64: encryptText output (IV || ciphertext, base64-encoded)
+}
+
+export async function encryptThreadToApi(
+  thread: Omit<Thread, "_rev" | "encrypted" | "textEnc">,
+): Promise<ThreadApiRow> {
+  const key = await loadKey();
+  const json = JSON.stringify({ text: thread.text });
+  const data_enc = key
+    ? await encryptText(key, json)
+    : bytesToBase64(new TextEncoder().encode(json));
+  return {
+    id: thread._id,
+    done: thread.done ? 1 : 0,
+    due_date: thread.dueDate ?? null,
+    color: thread.color ?? null,
+    created_at: thread.createdAt,
+    updated_at: new Date().toISOString(),
+    data_enc,
+  };
+}
+
+export async function decryptThreadFromRow(row: ThreadApiRow): Promise<Thread> {
+  const key = await loadKey();
+  let text = "";
+  try {
+    const json = key
+      ? await decryptText(key, row.data_enc)
+      : new TextDecoder().decode(Uint8Array.from(atob(row.data_enc), (c) => c.charCodeAt(0)));
+    const payload = JSON.parse(json) as { text?: string };
+    text = payload.text ?? "";
+  } catch {}
+  return {
+    _id: row.id,
+    type: "thread",
+    text,
+    done: row.done !== 0,
+    createdAt: row.created_at,
+    ...(row.due_date ? { dueDate: row.due_date } : {}),
+    ...(row.color    ? { color:   row.color    } : {}),
+  };
 }

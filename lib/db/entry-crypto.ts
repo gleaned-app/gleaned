@@ -1,4 +1,4 @@
-import type { Entry, Attachment } from "@/types/entry";
+import type { Entry, Attachment, ReviewEvent } from "@/types/entry";
 import { loadKey, encryptText, decryptText, encryptBytes, decryptBytes, bytesToBase64 } from "../crypto";
 
 // Only attachment metadata (no binary data) goes into the encrypted JSON payload.
@@ -112,4 +112,102 @@ export async function decryptEntry(entry: Entry): Promise<Entry> {
   } catch {
     return entry;
   }
+}
+
+// ─── API crypto (SQLite wire format) ─────────────────────────────────────────
+
+// Extended payload for SQLite storage: all metadata encrypted (no plaintext
+// metadata columns in SQLite — only id/date/created_at/updated_at/next_review/
+// review_interval remain as plaintext columns).
+export interface ApiEncPayload {
+  content: string;
+  tags: string[];
+  attachments?: Attachment[]; // includes data URLs for binary attachments
+  source?: string;
+  stake?: string;
+  gap?: string;
+  entryType?: string;
+  context?: string;
+  gapStatus?: string;
+  lastReviewOutcome?: string;
+  reviewHistory?: ReviewEvent[];
+  stability?: number;
+  difficulty?: number;
+}
+
+// Wire format returned by the entries API (same shape for request body and response).
+export interface ApiEntryRow {
+  id: string;
+  date: string;
+  created_at: string;
+  updated_at: string;
+  next_review: string | null;
+  review_interval: number | null;
+  data_enc: string; // base64: encryptText output (IV || ciphertext, base64-encoded)
+}
+
+export async function encryptEntryToApi(
+  entry: Omit<Entry, "_rev" | "encrypted" | "enc">,
+): Promise<ApiEntryRow> {
+  const key = await loadKey();
+  const payload: ApiEncPayload = {
+    content: entry.content,
+    tags: entry.tags,
+    ...(entry.attachments?.length ? { attachments: entry.attachments } : {}),
+    ...(entry.source      !== undefined ? { source:      entry.source      } : {}),
+    ...(entry.stake       !== undefined ? { stake:       entry.stake       } : {}),
+    ...(entry.gap         !== undefined ? { gap:         entry.gap         } : {}),
+    ...(entry.entryType   !== undefined ? { entryType:   entry.entryType   } : {}),
+    ...(entry.context     !== undefined ? { context:     entry.context     } : {}),
+    ...(entry.gapStatus   !== undefined ? { gapStatus:   entry.gapStatus   } : {}),
+    ...(entry.lastReviewOutcome !== undefined ? { lastReviewOutcome: entry.lastReviewOutcome } : {}),
+    ...(entry.reviewHistory?.length ? { reviewHistory: entry.reviewHistory } : {}),
+    ...(entry.stability   !== undefined ? { stability:   entry.stability   } : {}),
+    ...(entry.difficulty  !== undefined ? { difficulty:  entry.difficulty  } : {}),
+  };
+  const json = JSON.stringify(payload);
+  const data_enc = key
+    ? await encryptText(key, json)
+    : bytesToBase64(new TextEncoder().encode(json));
+  return {
+    id: entry._id,
+    date: entry.date,
+    created_at: entry.createdAt,
+    updated_at: new Date().toISOString(),
+    next_review: entry.nextReview ?? null,
+    review_interval: entry.reviewInterval ?? null,
+    data_enc,
+  };
+}
+
+export async function decryptEntryFromRow(row: ApiEntryRow): Promise<Entry> {
+  const key = await loadKey();
+  let payload: ApiEncPayload = { content: "", tags: [] };
+  try {
+    const json = key
+      ? await decryptText(key, row.data_enc)
+      : new TextDecoder().decode(Uint8Array.from(atob(row.data_enc), (c) => c.charCodeAt(0)));
+    payload = JSON.parse(json) as ApiEncPayload;
+  } catch {}
+  return {
+    _id: row.id,
+    type: "entry",
+    content: payload.content ?? "",
+    tags: payload.tags ?? [],
+    date: row.date,
+    createdAt: row.created_at,
+    ...(row.next_review    !== null ? { nextReview:    row.next_review    } : {}),
+    ...(row.review_interval !== null ? { reviewInterval: row.review_interval } : {}),
+    ...(payload.attachments?.length ? { attachments: payload.attachments } : {}),
+    ...(payload.source      !== undefined ? { source:      payload.source      } : {}),
+    ...(payload.stake       !== undefined ? { stake:       payload.stake       } : {}),
+    ...(payload.gap         !== undefined ? { gap:         payload.gap         } : {}),
+    ...(payload.entryType   !== undefined ? { entryType:   payload.entryType   } : {}),
+    ...(payload.context     !== undefined ? { context:     payload.context     } : {}),
+    ...(payload.gapStatus   !== undefined ? { gapStatus:   payload.gapStatus as Entry["gapStatus"] } : {}),
+    ...(payload.lastReviewOutcome !== undefined ? { lastReviewOutcome: payload.lastReviewOutcome as Entry["lastReviewOutcome"] } : {}),
+    ...(payload.reviewHistory?.length ? { reviewHistory: payload.reviewHistory } : {}),
+    ...(payload.stability   !== undefined ? { stability:   payload.stability   } : {}),
+    ...(payload.difficulty  !== undefined ? { difficulty:  payload.difficulty  } : {}),
+  };
 }

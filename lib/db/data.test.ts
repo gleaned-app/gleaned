@@ -1,41 +1,50 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { importData } from "./data";
-import { setAuthState, type AnyDoc } from "./client";
+import { importData, exportData } from "./data";
+import { setAuthState } from "./client";
 
-// ─── Mocks ────────────────────────────────────────────────────────────────────
-// data.ts calls getDB() (PouchDB) and encrypt/decrypt helpers.
-// We mock at the module boundary so tests stay fast and offline.
+vi.mock("../api-client", () => ({
+  apiFetch: vi.fn(),
+}));
 
-vi.mock("./client", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("./client")>();
+vi.mock("./entry-crypto", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./entry-crypto")>();
   return {
     ...actual,
-    // getDB returns a minimal PouchDB-shaped object with controllable behaviour.
-    getDB: vi.fn(),
+    encryptEntryToApi: vi.fn(async (e: unknown) => ({
+      id: (e as { _id: string })._id,
+      date: "2024-01-01",
+      created_at: "2024-01-01T00:00:00Z",
+      updated_at: "2024-01-01T00:00:00Z",
+      next_review: null,
+      review_interval: null,
+      data_enc: "base64enc",
+    })),
+    decryptEntryFromRow: vi.fn(async (r: unknown) => r),
   };
 });
 
-vi.mock("./entry-crypto", () => ({
-  encryptEntry: vi.fn(async (doc: unknown) => doc),
-  decryptEntry: vi.fn(async (doc: unknown) => doc),
-}));
-
-vi.mock("./thread-crypto", () => ({
-  encryptThread: vi.fn(async (doc: unknown) => doc),
-  decryptThread: vi.fn(async (doc: unknown) => doc),
-}));
-
-import { getDB } from "./client";
-
-const mockGetDB = vi.mocked(getDB);
-
-// Returns a fresh fake DB for each test — get throws 404 (doc not found) by default.
-function makeFakeDb(overrides: Partial<{ get: (id: string) => Promise<unknown>; put: () => Promise<void> }> = {}) {
+vi.mock("./thread-crypto", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./thread-crypto")>();
   return {
-    get: vi.fn().mockRejectedValue({ status: 404 }),
-    put: vi.fn().mockResolvedValue(undefined),
-    ...overrides,
+    ...actual,
+    encryptThreadToApi: vi.fn(async (t: unknown) => ({
+      id: (t as { _id: string })._id,
+      done: 0,
+      due_date: null,
+      color: null,
+      created_at: "2024-01-01T00:00:00Z",
+      updated_at: "2024-01-01T00:00:00Z",
+      data_enc: "base64enc",
+    })),
+    decryptThreadFromRow: vi.fn(async (r: unknown) => r),
   };
+});
+
+import { apiFetch } from "../api-client";
+const mockApiFetch = vi.mocked(apiFetch);
+
+function makeResponse(body: unknown, status = 200): Response {
+  return { ok: status < 400, status, json: async () => body } as unknown as Response;
 }
 
 beforeEach(() => {
@@ -43,224 +52,130 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-// ─── importData — locked state ────────────────────────────────────────────────
+// ─── exportData ───────────────────────────────────────────────────────────────
 
-describe("importData (auth guard)", () => {
-  it("throws when the DB is locked", async () => {
-    setAuthState("locked");
-    await expect(importData("[]")).rejects.toThrow("gleaned: not authenticated");
+describe("exportData", () => {
+  it("fetches from /api/export and returns formatted JSON", async () => {
+    const payload = { version: 1, exported_at: "2024-01-01T00:00:00Z", entries: [], threads: [] };
+    mockApiFetch.mockResolvedValue(makeResponse(payload));
+
+    const result = await exportData();
+    const parsed = JSON.parse(result);
+
+    expect(mockApiFetch).toHaveBeenCalledWith("/api/export");
+    expect(parsed.version).toBe(1);
+    expect(Array.isArray(parsed.entries)).toBe(true);
   });
 });
 
-// ─── importData — ID / type filtering ────────────────────────────────────────
+// ─── importData — new SQLite format ──────────────────────────────────────────
 
-describe("importData — ID and type validation", () => {
-  beforeEach(() => {
-    mockGetDB.mockResolvedValue(makeFakeDb() as unknown as PouchDB.Database<AnyDoc>);
-  });
-
-  it("skips docs with invalid ID pattern (e.g. gleaned_settings)", async () => {
-    const json = JSON.stringify([
-      { _id: "gleaned_settings", type: "settings" },
-    ]);
-    const result = await importData(json);
-    expect(result.skipped).toBe(1);
-    expect(result.imported).toBe(0);
-  });
-
-  it("skips _design/ docs", async () => {
-    const json = JSON.stringify([{ _id: "_design/idx", type: "entry" }]);
-    const result = await importData(json);
-    expect(result.skipped).toBe(1);
-  });
-
-  it("skips docs with unknown type", async () => {
-    const json = JSON.stringify([{ _id: "entry_1234_abc", type: "unknown" }]);
-    const result = await importData(json);
-    expect(result.skipped).toBe(1);
-  });
-
-  it("skips docs with missing _id", async () => {
-    const json = JSON.stringify([{ type: "entry" }]);
-    const result = await importData(json);
-    expect(result.skipped).toBe(1);
-  });
-
-  it("skips docs that are still encrypted", async () => {
-    const json = JSON.stringify([
-      {
-        _id: "entry_1234_abcde",
-        type: "entry",
-        encrypted: true,
-        enc: "cipher",
-        content: "",
-        tags: [],
-        date: "2026-01-01",
-        createdAt: "2026-01-01T00:00:00.000Z",
-      },
-    ]);
-    const result = await importData(json);
-    expect(result.skipped).toBe(1);
-    expect(result.imported).toBe(0);
-  });
-});
-
-// ─── importData — entry validation ───────────────────────────────────────────
-
-describe("importData — entry field validation", () => {
-  beforeEach(() => {
-    mockGetDB.mockResolvedValue(makeFakeDb() as unknown as PouchDB.Database<AnyDoc>);
-  });
-
-  const validEntry = {
-    _id: "entry_1000_abcde",
-    type: "entry",
-    content: "test content",
-    tags: ["learning"],
-    date: "2026-01-01",
-    createdAt: "2026-01-01T10:00:00.000Z",
-  };
-
-  it("imports a valid entry", async () => {
-    const json = JSON.stringify([validEntry]);
-    const result = await importData(json);
-    expect(result.imported).toBe(1);
-    expect(result.skipped).toBe(0);
-  });
-
-  it("skips entry with missing content", async () => {
-    const json = JSON.stringify([{ ...validEntry, content: undefined }]);
-    const result = await importData(json);
-    expect(result.skipped).toBe(1);
-  });
-
-  it("skips entry with non-array tags", async () => {
-    const json = JSON.stringify([{ ...validEntry, tags: "learning" }]);
-    const result = await importData(json);
-    expect(result.skipped).toBe(1);
-  });
-
-  it("skips entry with non-string tag element", async () => {
-    const json = JSON.stringify([{ ...validEntry, tags: [1, 2] }]);
-    const result = await importData(json);
-    expect(result.skipped).toBe(1);
-  });
-
-  it("skips entry with invalid date format", async () => {
-    const json = JSON.stringify([{ ...validEntry, date: "01-01-2026" }]);
-    const result = await importData(json);
-    expect(result.skipped).toBe(1);
-  });
-
-  it("skips entry with invalid createdAt", async () => {
-    const json = JSON.stringify([{ ...validEntry, createdAt: "not-a-date" }]);
-    const result = await importData(json);
-    expect(result.skipped).toBe(1);
-  });
-});
-
-// ─── importData — todo validation ─────────────────────────────────────────────
-
-describe("importData — thread field validation", () => {
-  beforeEach(() => {
-    mockGetDB.mockResolvedValue(makeFakeDb() as unknown as PouchDB.Database<AnyDoc>);
-  });
-
-  const validThread = {
-    _id: "thread_2000_zzzzz",
-    type: "thread",
-    text: "follow up on something",
-    done: false,
-    createdAt: "2026-01-01T10:00:00.000Z",
-  };
-
-  it("imports a valid thread", async () => {
-    const json = JSON.stringify([validThread]);
-    const result = await importData(json);
-    expect(result.imported).toBe(1);
-  });
-
-  it("skips thread with non-boolean done", async () => {
-    const json = JSON.stringify([{ ...validThread, done: "false" }]);
-    const result = await importData(json);
-    expect(result.skipped).toBe(1);
-  });
-
-  it("skips thread with invalid dueDate format", async () => {
-    const json = JSON.stringify([{ ...validThread, dueDate: "2026/01/01" }]);
-    const result = await importData(json);
-    expect(result.skipped).toBe(1);
-  });
-
-  it("accepts thread with valid optional dueDate", async () => {
-    const json = JSON.stringify([{ ...validThread, dueDate: "2026-12-31" }]);
-    const result = await importData(json);
-    expect(result.imported).toBe(1);
-  });
-
-  it("skips thread with missing text field", async () => {
-    const json = JSON.stringify([{ ...validThread, text: undefined }]);
-    const result = await importData(json);
-    expect(result.skipped).toBe(1);
-  });
-});
-
-// ─── importData — duplicate / conflict handling ───────────────────────────────
-
-describe("importData — duplicate detection", () => {
-  it("skips docs that already exist in the DB", async () => {
-    const db = makeFakeDb({
-      // get resolves → doc already exists
-      get: vi.fn().mockResolvedValue({ _id: "entry_1000_abcde", _rev: "1-abc" }),
+describe("importData (new SQLite format)", () => {
+  it("passes entries and threads directly to /api/import", async () => {
+    const exportJson = JSON.stringify({
+      version: 1,
+      exported_at: "2024-01-01T00:00:00Z",
+      entries: [{ id: "entry_1_abc", data_enc: "enc" }],
+      threads: [{ id: "thread_1_def", data_enc: "enc" }],
     });
-    mockGetDB.mockResolvedValue(db as unknown as PouchDB.Database<AnyDoc>);
+    mockApiFetch.mockResolvedValue(
+      makeResponse({ imported: { entries: 1, threads: 1 }, skipped: { entries: 0, threads: 0 } }),
+    );
 
-    const json = JSON.stringify([{
-      _id: "entry_1000_abcde",
-      type: "entry",
-      content: "exists",
-      tags: [],
-      date: "2026-01-01",
-      createdAt: "2026-01-01T00:00:00.000Z",
-    }]);
-    const result = await importData(json);
-    expect(result.skipped).toBe(1);
-    expect(result.imported).toBe(0);
-    expect(db.put).not.toHaveBeenCalled();
+    const result = await importData(exportJson);
+
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/api/import",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(result.imported).toBe(2);
+    expect(result.skipped).toBe(0);
   });
 });
 
-// ─── importData — array vs wrapped format ─────────────────────────────────────
+// ─── importData — old PouchDB format ─────────────────────────────────────────
 
-describe("importData — input format variants", () => {
-  beforeEach(() => {
-    mockGetDB.mockResolvedValue(makeFakeDb() as unknown as PouchDB.Database<AnyDoc>);
-  });
+describe("importData (old PouchDB format)", () => {
+  it("re-encrypts and imports valid entry docs", async () => {
+    const exportJson = JSON.stringify({
+      version: 1,
+      docs: [
+        {
+          _id: "entry_1_abc",
+          type: "entry",
+          content: "test content",
+          tags: ["tag1"],
+          date: "2024-01-01",
+          createdAt: "2024-01-01T00:00:00Z",
+        },
+      ],
+    });
+    mockApiFetch.mockResolvedValue(
+      makeResponse({ imported: { entries: 1, threads: 0 }, skipped: { entries: 0, threads: 0 } }),
+    );
 
-  const validEntry = {
-    _id: "entry_3000_aaaaa",
-    type: "entry",
-    content: "wrapped",
-    tags: [],
-    date: "2026-01-01",
-    createdAt: "2026-01-01T00:00:00.000Z",
-  };
+    const result = await importData(exportJson);
 
-  it("accepts a raw array of docs", async () => {
-    const json = JSON.stringify([validEntry]);
-    const result = await importData(json);
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/api/import",
+      expect.objectContaining({ method: "POST" }),
+    );
     expect(result.imported).toBe(1);
   });
 
-  it("accepts the { version, docs } export format", async () => {
-    const json = JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), docs: [validEntry] });
-    const result = await importData(json);
-    expect(result.imported).toBe(1);
-  });
+  it("skips docs with invalid ID patterns", async () => {
+    const exportJson = JSON.stringify({
+      docs: [
+        { _id: "_design/gleaned", type: "entry", content: "x", tags: [], date: "2024-01-01", createdAt: new Date().toISOString() },
+        { _id: "gleaned_settings", type: "settings" },
+      ],
+    });
 
-  it("returns 0/0 for empty docs array", async () => {
-    const result = await importData("[]");
+    const result = await importData(exportJson);
+
+    expect(mockApiFetch).not.toHaveBeenCalled();
+    expect(result.skipped).toBe(2);
     expect(result.imported).toBe(0);
-    expect(result.skipped).toBe(0);
+  });
+
+  it("skips encrypted docs (cannot decrypt without original key)", async () => {
+    const exportJson = JSON.stringify({
+      docs: [
+        { _id: "entry_1_abc", type: "entry", encrypted: true, enc: "ciphertext" },
+      ],
+    });
+
+    const result = await importData(exportJson);
+
+    expect(result.skipped).toBe(1);
+    expect(result.imported).toBe(0);
+  });
+
+  it("skips entries missing required fields", async () => {
+    const exportJson = JSON.stringify({
+      docs: [
+        { _id: "entry_1_abc", type: "entry" },        // missing content, tags, date
+        { _id: "entry_2_def", type: "entry", content: "ok", tags: [], date: "bad-date", createdAt: new Date().toISOString() }, // bad date
+      ],
+    });
+
+    const result = await importData(exportJson);
+
+    expect(result.skipped).toBe(2);
+  });
+
+  it("imports valid thread docs", async () => {
+    const exportJson = JSON.stringify({
+      docs: [
+        { _id: "thread_1_abc", type: "thread", text: "task", done: false, createdAt: new Date().toISOString() },
+      ],
+    });
+    mockApiFetch.mockResolvedValue(
+      makeResponse({ imported: { entries: 0, threads: 1 }, skipped: { entries: 0, threads: 0 } }),
+    );
+
+    const result = await importData(exportJson);
+
+    expect(result.imported).toBe(1);
   });
 });
