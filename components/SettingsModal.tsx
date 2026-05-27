@@ -647,7 +647,7 @@ export default function SettingsModal({ onClose }: Props) {
           <h2 className="font-serif text-xl font-normal" style={{ color: "var(--fg)" }}>
             {t.settingsTitle}
           </h2>
-          <button onClick={handleClose} className="btn-3d flex h-8 w-8 items-center justify-center rounded-full font-sans text-base leading-none" style={{ color: "var(--fg-muted)" }} aria-label={t.close}>×</button>
+          <button onClick={handleClose} className="btn-3d flex h-10 w-10 items-center justify-center rounded-full font-sans text-base leading-none" style={{ color: "var(--fg-muted)" }} aria-label={t.close}>×</button>
         </div>
 
         {/* Body */}

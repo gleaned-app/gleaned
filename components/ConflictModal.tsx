@@ -179,7 +179,7 @@ export default function ConflictModal({ onClose }: Props) {
           </div>
           <button
             onClick={handleClose}
-            className="btn-3d flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full font-sans text-base leading-none"
+            className="btn-3d flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full font-sans text-base leading-none"
             style={{ color: "var(--fg-muted)" }}
             aria-label={t.close}
           >

@@ -404,7 +404,7 @@ export default function EntryForm({ onSaved }: Props) {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="btn-3d flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl font-sans text-xl font-light leading-none"
+          className="btn-3d flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl font-sans text-xl font-light leading-none"
           style={{ color: "var(--accent)" }}
           title={t.attachFile}
         >

@@ -386,7 +386,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
       <div className="absolute right-3 top-3 flex gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
         <button
           onClick={handleEditStart}
-          className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-[var(--accent-soft)]"
+          className="flex h-10 w-10 items-center justify-center rounded-lg transition-colors hover:bg-[var(--accent-soft)]"
           style={{ color: "var(--fg-muted)" }}
           aria-label={t.edit}
         >
@@ -405,7 +405,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
             </button>
             <button
               onClick={() => setPendingDelete(false)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg transition-opacity hover:opacity-60"
+              className="flex h-10 w-10 items-center justify-center rounded-lg transition-opacity hover:opacity-60"
               style={{ color: "var(--fg-muted)" }}
               aria-label={t.cancel}
             >
@@ -415,7 +415,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
         ) : (
           <button
             onClick={() => setPendingDelete(true)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-[oklch(55%_0.18_25/0.1)]"
+            className="flex h-10 w-10 items-center justify-center rounded-lg transition-colors hover:bg-[oklch(55%_0.18_25/0.1)]"
             style={{ color: "var(--fg-muted)" }}
             aria-label={t.delete}
           >

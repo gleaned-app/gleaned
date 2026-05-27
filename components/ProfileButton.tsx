@@ -37,7 +37,7 @@ export default function ProfileButton({ onLock, onSettings }: Props) {
     <div className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="btn-3d flex h-8 w-8 items-center justify-center rounded-full"
+        className="btn-3d flex h-10 w-10 items-center justify-center rounded-full"
         style={{ color: "var(--accent)" }}
         aria-label={t.settings}
       >

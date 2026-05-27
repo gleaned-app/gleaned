@@ -799,7 +799,7 @@ const ThreadItem = memo(function ThreadItem({
                       onUpdateColor(thread, thread.color === c ? undefined : c);
                       setOpenPanel(null);
                     }}
-                    className="h-7 w-7 rounded-full transition-transform hover:scale-110 active:scale-95"
+                    className="h-9 w-9 rounded-full transition-transform hover:scale-110 active:scale-95"
                     style={{
                       background: c,
                       boxShadow:
@@ -816,7 +816,7 @@ const ThreadItem = memo(function ThreadItem({
                       onUpdateColor(thread, undefined);
                       setOpenPanel(null);
                     }}
-                    className="flex h-7 w-7 items-center justify-center rounded-full border transition-opacity hover:opacity-60"
+                    className="flex h-9 w-9 items-center justify-center rounded-full border transition-opacity hover:opacity-60"
                     style={{
                       borderColor: "var(--border-focus)",
                       color: "var(--fg-muted)",
