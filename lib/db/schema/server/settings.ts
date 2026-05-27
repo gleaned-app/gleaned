@@ -3,6 +3,8 @@ import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 export const settings = sqliteTable("settings", {
   id: text("id").primaryKey().default("gleaned_settings"),
   password_verifier: text("password_verifier"),
+  encryption_salt: text("encryption_salt"),
+  encryption_iterations: integer("encryption_iterations").notNull().default(600_000),
   language: text("language").notNull().default("de"),
   week_start: text("week_start").notNull().default("monday"),
   theme: text("theme").notNull().default("system"),

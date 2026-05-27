@@ -149,7 +149,7 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
   const { settings } = useSettings();
   const t = useT();
 
-  useIdleTimeout(settings.autoLockAfter, () => { logout(); onLock(); });
+  useIdleTimeout(settings.autoLockAfter, () => { void logout(); onLock(); });
   const mainRef = useRef<HTMLElement>(null);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
@@ -248,7 +248,7 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "l") {
         e.preventDefault();
-        logout();
+        void logout();
         onLock();
       }
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
