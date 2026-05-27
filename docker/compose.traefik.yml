@@ -12,6 +12,15 @@
 # CouchDB is NOT exposed to the internet — nginx inside the app container
 # proxies /db/ to CouchDB internally. Sync URL: https://${DOMAIN}/db/gleaned
 
+# Pin the Compose project name so the stack is identified the same way no
+# matter which directory `docker compose` is invoked from. Without this,
+# Compose derives the project name from the parent directory, so running
+# `up` from /srv/gleaned/ vs /srv/gleaned/docker/ creates two parallel
+# stacks (project=gleaned and project=docker) — both registered with
+# Traefik under the same Host() rule, which load-balances 50/50 between
+# old and new app containers and yields chunk-404 chaos after deploys.
+name: gleaned
+
 services:
   app:
     image: ghcr.io/gleaned-app/gleaned:latest
