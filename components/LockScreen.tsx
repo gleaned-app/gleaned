@@ -362,19 +362,19 @@ export default function LockScreen({ onAuth }: Props) {
 
   return (
     <div
-      className="relative flex min-h-screen flex-col items-center justify-center overflow-x-hidden overflow-y-auto px-8 py-16"
-      style={{ background: "var(--bg)" }}
+      className="relative overflow-x-hidden overflow-y-auto"
+      style={{ background: "var(--bg)", height: "100dvh" }}
     >
       {/* Canvas — full-screen wheat field */}
       <canvas
         ref={canvasRef}
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none fixed inset-0"
         style={{ zIndex: 0 }}
       />
 
       {/* Radial veil — keeps text readable over field */}
       <div
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none fixed inset-0"
         style={{
           background: "radial-gradient(ellipse 68% 62% at 50% 48%, var(--bg) 28%, transparent 100%)",
           zIndex: 1,
@@ -382,8 +382,9 @@ export default function LockScreen({ onAuth }: Props) {
         aria-hidden
       />
 
-      {/* ── Content ── */}
-      <div className="relative w-full max-w-[480px]" style={{ zIndex: 10 }}>
+      {/* ── Content — centers when space allows, scrolls when keyboard open ── */}
+      <div className="relative flex min-h-full flex-col items-center justify-center px-8 py-16" style={{ zIndex: 10 }}>
+        <div className="w-full max-w-[480px]">
 
         {/* Layer 1 — Wordmark (nearest, moves most) */}
         <div
@@ -880,6 +881,7 @@ export default function LockScreen({ onAuth }: Props) {
           </div>
         </form>
         )}
+        </div>
       </div>
     </div>
   );
