@@ -158,7 +158,10 @@ export default function SettingsModal({ onClose }: Props) {
     if (!url) { setSyncTestStatus("error-unreachable"); return; }
     try {
       const headers: Record<string, string> = {};
-      if (couchdbUser) headers["Authorization"] = "Basic " + btoa(unescape(encodeURIComponent(`${couchdbUser}:${couchdbPass}`)));
+      // Trim username to match basicAuth() in lib/db/sync.ts so a successful Test
+      // guarantees Save will authenticate identically.
+      const userTrimmed = couchdbUser.trim();
+      if (userTrimmed) headers["Authorization"] = "Basic " + btoa(unescape(encodeURIComponent(`${userTrimmed}:${couchdbPass}`)));
       const res = await fetch(url, { method: "GET", headers, signal: AbortSignal.timeout(5000) });
       if (!res.ok) { setSyncTestStatus(res.status === 401 ? "error-auth" : "error-unreachable"); return; }
       const json = await res.json() as Record<string, unknown>;

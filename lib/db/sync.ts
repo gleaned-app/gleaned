@@ -117,15 +117,30 @@ export async function startSync(url: string, username?: string, password?: strin
   }
 
   const db = await getDB();
-  // PouchDB's TypeScript types don't expose ajax.headers on SyncOptions but the
-  // HTTP adapter reads and forwards it for every request including _changes feed.
-  const syncOpts = {
-    live: true,
-    retry: true,
-    ...(Object.keys(headers).length > 0 ? { ajax: { headers } } : {}),
-  } as PouchDB.Replication.SyncOptions;
+
+  // PouchDB 9 dropped the legacy `ajax` adapter; the HTTP adapter only reads
+  // `fetch` / `headers` from the *remote DB constructor* opts, not from
+  // db.sync()'s opts. Passing a bare URL string to db.sync() builds a remote
+  // PouchDB internally with no auth, so every replication request goes out
+  // unauthenticated → 401. Fix: construct the remote DB ourselves with a
+  // fetch override that injects the Authorization header on every request
+  // (initial GET, _changes feed, _bulk_get, _local checkpoints, …).
+  const PouchDB = (await import("pouchdb")).default;
+  const remoteOpts: PouchDB.Configuration.RemoteDatabaseConfiguration =
+    Object.keys(headers).length > 0
+      ? {
+          fetch: (url, opts) => {
+            const init = opts ?? {};
+            const merged = new Headers(init.headers as HeadersInit | undefined);
+            for (const [k, v] of Object.entries(headers)) merged.set(k, v);
+            return PouchDB.fetch(url, { ...init, headers: merged });
+          },
+        }
+      : {};
+  const remote = new PouchDB<AnyDoc>(trimmed, remoteOpts);
+
   _syncHandler = db
-    .sync(trimmed, syncOpts)
+    .sync(remote, { live: true, retry: true })
     .on("active",  () => setSyncStatus("syncing"))
     .on("paused",  (err) => setSyncStatus(err ? "error" : "synced"))
     .on("error",   () => { _validatedKey = null; setSyncStatus("error"); })
