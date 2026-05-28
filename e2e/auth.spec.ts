@@ -4,7 +4,7 @@ import { authenticate, TEST_PASSWORD } from "./helpers";
 test("registers or logs in and shows the main app", async ({ page }) => {
   await authenticate(page);
 
-  await expect(page.locator("nav")).toBeVisible();
+  await expect(page.locator("nav.fixed")).toBeVisible();
   await expect(page.getByRole("button", { name: "Journal" })).toBeVisible();
 });
 
@@ -61,5 +61,5 @@ test("locks and unlocks via the keyboard shortcut", async ({ page }) => {
   await page.locator("input[type='password']").fill(TEST_PASSWORD);
   await page.getByRole("button", { name: "Entsperren" }).click();
 
-  await expect(page.locator("nav")).toBeVisible();
+  await expect(page.locator("nav.fixed")).toBeVisible();
 });

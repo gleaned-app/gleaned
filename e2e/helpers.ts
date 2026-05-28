@@ -35,5 +35,5 @@ export async function authenticate(page: Page): Promise<void> {
     await page.getByRole("button", { name: "Loslegen" }).click();
   }
 
-  await expect(page.locator("nav")).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator("nav.fixed")).toBeVisible({ timeout: 10_000 });
 }

@@ -16,15 +16,5 @@ export function setDbAuthenticated(authenticated: boolean): void {
   if (!authenticated) invalidateSearchCache();
   if (authenticated) {
     migrateThreadsEncryption().catch(() => {});
-    // Phase 5: one-time migration from PouchDB → SQLite (no-op after first run).
-    // Wrapped in its own IIFE + try so a missing pouchdb package is silent.
-    (async () => {
-      try {
-        const { migrateFromPouchDB } = await import("./pouchdb-migration");
-        await migrateFromPouchDB();
-      } catch {
-        // PouchDB package removed or migration error — ignore
-      }
-    })();
   }
 }
