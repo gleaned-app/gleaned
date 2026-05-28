@@ -18,6 +18,18 @@ export async function authenticate(page: Page): Promise<void> {
     return !document.querySelector(".animate-spin");
   }, { timeout: 10_000 });
 
+  // Watch for the first authenticated API response BEFORE triggering login so
+  // we capture responses that fire immediately after the session is established.
+  // In Next.js dev mode, routes are compiled on first access; waiting for a
+  // successful response confirms both the session and route compilation are done.
+  const firstAuthResponse = page.waitForResponse(
+    (r) =>
+      r.url().includes("/api/") &&
+      !r.url().includes("/api/auth/") &&
+      r.status() === 200,
+    { timeout: 20_000 },
+  ).catch(() => null);
+
   const unlockBtn = page.getByRole("button", { name: "Entsperren" });
   const registerChoiceBtn = page.getByRole("button", { name: "Registrieren" }).first();
 
@@ -36,4 +48,9 @@ export async function authenticate(page: Page): Promise<void> {
   }
 
   await expect(page.locator("nav.fixed")).toBeVisible({ timeout: 10_000 });
+
+  // Wait for the app's first successful authenticated data response. This
+  // ensures the session cookie is live and the API routes are fully compiled
+  // before the test makes its own API calls.
+  await firstAuthResponse;
 }
