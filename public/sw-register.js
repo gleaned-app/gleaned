@@ -12,7 +12,7 @@
   navigator.serviceWorker.register("/sw.js").then(function (reg) {
     // Force a check for a new SW on every page load. The browser otherwise
     // only checks every 24h, which can keep an old SW alive far too long.
-    try { reg.update(); } catch (e) { /* ignore */ }
+    try { reg.update(); } catch (_e) { /* ignore */ }
   });
 
   navigator.serviceWorker.addEventListener("message", function (e) {
