@@ -56,8 +56,11 @@ COPY --chown=nextjs:nodejs lib/db/migrations ./lib/db/migrations
 # Docker overlays the named volume on top at container start.
 RUN mkdir -p /data && chown nextjs:nodejs /data
 
+# Enable corepack as root so pnpm symlinks land in /usr/local/bin (requires root).
+RUN corepack enable pnpm
+
 USER nextjs
 EXPOSE 3000
 
-# pnpm prestart runs `drizzle-kit migrate` before `next start`.
-CMD ["sh", "-c", "corepack enable pnpm && pnpm start"]
+# prestart script runs `drizzle-kit migrate` before `next start`.
+CMD ["pnpm", "start"]
