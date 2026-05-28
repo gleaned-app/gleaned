@@ -36,19 +36,6 @@ export interface Translations {
   resetAccountWarning: string;
   tooManyAttempts(secs: number): string;
 
-  // Connect-existing-account flow
-  connectAccount: string;
-  connectPrompt: string;
-  connectCouchdbUrl: string;
-  connectCouchdbUser: string;
-  connectCouchdbPass: string;
-  connectAction: string;
-  connectSuccess: string;
-  connectNotFound: string;
-  connectAuthError: string;
-  connectNetworkError: string;
-  connectOverwriteWarning: string;
-
   // Journal
   filterBack: string;
   noEntriesTag(tag: string): string;
@@ -127,12 +114,6 @@ export interface Translations {
   settings: string;
   lock: string;
   install: string;
-  syncConflicts(n: number): string;
-  syncStatusSyncing: string;
-  syncStatusSynced: string;
-  syncStatusError: string;
-  syncStatusOffline: string;
-  syncLastSynced(time: string): string;
 
   // Settings modal
   settingsTitle: string;
@@ -153,13 +134,6 @@ export interface Translations {
   weekStartLabel: string;
   monday: string;
   sunday: string;
-  syncDesc: string;
-  syncAutoDetected: string;
-  syncTest: string;
-  syncTestOk: string;
-  syncTestFail: string;
-  syncTestAuth: string;
-  syncConnecting: string;
   username: string;
   dbPassword: string;
   exportImport: string;
@@ -212,12 +186,6 @@ export interface Translations {
   searchNoResults: string;
   searchEmpty: string;
 
-  // Conflict modal
-  syncConflict: string;
-  conflictDesc: string;
-  noContent: string;
-  keepThis: string;
-  noConflicts: string;
 }
 
 const de: Translations = {
@@ -249,20 +217,9 @@ const de: Translations = {
   pwStrong: "Stark",
   acceptShortPw: "Kurzes Passwort akzeptieren — ich verstehe das erhöhte Risiko.",
   wrongPassword: "Falsches Passwort.",
-  noLocalAccount: "Kein Konto in diesem Browser. CouchDB-Sync einrichten oder Registrieren.",
+  noLocalAccount: "Kein Konto in diesem Browser.",
   resetAccountWarning: "Achtung: Hiermit wird das bestehende lokale Konto ersetzt. Alle gespeicherten Einträge auf diesem Gerät werden unlesbar.",
   tooManyAttempts: (secs) => `Zu viele Versuche — bitte ${secs}s warten.`,
-  connectAccount: "Gerät verbinden",
-  connectPrompt: "Server-URL und CouchDB-Zugangsdaten eingeben, um den bestehenden Account auf dieses Gerät zu holen.",
-  connectCouchdbUrl: "Server-URL",
-  connectCouchdbUser: "Benutzername",
-  connectCouchdbPass: "CouchDB-Passwort",
-  connectAction: "Verbinden",
-  connectSuccess: "Account gefunden — bitte mit deinem App-Passwort einloggen.",
-  connectNotFound: "Kein gleaned-Account auf diesem Server gefunden.",
-  connectAuthError: "Zugangsdaten falsch.",
-  connectNetworkError: "Server nicht erreichbar.",
-  connectOverwriteWarning: "Lokale Einträge auf diesem Gerät, die noch nicht mit CouchDB synchronisiert wurden, werden unlesbar — der Verschlüsselungsschlüssel ändert sich auch bei gleichem Passwort. Exportiere jetzt deine Daten (Einstellungen → Exportieren), dann kannst du sie nach dem Verbinden wieder importieren.",
 
   filterBack: "zurück",
   noEntriesTag: (tag) => `Keine Einträge für #${tag}`,
@@ -336,12 +293,6 @@ const de: Translations = {
   settings: "Einstellungen",
   lock: "Sperren",
   install: "Installieren",
-  syncConflicts: (n) => `${n} Sync-Konflikt${n !== 1 ? "e" : ""}`,
-  syncStatusSyncing: "Synchronisiert gerade …",
-  syncStatusSynced: "Synchronisiert",
-  syncStatusError: "Synchronisierungsfehler — URL oder Zugangsdaten prüfen",
-  syncStatusOffline: "Kein Netzwerk",
-  syncLastSynced: (time) => `Zuletzt: ${time}`,
 
   settingsTitle: "Einstellungen",
   catAppearance: "Darstellung",
@@ -361,13 +312,6 @@ const de: Translations = {
   weekStartLabel: "Wochenanfang",
   monday: "Montag",
   sunday: "Sonntag",
-  syncDesc: "Jeder Browser hat eine eigene lokale Datenbank. CouchDB synchronisiert sie geräteübergreifend. Bei Docker-Deployment ist die URL immer deine-domain.de/db/gleaned — CouchDB läuft intern, der /db/-Pfad ist der nginx-Proxy.",
-  syncAutoDetected: "Automatisch",
-  syncTest: "Testen",
-  syncTestOk: "Verbunden ✓",
-  syncTestFail: "Nicht erreichbar — CouchDB-CORS prüfen",
-  syncTestAuth: "Zugangsdaten falsch",
-  syncConnecting: "Verbinde…",
   username: "Benutzer",
   dbPassword: "Passwort",
   exportImport: "Export / Import",
@@ -417,11 +361,6 @@ const de: Translations = {
   stakeLabel: "Einsatz",
   gapLabel: "Lücke",
 
-  syncConflict: "Sync-Konflikt",
-  conflictDesc: "Dieser Eintrag wurde auf zwei Geräten offline bearbeitet. Wähle die Version, die gespeichert werden soll.",
-  noContent: "Kein Inhalt",
-  keepThis: "Diese behalten",
-  noConflicts: "Keine Konflikte mehr.",
 };
 
 const en: Translations = {
@@ -453,20 +392,9 @@ const en: Translations = {
   pwStrong: "Strong",
   acceptShortPw: "Accept short password — I understand the increased risk.",
   wrongPassword: "Wrong password.",
-  noLocalAccount: "No account in this browser. Set up CouchDB sync or register.",
+  noLocalAccount: "No account in this browser.",
   resetAccountWarning: "Warning: This will replace the existing local account. All stored entries on this device will become unreadable.",
   tooManyAttempts: (secs) => `Too many attempts — please wait ${secs}s.`,
-  connectAccount: "Connect device",
-  connectPrompt: "Enter your server URL and CouchDB credentials to bring your existing account to this device.",
-  connectCouchdbUrl: "Server URL",
-  connectCouchdbUser: "Username",
-  connectCouchdbPass: "CouchDB password",
-  connectAction: "Connect",
-  connectSuccess: "Account found — please log in with your app password.",
-  connectNotFound: "No gleaned account found on this server.",
-  connectAuthError: "Wrong credentials.",
-  connectNetworkError: "Server not reachable.",
-  connectOverwriteWarning: "Local entries on this device that have not been synced to CouchDB will become unreadable — the encryption key changes even if the password is the same. Export your data first (Settings → Export), then import it again after connecting.",
 
   filterBack: "back",
   noEntriesTag: (tag) => `No entries for #${tag}`,
@@ -540,12 +468,6 @@ const en: Translations = {
   settings: "Settings",
   lock: "Lock",
   install: "Install",
-  syncConflicts: (n) => `${n} sync conflict${n !== 1 ? "s" : ""}`,
-  syncStatusSyncing: "Syncing …",
-  syncStatusSynced: "Synced",
-  syncStatusError: "Sync error — check URL and credentials",
-  syncStatusOffline: "Offline",
-  syncLastSynced: (time) => `Last synced: ${time}`,
 
   settingsTitle: "Settings",
   catAppearance: "Appearance",
@@ -565,13 +487,6 @@ const en: Translations = {
   weekStartLabel: "Week starts on",
   monday: "Monday",
   sunday: "Sunday",
-  syncDesc: "Each browser has its own local database. CouchDB syncs them across devices. With Docker deployment the URL is always your-domain.com/db/gleaned — CouchDB runs internally, /db/ is the nginx proxy.",
-  syncAutoDetected: "Auto-detected",
-  syncTest: "Test",
-  syncTestOk: "Connected ✓",
-  syncTestFail: "Unreachable — check CouchDB CORS config",
-  syncTestAuth: "Wrong credentials",
-  syncConnecting: "Connecting…",
   username: "Username",
   dbPassword: "Password",
   exportImport: "Export / Import",
@@ -621,11 +536,6 @@ const en: Translations = {
   stakeLabel: "Stake",
   gapLabel: "Gap",
 
-  syncConflict: "Sync conflict",
-  conflictDesc: "This entry was edited on two devices while offline. Choose the version to keep.",
-  noContent: "No content",
-  keepThis: "Keep this",
-  noConflicts: "No more conflicts.",
 };
 
 export const T: Record<"de" | "en", Translations> = { de, en };

@@ -3,10 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { isAuthenticated, logout } from "@/lib/auth";
 import { SettingsProvider, useSettings } from "@/lib/settings-context";
-import { useSyncStatus } from "@/lib/use-sync-status";
-import { getLastSynced, subscribeLastSynced } from "@/lib/db";
 import { useIdleTimeout } from "@/lib/use-idle-timeout";
-import { useConflictCount } from "@/lib/use-conflict-count";
 import { useT } from "@/lib/i18n";
 import JournalView from "./JournalView";
 import CalendarView from "./CalendarView";
@@ -17,71 +14,9 @@ import { getReviewCount } from "@/lib/db";
 import LockScreen from "./LockScreen";
 import ProfileButton from "./ProfileButton";
 import SettingsModal from "./SettingsModal";
-import ConflictModal from "./ConflictModal";
 import SearchModal from "./SearchModal";
 import ErrorBoundary from "./ErrorBoundary";
 import SWUpdatePrompt from "./SWUpdatePrompt";
-
-function SyncDot() {
-  const status = useSyncStatus();
-  const [lastSynced, setLastSynced] = useState<Date | null>(() => getLastSynced());
-  const [isOnline, setIsOnline] = useState(() =>
-    typeof navigator !== "undefined" ? navigator.onLine : true
-  );
-  const t = useT();
-
-  useEffect(() => subscribeLastSynced(setLastSynced), []);
-
-  useEffect(() => {
-    const onOnline  = () => setIsOnline(true);
-    const onOffline = () => setIsOnline(false);
-    window.addEventListener("online",  onOnline);
-    window.addEventListener("offline", onOffline);
-    return () => {
-      window.removeEventListener("online",  onOnline);
-      window.removeEventListener("offline", onOffline);
-    };
-  }, []);
-
-  if (status === "idle") return null;
-
-  const offline = !isOnline;
-
-  const color =
-    offline              ? "oklch(58% 0 0)" :
-    status === "error"   ? "oklch(55% 0.19 25)" :
-    status === "syncing" ? "oklch(68% 0.18 55)" :
-                           "oklch(62% 0.17 145)";
-
-  const baseLabel =
-    offline              ? t.syncStatusOffline :
-    status === "error"   ? t.syncStatusError :
-    status === "syncing" ? t.syncStatusSyncing :
-                           t.syncStatusSynced;
-
-  const tooltip =
-    lastSynced && !offline && status !== "syncing"
-      ? `${baseLabel} · ${t.syncLastSynced(lastSynced.toLocaleTimeString())}`
-      : baseLabel;
-
-  return (
-    <span
-      title={tooltip}
-      aria-label={tooltip}
-      style={{
-        display: "inline-block",
-        width: 7,
-        height: 7,
-        borderRadius: "50%",
-        background: color,
-        flexShrink: 0,
-        cursor: "default",
-        animation: status === "syncing" && !offline ? "pulse 1.2s ease-in-out infinite" : "none",
-        opacity: offline ? 0.6 : 1,
-      }}
-    />
-  );
-}
 
 export default function AppShell() {
   const [authed, setAuthed] = useState(() => isAuthenticated());
@@ -139,12 +74,10 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
   });
   const [calendarJumpDate, setCalendarJumpDate] = useState<string | undefined>();
   const [showSettings, setShowSettings] = useState(false);
-  const [showConflicts, setShowConflicts] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [reviewCount, setReviewCount] = useState(0);
   const [entryVersion, setEntryVersion] = useState(0);
   const [scrolled, setScrolled] = useState(false);
-  const conflictCount = useConflictCount();
   const { canInstall, install } = useInstallPrompt();
   const { settings } = useSettings();
   const t = useT();
@@ -282,29 +215,6 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
           gleaned
         </button>
         <div className="flex items-center gap-2.5">
-          {conflictCount > 0 && (
-            <button
-              onClick={() => setShowConflicts(true)}
-              title={t.syncConflicts(conflictCount)}
-              className="flex items-center gap-1.5 rounded-full px-2.5 py-1 font-sans text-xs font-medium transition-opacity hover:opacity-80"
-              style={{
-                background: "color-mix(in oklch, oklch(72% 0.18 55), transparent 82%)",
-                color: "oklch(62% 0.18 55)",
-              }}
-            >
-              <span
-                style={{
-                  display: "inline-block",
-                  width: 6,
-                  height: 6,
-                  borderRadius: "50%",
-                  background: "oklch(72% 0.18 55)",
-                  flexShrink: 0,
-                }}
-              />
-              {conflictCount}
-            </button>
-          )}
           {canInstall && (
             <button
               onClick={install}
@@ -327,7 +237,6 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
           </button>
-          <SyncDot />
           <ProfileButton onLock={onLock} onSettings={() => setShowSettings(true)} />
         </div>
       </header>
@@ -368,7 +277,6 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
       <SWUpdatePrompt />
       {showSearch && <SearchModal onClose={() => setShowSearch(false)} onNavigate={(date) => { setShowSearch(false); handleNavigate("calendar", date); }} />}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
-      {showConflicts && <ConflictModal onClose={() => setShowConflicts(false)} />}
     </div>
   );
 }

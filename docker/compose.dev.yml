@@ -1,28 +1,8 @@
-# Development: runs only CouchDB locally.
-# Start with: docker compose -f docker/compose.dev.yml up -d
-# Then run the app with: pnpm dev
+# Development: no Docker needed for the database.
+# The app uses SQLite (via better-sqlite3) stored locally.
 #
-# Set in .env.local:
-#   NEXT_PUBLIC_COUCHDB_URL=http://admin:changeme@localhost:5984/gleaned
-
-services:
-  couchdb:
-    image: couchdb:3
-    restart: unless-stopped
-    ports:
-      - "5984:5984"
-    environment:
-      COUCHDB_USER: ${COUCHDB_USER:-admin}
-      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:-changeme}
-    volumes:
-      - couchdb_dev_data:/opt/couchdb/data
-      - ./docker/couchdb/local.ini:/opt/couchdb/etc/local.d/local.ini:ro
-    healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:5984/"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 15s
-
-volumes:
-  couchdb_dev_data:
+# Start the dev server with:
+#   pnpm dev
+#
+# The database file is created automatically at:
+#   gleaned.db  (in the project root, git-ignored)

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { hasPassword, setupPassword, login } from "@/lib/auth";
-import { bootstrapFromCouchDB } from "@/lib/db";
 import { useT } from "@/lib/i18n";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -208,12 +207,11 @@ const LOCKOUT_ATTEMPTS_KEY = "gleaned_lockout_attempts";
 interface Props { onAuth: () => void; }
 
 export default function LockScreen({ onAuth }: Props) {
-  const [mode, setMode] = useState<"loading" | "choose" | "setup" | "login" | "connect">("loading");
+  const [mode, setMode] = useState<"loading" | "choose" | "setup" | "login">("loading");
   const [hasLocalAccount, setHasLocalAccount] = useState(false);
   const [password, setPassword] = useState("");
   const [confirm,  setConfirm]  = useState("");
   const [error,    setError]    = useState("");
-  const [hint,     setHint]     = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [focused,  setFocused]  = useState<"pw" | "confirm" | null>(null);
   const [failedAttempts, setFailedAttempts] = useState(0);
@@ -221,14 +219,6 @@ export default function LockScreen({ onAuth }: Props) {
   const [lockSecsLeft, setLockSecsLeft] = useState(0);
   const [acceptShortPw, setAcceptShortPw] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  // Connect-existing-account flow
-  const [connectUrl,  setConnectUrl]  = useState("");
-  const [connectUser, setConnectUser] = useState("");
-  const [connectPass, setConnectPass] = useState("");
-  const [connectSubmitting, setConnectSubmitting] = useState(false);
-  const [connectError, setConnectError] = useState("");
-  const [showConnectPass, setShowConnectPass] = useState(false);
 
   const t = useT();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -318,41 +308,6 @@ export default function LockScreen({ onAuth }: Props) {
       } finally {
         setSubmitting(false);
       }
-    }
-  }
-
-  function handleGoToConnect() {
-    setMode("connect");
-    setHint("");
-    setError("");
-    setConnectError("");
-    setConnectUrl("");
-    setConnectUser("");
-    setConnectPass("");
-  }
-
-  async function handleConnect(e: React.FormEvent) {
-    e.preventDefault();
-    if (!connectUrl.trim()) return;
-    setConnectError("");
-    setConnectSubmitting(true);
-    try {
-      const result = await bootstrapFromCouchDB(connectUrl, connectUser, connectPass);
-      if (result === "ok") {
-        setMode("login");
-        setHasLocalAccount(true);
-        setHint(t.connectSuccess);
-        setError("");
-        setPassword("");
-      } else if (result === "auth-error") {
-        setConnectError(t.connectAuthError);
-      } else if (result === "not-found") {
-        setConnectError(t.connectNotFound);
-      } else {
-        setConnectError(t.connectNetworkError);
-      }
-    } finally {
-      setConnectSubmitting(false);
     }
   }
 
@@ -487,166 +442,18 @@ export default function LockScreen({ onAuth }: Props) {
             <p className="font-serif text-sm leading-relaxed" style={{ color: "var(--fg-muted)", opacity: 0.7 }}>
               {t.firstTimePrompt}
             </p>
-            <div className="flex flex-col gap-2.5">
-              <button
-                onClick={() => { setMode("setup"); setError(""); setPassword(""); setConfirm(""); }}
-                className="w-full rounded-full py-2.5 font-sans text-sm font-medium tracking-wide transition-all"
-                style={{
-                  background: "var(--fg)",
-                  color: "var(--bg)",
-                  border: "1.5px solid var(--fg)",
-                }}
-              >
-                {t.register}
-              </button>
-              <button
-                onClick={() => { setMode("connect"); setConnectError(""); setConnectUrl(""); setConnectUser(""); setConnectPass(""); }}
-                className="w-full rounded-full py-2.5 font-sans text-sm font-medium tracking-wide transition-all"
-                style={{
-                  background: "transparent",
-                  color: "var(--accent)",
-                  border: "1.5px solid var(--accent)",
-                }}
-              >
-                {t.connectAccount}
-              </button>
-            </div>
+            <button
+              onClick={() => { setMode("setup"); setError(""); setPassword(""); setConfirm(""); }}
+              className="w-full rounded-full py-2.5 font-sans text-sm font-medium tracking-wide transition-all"
+              style={{
+                background: "var(--fg)",
+                color: "var(--bg)",
+                border: "1.5px solid var(--fg)",
+              }}
+            >
+              {t.register}
+            </button>
           </div>
-        ) : mode === "connect" ? (
-          <form
-            onSubmit={handleConnect}
-            className="mt-8 flex flex-col gap-5"
-            style={{
-              transform: px(3),
-              transition: "transform 0.22s ease-out",
-              animation: "def-fade 0.7s ease 0.58s both",
-            }}
-          >
-            <p className="font-serif text-sm leading-relaxed" style={{ color: "var(--fg-muted)", opacity: 0.7 }}>
-              {t.connectPrompt}
-            </p>
-
-            {hasLocalAccount && (
-              <div
-                className="rounded-xl p-3"
-                style={{
-                  background: "var(--due-overdue-bg)",
-                  border: "1px solid color-mix(in oklch, var(--due-overdue), transparent 55%)",
-                }}
-              >
-                <p className="font-sans text-xs leading-relaxed" style={{ color: "var(--due-overdue)" }}>
-                  {t.connectOverwriteWarning}
-                </p>
-              </div>
-            )}
-
-            {/* Server URL */}
-            <div>
-              <label className="mb-1.5 block font-sans text-[10px] uppercase tracking-[0.18em]" style={{ color: "var(--fg-muted)" }}>
-                {t.connectCouchdbUrl}
-              </label>
-              <div style={{ borderBottom: `2px solid ${focused === "pw" ? "var(--accent)" : "var(--border-rule)"}`, transition: "border-color 200ms" }}>
-                <input
-                  type="url"
-                  value={connectUrl}
-                  onChange={(e) => setConnectUrl(e.target.value)}
-                  onFocus={() => setFocused("pw")}
-                  onBlur={() => setFocused(null)}
-                  autoFocus
-                  placeholder="https://gleaned.example.com/db/gleaned"
-                  className="journal-input w-full bg-transparent py-2 font-sans text-base outline-none"
-                  style={{ color: "var(--fg)", caretColor: "var(--accent)" }}
-                />
-              </div>
-            </div>
-
-            {/* CouchDB username */}
-            <div>
-              <label className="mb-1.5 block font-sans text-[10px] uppercase tracking-[0.18em]" style={{ color: "var(--fg-muted)" }}>
-                {t.connectCouchdbUser}
-              </label>
-              <div style={{ borderBottom: `2px solid var(--border-rule)` }}>
-                <input
-                  type="text"
-                  autoComplete="username"
-                  value={connectUser}
-                  onChange={(e) => setConnectUser(e.target.value)}
-                  className="journal-input w-full bg-transparent py-2 font-sans text-base outline-none"
-                  style={{ color: "var(--fg)", caretColor: "var(--accent)" }}
-                />
-              </div>
-            </div>
-
-            {/* CouchDB password */}
-            <div>
-              <label className="mb-1.5 block font-sans text-[10px] uppercase tracking-[0.18em]" style={{ color: "var(--fg-muted)" }}>
-                {t.connectCouchdbPass}
-              </label>
-              <div className="relative" style={{ borderBottom: `2px solid var(--border-rule)` }}>
-                <input
-                  type={showConnectPass ? "text" : "password"}
-                  autoComplete="current-password"
-                  value={connectPass}
-                  onChange={(e) => setConnectPass(e.target.value)}
-                  className="journal-input w-full bg-transparent py-2 pr-8 font-sans text-base outline-none"
-                  style={{ color: "var(--fg)", caretColor: "var(--accent)" }}
-                />
-                <button
-                  type="button"
-                  onMouseDown={(e) => { e.preventDefault(); setShowConnectPass(v => !v); }}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 p-1"
-                  style={{ color: "var(--fg-muted)" }}
-                  tabIndex={-1}
-                >
-                  {showConnectPass ? (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                      <line x1="1" y1="1" x2="23" y2="23"/>
-                    </svg>
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                      <circle cx="12" cy="12" r="3"/>
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {connectError && (
-              <p className="font-sans text-sm" style={{ color: "oklch(55% 0.18 25)" }}>
-                {connectError}
-              </p>
-            )}
-
-            <div className="flex items-center justify-between pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setConnectError("");
-                  setMode(hasLocalAccount ? "login" : "choose");
-                }}
-                className="font-sans text-xs transition-opacity hover:opacity-60"
-                style={{ color: "var(--fg-muted)" }}
-              >
-                {t.back}
-              </button>
-              <button
-                type="submit"
-                disabled={connectSubmitting || !connectUrl.trim()}
-                className="rounded-full px-6 py-2.5 font-sans text-sm font-medium tracking-wide transition-all"
-                style={{
-                  background: connectUrl.trim() ? "var(--fg)" : "transparent",
-                  color: connectUrl.trim() ? "var(--bg)" : "var(--fg-muted)",
-                  border: `1.5px solid ${connectUrl.trim() ? "var(--fg)" : "var(--border-focus)"}`,
-                  opacity: connectSubmitting ? 0.6 : 1,
-                }}
-              >
-                {connectSubmitting ? "…" : t.connectAction}
-              </button>
-            </div>
-          </form>
         ) : (
         <form
           onSubmit={handleSubmit}
@@ -796,12 +603,6 @@ export default function LockScreen({ onAuth }: Props) {
             </div>
           )}
 
-          {hint && !error && (
-            <p className="font-sans text-sm" style={{ color: "var(--accent)" }}>
-              {hint}
-            </p>
-          )}
-
           {error && (
             <p className="font-sans text-sm" style={{ color: "oklch(55% 0.18 25)" }}>
               {error}
@@ -866,18 +667,6 @@ export default function LockScreen({ onAuth }: Props) {
                 {t.back}
               </button>
             ) : <span />}
-
-            {/* RIGHT: connect (login mode only) */}
-            {mode === "login" && (
-              <button
-                type="button"
-                onClick={handleGoToConnect}
-                className="font-sans text-xs transition-opacity hover:opacity-70"
-                style={{ color: "var(--fg-muted)" }}
-              >
-                {t.connectAccount} →
-              </button>
-            )}
           </div>
         </form>
         )}

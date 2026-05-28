@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { getSettings, saveSettings, startSync, stopSync } from "./db";
+import { getSettings, saveSettings } from "./db";
 
 export type Theme = "system" | "light" | "dark" | "sepia";
 export type BodyFont = "sans" | "serif" | "playfair" | "handwriting";
@@ -12,9 +12,6 @@ export interface AppSettings {
   weekStart: "monday" | "sunday";
   theme: Theme;
   bodyFont: BodyFont;
-  couchdbUrl: string;
-  couchdbUsername: string;
-  couchdbPassword: string;
   defaultView: AppView;
   customEntryTypes: string[];
   contextSources: string[];
@@ -26,16 +23,11 @@ const CONTEXT_DEFAULTS: Record<"de" | "en", string[]> = {
   en: ["Work", "School", "Commute", "Home"],
 };
 
-const ENV_URL = process.env.NEXT_PUBLIC_COUCHDB_URL ?? "";
-
 export const DEFAULTS: AppSettings = {
   language: "de",
   weekStart: "monday",
   theme: "system",
   bodyFont: "sans",
-  couchdbUrl: ENV_URL,
-  couchdbUsername: "",
-  couchdbPassword: "",
   defaultView: "journal",
   customEntryTypes: [],
   contextSources: [],
@@ -136,9 +128,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         weekStart: s?.weekStart ?? DEFAULTS.weekStart,
         theme: s?.theme ?? DEFAULTS.theme,
         bodyFont: (s?.bodyFont as BodyFont | undefined) ?? DEFAULTS.bodyFont,
-        couchdbUrl: s?.couchdbUrl ?? ENV_URL,
-        couchdbUsername: s?.couchdbUsername ?? "",
-        couchdbPassword: s?.couchdbPassword ?? "",
         defaultView: (s?.defaultView as AppView | undefined) ?? DEFAULTS.defaultView,
         customEntryTypes: s?.customEntryTypes ?? [],
         contextSources: s?.contextSources ?? CONTEXT_DEFAULTS[s?.language ?? DEFAULTS.language] ?? CONTEXT_DEFAULTS[DEFAULTS.language],
@@ -149,9 +138,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       applyBodyFont(next.bodyFont);
       applyLanguage(next.language);
       try { localStorage.setItem("gleaned-view", next.defaultView); } catch {}
-      if (next.couchdbUrl) startSync(next.couchdbUrl, next.couchdbUsername, next.couchdbPassword);
     });
-    return () => stopSync();
   }, []);
 
   async function update(patch: Partial<AppSettings>) {
@@ -161,11 +148,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     if (patch.bodyFont) applyBodyFont(patch.bodyFont);
     if (patch.language) applyLanguage(patch.language);
     if (patch.defaultView) { try { localStorage.setItem("gleaned-view", patch.defaultView); } catch {} }
-    const syncChanged = "couchdbUrl" in patch || "couchdbUsername" in patch || "couchdbPassword" in patch;
-    if (syncChanged) {
-      if (next.couchdbUrl) startSync(next.couchdbUrl, next.couchdbUsername, next.couchdbPassword ?? "");
-      else stopSync();
-    }
     await saveSettings(next);
   }
 

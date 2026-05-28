@@ -26,6 +26,9 @@ export async function migrateFromPouchDB(): Promise<void> {
   try {
     await runMigration();
     localStorage.setItem(MIGRATION_DONE_KEY, "done");
+    // Clean up the IndexedDB database now that data is on the server.
+    indexedDB.deleteDatabase("gleaned");
+    indexedDB.deleteDatabase("_pouch_gleaned");
   } catch (err) {
     // Will retry on next login — do not surface to the user
     console.error("[gleaned] PouchDB migration failed, will retry:", err);
@@ -34,13 +37,17 @@ export async function migrateFromPouchDB(): Promise<void> {
 
 async function runMigration(): Promise<void> {
   // PouchDB is browser-only. Dynamic import keeps it out of the server bundle.
-  const PouchDB = (await import("pouchdb")).default;
-  const PouchDBFind = (await import("pouchdb-find")).default;
-  PouchDB.plugin(PouchDBFind);
+  // @ts-ignore — pouchdb package removed in Phase 6; import fails at runtime → caller's try-catch
+  const PouchDB = (await import("pouchdb")).default as new (name: string) => {
+    allDocs(opts: Record<string, unknown>): Promise<{ rows: { doc?: Record<string, unknown> }[] }>;
+  };
+  // @ts-ignore
+  const PouchDBFind = (await import("pouchdb-find")).default as { default: unknown };
+  (PouchDB as unknown as { plugin(p: unknown): void }).plugin(PouchDBFind);
 
   // Open the existing local database (read-only intent; we never write back).
   // If the DB never existed, PouchDB creates an empty one — allDocs returns 0 rows.
-  const db = new PouchDB<Record<string, unknown>>("gleaned");
+  const db = new PouchDB("gleaned");
 
   // Fetch all documents including encrypted binary _attachments.
   const result = await db.allDocs({
