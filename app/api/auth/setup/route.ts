@@ -2,7 +2,6 @@ export const runtime = "nodejs";
 
 import * as argon2 from "argon2";
 import { randomBytes } from "crypto";
-import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db/server";
 import { settings } from "@/lib/db/schema/server/settings";
