@@ -1,36 +1,63 @@
 # syntax=docker/dockerfile:1
+#
+# Two-stage dependency strategy to support multi-arch builds:
+#
+#  builder — runs on $BUILDPLATFORM (host) for speed.
+#             Uses --ignore-scripts so native N-API modules are not compiled.
+#             next build only produces JS; it never executes native modules.
+#
+#  deps    — runs on the target platform.
+#             Compiles better-sqlite3 and argon2 for the correct architecture.
+#             Prebuilt binaries are downloaded when available (amd64, arm64);
+#             python3/make/g++ are the fallback for unsupported platforms.
+#
+#  runner  — combines .next/ from builder + node_modules from deps.
 
-# ── 1. Install dependencies ───────────────────────────────────────────────────
-# Build stages are pinned to --platform=$BUILDPLATFORM so they always run on the
-# host architecture (no QEMU emulation). The Next.js static export contains only
-# platform-independent files (HTML, CSS, JS, images), so we build it once and
-# copy the result into every target platform's runtime image. This guarantees
-# byte-identical chunk hashes across amd64 and arm64 manifests — a multi-arch
-# build that ran `pnpm build` per platform could otherwise produce diverging
-# hashes (Turbopack threading races, QEMU non-determinism), with the result
-# that the deployed HTML references chunks that only exist in the other
-# platform's image → 404 for every static asset on mismatched servers.
-FROM --platform=$BUILDPLATFORM node:22-alpine AS deps
+# ── 1. Build Next.js (host architecture — JS output is platform-independent) ──
+FROM --platform=$BUILDPLATFORM node:22-alpine AS builder
 RUN apk add --no-cache libc6-compat
+WORKDIR /app
+COPY package.json pnpm-lock.yaml ./
+RUN corepack enable pnpm && pnpm i --frozen-lockfile --ignore-scripts
+COPY . .
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN pnpm build
+
+# ── 2. Install production dependencies (target platform for native modules) ───
+FROM node:22-alpine AS deps
+RUN apk add --no-cache libc6-compat python3 make g++
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 RUN corepack enable pnpm && pnpm i --frozen-lockfile
 
-# ── 2. Build static export (once, on host architecture) ──────────────────────
-FROM --platform=$BUILDPLATFORM node:22-alpine AS builder
+# ── 3. Runtime image ──────────────────────────────────────────────────────────
+FROM node:22-alpine AS runner
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-RUN corepack enable pnpm && pnpm build
-# output: "export" writes to out/ — purely static, platform-independent files.
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# ── 3. Serve with nginx (per-target-platform) ────────────────────────────────
-# This is the only stage that varies by target platform, and it only contains
-# nginx itself — the application bytes are identical on every architecture.
-FROM nginx:1.31.1-alpine3.23 AS runner
-COPY --from=builder /app/out /usr/share/nginx/html
-COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
-COPY docker/nginx-entrypoint.sh /docker-entrypoint.d/50-gleaned-config.sh
-RUN chmod +x /docker-entrypoint.d/50-gleaned-config.sh
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+RUN addgroup -S -g 1001 nodejs && adduser -S -u 1001 nextjs
+
+# node_modules from the target-platform deps stage (correct native binaries).
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
+
+# Next.js build output and static assets.
+COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# Runtime config, migration artefacts, and Drizzle config.
+# drizzle-kit migrate reads from lib/db/migrations/ — schema files are not needed.
+COPY --chown=nextjs:nodejs package.json ./
+COPY --chown=nextjs:nodejs drizzle.config.ts ./
+COPY --chown=nextjs:nodejs lib/db/migrations ./lib/db/migrations
+
+# /data is mounted as a named Docker volume; gleaned.db lives here.
+# chown here sets the default owner for the empty mountpoint directory;
+# Docker overlays the named volume on top at container start.
+RUN mkdir -p /data && chown nextjs:nodejs /data
+
+USER nextjs
+EXPOSE 3000
+
+# pnpm prestart runs `drizzle-kit migrate` before `next start`.
+CMD ["sh", "-c", "corepack enable pnpm && pnpm start"]

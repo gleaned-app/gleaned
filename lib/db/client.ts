@@ -37,29 +37,3 @@ export function setAuthState(state: DbAuthState): void {
 export function requireAuth(): void {
   if (_dbAuthState === "locked") throw new Error("gleaned: not authenticated");
 }
-
-// ─── DB singleton ─────────────────────────────────────────────────────────────
-
-let _db: PouchDB.Database<AnyDoc> | null = null;
-
-export async function getDB(): Promise<PouchDB.Database<AnyDoc>> {
-  if (_db) return _db;
-
-  const PouchDB = (await import("pouchdb")).default;
-  const PouchDBFind = (await import("pouchdb-find")).default;
-  PouchDB.plugin(PouchDBFind);
-
-  _db = new PouchDB<AnyDoc>("gleaned");
-  // pouchdb 9's isRemote() warns whenever typeof db.type === 'function'.
-  // The IDB adapter assigns api.type = function(){...} asynchronously after construction,
-  // so a plain value override gets clobbered. A getter/setter trap keeps type non-function
-  // and swallows the adapter's assignment; isRemote() falls through to return false (= local).
-  Object.defineProperty(_db, "type", { get: () => undefined, set: () => {}, configurable: true });
-  await Promise.all([
-    _db.createIndex({ index: { fields: ["type", "date", "createdAt"] } }),
-    _db.createIndex({ index: { fields: ["type", "createdAt"] } }),
-    _db.createIndex({ index: { fields: ["type", "nextReview"] } }),
-  ]);
-
-  return _db;
-}

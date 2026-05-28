@@ -1,16 +1,16 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { isAuthenticated, logout, login, setupPassword, hasPassword } from "./auth";
-import { getSettings, saveSettings } from "./db";
-import { decryptText, storeKey, clearKey, PBKDF2_ITERATIONS } from "./crypto";
-
-// ─── Mocks ────────────────────────────────────────────────────────────────────
-// auth.ts imports from ./db (PouchDB) and ./crypto (SubtleCrypto).
-// Both are mocked so tests stay pure and fast.
+import { storeKey, clearKey } from "./crypto";
 
 vi.mock("./db", () => ({
-  getSettings:         vi.fn(),
-  saveSettings:        vi.fn(),
-  setDbAuthenticated:  vi.fn(),
+  setDbAuthenticated: vi.fn(),
+}));
+
+vi.mock("./api-client", () => ({
+  apiFetch: vi.fn(),
+  UnauthorizedError: class UnauthorizedError extends Error {
+    constructor() { super("Session expired"); this.name = "UnauthorizedError"; }
+  },
 }));
 
 vi.mock("./crypto", () => ({
@@ -19,117 +19,97 @@ vi.mock("./crypto", () => ({
   generateSalt: vi.fn(() => new Uint8Array(16)),
   saltToBase64: vi.fn(() => "base64salt"),
   base64ToSalt: vi.fn(() => new Uint8Array(16)),
-  encryptText:  vi.fn(async () => "encrypted"),
-  decryptText:  vi.fn(async () => "gleaned-v1"),
   storeKey:     vi.fn(),
   clearKey:     vi.fn(),
 }));
 
-const mockGetSettings  = vi.mocked(getSettings);
-const mockSaveSettings = vi.mocked(saveSettings);
-const mockDecryptText  = vi.mocked(decryptText);
-const mockStoreKey     = vi.mocked(storeKey);
-const mockClearKey     = vi.mocked(clearKey);
+import { apiFetch } from "./api-client";
+const mockApiFetch = vi.mocked(apiFetch);
+const mockStoreKey = vi.mocked(storeKey);
+const mockClearKey = vi.mocked(clearKey);
 
-const SETTINGS_WITH_PASSWORD = {
-  _id: "gleaned_settings" as const,
-  type: "settings" as const,
-  encryptionSalt: "base64salt",
-  encryptionVerification: "encrypted",
-  encryptionIterations: 600_000,
-};
-
-const SETTINGS_LEGACY = {
-  _id: "gleaned_settings" as const,
-  type: "settings" as const,
-  encryptionSalt: "base64salt",
-  encryptionVerification: "encrypted",
-  // no encryptionIterations — simulates pre-v0.2 data
-};
-
-beforeEach(() => {
-  // Reset the in-memory auth flag first, then clear mock call counts so that
-  // the logout() call here doesn't pollute per-test mock assertions.
-  logout();
+beforeEach(async () => {
+  await logout();
   vi.clearAllMocks();
 });
+
+function makeResponse(body: unknown, status = 200): Response {
+  return { ok: status < 400, status, json: async () => body } as unknown as Response;
+}
 
 // ─── isAuthenticated ──────────────────────────────────────────────────────────
 
 describe("isAuthenticated", () => {
-  it("returns false on a fresh module state (no login has happened)", () => {
+  it("returns false on fresh state", () => {
     expect(isAuthenticated()).toBe(false);
   });
+});
 
-  it("is purely in-memory: writing to sessionStorage has no effect", () => {
-    // Security property: auth state must not be readable from sessionStorage.
-    // A compromised sessionStorage entry must not bypass the lock screen.
-    try {
-      sessionStorage.setItem("gleaned_session", "1");
-    } catch {
-      // sessionStorage is unavailable in Node — that's fine; the point is that
-      // auth.ts never reads it, so the test body below still holds.
-    }
-    expect(isAuthenticated()).toBe(false);
+// ─── hasPassword ─────────────────────────────────────────────────────────────
+
+describe("hasPassword", () => {
+  it("returns true when server reports setup: true", async () => {
+    mockApiFetch.mockResolvedValue(makeResponse({ setup: true }));
+    expect(await hasPassword()).toBe(true);
+  });
+
+  it("returns false when server reports setup: false", async () => {
+    mockApiFetch.mockResolvedValue(makeResponse({ setup: false }));
+    expect(await hasPassword()).toBe(false);
+  });
+
+  it("returns false when apiFetch throws", async () => {
+    mockApiFetch.mockRejectedValue(new Error("network error"));
+    expect(await hasPassword()).toBe(false);
+  });
+});
+
+// ─── setupPassword ────────────────────────────────────────────────────────────
+
+describe("setupPassword", () => {
+  it("calls /api/auth/setup and stores the derived key", async () => {
+    mockApiFetch.mockResolvedValue(makeResponse({ ok: true }, 200));
+
+    await setupPassword("newpassword");
+
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/api/auth/setup",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(mockStoreKey).toHaveBeenCalledOnce();
+    expect(isAuthenticated()).toBe(true);
   });
 });
 
 // ─── login ───────────────────────────────────────────────────────────────────
 
 describe("login", () => {
-  it("returns true and sets isAuthenticated when password is correct", async () => {
-    mockGetSettings.mockResolvedValue(SETTINGS_WITH_PASSWORD);
-    mockDecryptText.mockResolvedValue("gleaned-v1");
+  it("returns true and sets isAuthenticated when server accepts the password", async () => {
+    mockApiFetch
+      .mockResolvedValueOnce(makeResponse({ setup: true }))
+      .mockResolvedValueOnce(makeResponse({ encryptionSalt: "base64salt", encryptionIterations: 600_000 }));
 
     const result = await login("correctpassword");
 
     expect(result).toBe(true);
     expect(isAuthenticated()).toBe(true);
-  });
-
-  it("stores the derived key on successful login", async () => {
-    mockGetSettings.mockResolvedValue(SETTINGS_WITH_PASSWORD);
-    mockDecryptText.mockResolvedValue("gleaned-v1");
-
-    await login("correctpassword");
-
     expect(mockStoreKey).toHaveBeenCalledOnce();
   });
 
-  it("returns false and leaves isAuthenticated false when verification plaintext mismatches", async () => {
-    mockGetSettings.mockResolvedValue(SETTINGS_WITH_PASSWORD);
-    mockDecryptText.mockResolvedValue("wrong-verification-text");
+  it("returns false when login endpoint responds with non-ok status", async () => {
+    mockApiFetch
+      .mockResolvedValueOnce(makeResponse({ setup: true }))
+      .mockResolvedValueOnce(makeResponse({ error: "Invalid password" }, 401));
 
     const result = await login("wrongpassword");
 
     expect(result).toBe(false);
     expect(isAuthenticated()).toBe(false);
+    expect(mockStoreKey).not.toHaveBeenCalled();
   });
 
-  it("returns false when decryptText throws (e.g. wrong password → AES-GCM auth fail)", async () => {
-    mockGetSettings.mockResolvedValue(SETTINGS_WITH_PASSWORD);
-    mockDecryptText.mockRejectedValue(new DOMException("bad decrypt", "OperationError"));
-
-    const result = await login("wrongpassword");
-
-    expect(result).toBe(false);
-    expect(isAuthenticated()).toBe(false);
-  });
-
-  it("returns false when no password is set (missing encryptionSalt)", async () => {
-    mockGetSettings.mockResolvedValue({
-      _id: "gleaned_settings",
-      type: "settings",
-    });
-
-    const result = await login("anypassword");
-
-    expect(result).toBe(false);
-    expect(isAuthenticated()).toBe(false);
-  });
-
-  it("returns false when getSettings returns null (first launch)", async () => {
-    mockGetSettings.mockResolvedValue(null);
+  it("returns false when server is not set up (no verifier)", async () => {
+    mockApiFetch.mockResolvedValueOnce(makeResponse({ setup: false }));
 
     const result = await login("anypassword");
 
@@ -138,152 +118,60 @@ describe("login", () => {
   });
 
   it("does not call storeKey on failed login", async () => {
-    mockGetSettings.mockResolvedValue(SETTINGS_WITH_PASSWORD);
-    mockDecryptText.mockRejectedValue(new Error("bad"));
+    mockApiFetch
+      .mockResolvedValueOnce(makeResponse({ setup: true }))
+      .mockResolvedValueOnce(makeResponse({ error: "bad" }, 401));
 
     await login("bad");
 
     expect(mockStoreKey).not.toHaveBeenCalled();
-  });
-
-  it("silently upgrades PBKDF2 iterations when legacy settings have no encryptionIterations", async () => {
-    mockGetSettings.mockResolvedValue(SETTINGS_LEGACY);
-    mockSaveSettings.mockResolvedValue(undefined);
-    mockDecryptText.mockResolvedValue("gleaned-v1");
-
-    const result = await login("correctpassword");
-
-    expect(result).toBe(true);
-    expect(mockSaveSettings).toHaveBeenCalledOnce();
-    const saved = mockSaveSettings.mock.calls[0][0];
-    expect(saved).toHaveProperty("encryptionIterations", PBKDF2_ITERATIONS);
-  });
-
-  it("does not call saveSettings when encryptionIterations is already current", async () => {
-    mockGetSettings.mockResolvedValue(SETTINGS_WITH_PASSWORD);
-    mockDecryptText.mockResolvedValue("gleaned-v1");
-
-    await login("correctpassword");
-
-    expect(mockSaveSettings).not.toHaveBeenCalled();
-  });
-});
-
-// ─── setupPassword ────────────────────────────────────────────────────────────
-
-describe("setupPassword", () => {
-  it("calls saveSettings with salt, verification ciphertext, and current PBKDF2 iterations", async () => {
-    mockSaveSettings.mockResolvedValue(undefined);
-
-    await setupPassword("newpassword");
-
-    expect(mockSaveSettings).toHaveBeenCalledOnce();
-    const arg = mockSaveSettings.mock.calls[0][0];
-    expect(arg).toHaveProperty("encryptionSalt", "base64salt");
-    expect(arg).toHaveProperty("encryptionVerification", "encrypted");
-    expect(arg).toHaveProperty("encryptionIterations", PBKDF2_ITERATIONS);
-  });
-
-  it("stores the derived key after setup", async () => {
-    mockSaveSettings.mockResolvedValue(undefined);
-
-    await setupPassword("newpassword");
-
-    expect(mockStoreKey).toHaveBeenCalledOnce();
-  });
-
-  it("sets isAuthenticated to true after successful setup", async () => {
-    mockSaveSettings.mockResolvedValue(undefined);
-
-    await setupPassword("newpassword");
-
-    expect(isAuthenticated()).toBe(true);
   });
 });
 
 // ─── logout ───────────────────────────────────────────────────────────────────
 
 describe("logout", () => {
-  it("sets isAuthenticated to false after a successful login", async () => {
-    mockGetSettings.mockResolvedValue(SETTINGS_WITH_PASSWORD);
-    mockDecryptText.mockResolvedValue("gleaned-v1");
-    await login("correctpassword");
-
+  it("sets isAuthenticated to false", async () => {
+    mockApiFetch
+      .mockResolvedValueOnce(makeResponse({ setup: true }))
+      .mockResolvedValueOnce(makeResponse({ encryptionSalt: "s", encryptionIterations: 600_000 }));
+    await login("correct");
     expect(isAuthenticated()).toBe(true);
-    logout();
+
+    mockApiFetch.mockResolvedValueOnce(makeResponse({ ok: true }));
+    await logout();
+
     expect(isAuthenticated()).toBe(false);
   });
 
-  it("calls clearKey to wipe the encryption key from memory", () => {
-    logout();
+  it("calls clearKey to wipe the encryption key", async () => {
+    await logout();
     expect(mockClearKey).toHaveBeenCalledOnce();
   });
 
-  it("is safe to call when already logged out (no throw)", () => {
-    expect(() => logout()).not.toThrow();
+  it("is safe to call when already logged out", async () => {
+    mockApiFetch.mockResolvedValue(makeResponse({ ok: true }));
+    await expect(logout()).resolves.not.toThrow();
   });
 
-  it("is idempotent: multiple logouts leave isAuthenticated false", () => {
-    logout();
-    logout();
-    logout();
+  it("is idempotent: multiple logouts leave isAuthenticated false", async () => {
+    mockApiFetch.mockResolvedValue(makeResponse({ ok: true }));
+    await logout();
+    await logout();
     expect(isAuthenticated()).toBe(false);
   });
 });
 
-// ─── hasPassword ─────────────────────────────────────────────────────────────
-
-describe("hasPassword", () => {
-  it("returns true when settings has encryptionSalt", async () => {
-    mockGetSettings.mockResolvedValue(SETTINGS_WITH_PASSWORD);
-    expect(await hasPassword()).toBe(true);
-  });
-
-  it("returns false when settings exists but has no encryptionSalt", async () => {
-    mockGetSettings.mockResolvedValue({ _id: "gleaned_settings", type: "settings" });
-    expect(await hasPassword()).toBe(false);
-  });
-
-  it("returns false when getSettings returns null", async () => {
-    mockGetSettings.mockResolvedValue(null);
-    expect(await hasPassword()).toBe(false);
-  });
-
-  it("returns false when encryptionSalt is an empty string", async () => {
-    mockGetSettings.mockResolvedValue({
-      _id: "gleaned_settings",
-      type: "settings",
-      encryptionSalt: "",
-    });
-    expect(await hasPassword()).toBe(false);
-  });
-});
-
-// ─── brute-force resistance (auth layer) ─────────────────────────────────────
+// ─── brute-force resistance ───────────────────────────────────────────────────
 
 describe("brute-force resistance", () => {
   it("each failed login attempt keeps isAuthenticated false", async () => {
-    mockGetSettings.mockResolvedValue(SETTINGS_WITH_PASSWORD);
-    mockDecryptText.mockRejectedValue(new Error("bad"));
-
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 3; i++) {
+      mockApiFetch
+        .mockResolvedValueOnce(makeResponse({ setup: true }))
+        .mockResolvedValueOnce(makeResponse({ error: "bad" }, 401));
       await login("wrong");
       expect(isAuthenticated()).toBe(false);
     }
-  });
-
-  it("correct login after failures succeeds", async () => {
-    mockGetSettings.mockResolvedValue(SETTINGS_WITH_PASSWORD);
-    mockDecryptText
-      .mockRejectedValueOnce(new Error("bad"))
-      .mockRejectedValueOnce(new Error("bad"))
-      .mockResolvedValue("gleaned-v1");
-
-    await login("wrong");
-    await login("wrong");
-    const result = await login("correct");
-
-    expect(result).toBe(true);
-    expect(isAuthenticated()).toBe(true);
   });
 });

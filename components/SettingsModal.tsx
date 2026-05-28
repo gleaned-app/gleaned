@@ -4,15 +4,14 @@ import { useState, useRef, useEffect } from "react";
 import { useSettings } from "@/lib/settings-context";
 import type { AppSettings, Theme, BodyFont, AppView } from "@/lib/settings-context";
 import { useT } from "@/lib/i18n";
-import { exportData, importData, getAllTags, deleteTag, subscribeSyncStatus, getLastSynced, subscribeLastSynced } from "@/lib/db";
+import { exportData, importData, getAllTags, deleteTag } from "@/lib/db";
 import { getPushStatus, subscribeToPush, unsubscribeFromPush } from "@/lib/notifications";
-import { fetchServerConfig } from "@/lib/server-config";
 
 interface Props {
   onClose: () => void;
 }
 
-type CategoryId = "appearance" | "general" | "sync" | "data" | "notifications";
+type CategoryId = "appearance" | "general" | "data" | "notifications";
 
 function SegmentedControl<T extends string>({
   value, options, onChange,
@@ -67,15 +66,7 @@ export default function SettingsModal({ onClose }: Props) {
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const [lastSynced, setLastSynced] = useState<Date | null>(() => getLastSynced());
-  const [couchdbInput, setCouchdbInput] = useState(settings.couchdbUrl ?? "");
-  const [couchdbUser, setCouchdbUser] = useState(settings.couchdbUsername ?? "");
-  const [couchdbPass, setCouchdbPass] = useState(settings.couchdbPassword ?? "");
-  const [syncSaved, setSyncSaved] = useState(false);
-  const [syncTestStatus, setSyncTestStatus] = useState<null | "testing" | "ok" | "error-auth" | "error-unreachable">(null);
-  const [syncSaveStatus, setSyncSaveStatus] = useState<null | "saving" | "connected" | "error">(null);
-  const syncUnsubRef = useRef<(() => void) | null>(null);
-  const [autoFilledFields, setAutoFilledFields] = useState<Set<"url" | "username">>(new Set());
+
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [customTypeInput, setCustomTypeInput] = useState("");
   const [contextSourceInput, setContextSourceInput] = useState("");
@@ -87,90 +78,6 @@ export default function SettingsModal({ onClose }: Props) {
 
   useEffect(() => { if (showTags) getAllTags().then(setTagMap); }, [showTags]);
   useEffect(() => { getPushStatus().then(setPushStatus); }, []);
-
-  useEffect(() => {
-    // couchdbInput/couchdbUser here are their initial mount-time values — safe to read
-    // since this effect runs once before any user interaction.
-    fetchServerConfig().then((cfg) => {
-      if (!cfg) return;
-      const filled = new Set<"url" | "username">();
-      if (!couchdbInput && cfg.syncUrl) { setCouchdbInput(cfg.syncUrl); filled.add("url"); }
-      if (!couchdbUser && cfg.syncUsername) { setCouchdbUser(cfg.syncUsername); filled.add("username"); }
-      if (filled.size > 0) setAutoFilledFields(filled);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => subscribeLastSynced(setLastSynced), []);
-
-  // Cancel pending sync-status subscription when the modal unmounts
-  useEffect(() => () => { syncUnsubRef.current?.(); }, []);
-
-  function handleSyncSave() {
-    // Cancel any subscription from a previous save attempt
-    syncUnsubRef.current?.();
-    syncUnsubRef.current = null;
-    setSyncTestStatus(null);
-
-    const url = couchdbInput.trim();
-
-    if (!url) {
-      // Disconnecting sync — just save, no status tracking needed
-      update({ couchdbUrl: "", couchdbUsername: couchdbUser, couchdbPassword: couchdbPass });
-      setSyncSaveStatus(null);
-      setSyncSaved(true);
-      setTimeout(() => setSyncSaved(false), 2000);
-      return;
-    }
-
-    setSyncSaveStatus("saving");
-    update({ couchdbUrl: url, couchdbUsername: couchdbUser, couchdbPassword: couchdbPass });
-
-    // Give up and show error if no resolution within 8 s
-    const giveUpTimer = setTimeout(() => {
-      syncUnsubRef.current?.();
-      syncUnsubRef.current = null;
-      setSyncSaveStatus("error");
-    }, 8000);
-
-    syncUnsubRef.current = subscribeSyncStatus((status) => {
-      // Only resolve on "synced" — PouchDB with retry:true may fire transient
-      // "error" events (e.g. expired CORS preflight cache) and then recover.
-      // Unsubscribing on the first error would permanently miss the recovery.
-      // Persistent failures are handled by the give-up timer above.
-      if (status !== "synced") return;
-      clearTimeout(giveUpTimer);
-      syncUnsubRef.current?.();
-      syncUnsubRef.current = null;
-      setSyncSaveStatus("connected");
-    });
-  }
-
-  function resetSyncSaveStatus() {
-    syncUnsubRef.current?.();
-    syncUnsubRef.current = null;
-    setSyncSaveStatus(null);
-  }
-
-  async function handleSyncTest() {
-    setSyncTestStatus("testing");
-    const url = couchdbInput.trim();
-    if (!url) { setSyncTestStatus("error-unreachable"); return; }
-    try {
-      const headers: Record<string, string> = {};
-      // Trim username to match basicAuth() in lib/db/sync.ts so a successful Test
-      // guarantees Save will authenticate identically.
-      const userTrimmed = couchdbUser.trim();
-      if (userTrimmed) headers["Authorization"] = "Basic " + btoa(unescape(encodeURIComponent(`${userTrimmed}:${couchdbPass}`)));
-      const res = await fetch(url, { method: "GET", headers, signal: AbortSignal.timeout(5000) });
-      if (!res.ok) { setSyncTestStatus(res.status === 401 ? "error-auth" : "error-unreachable"); return; }
-      const json = await res.json() as Record<string, unknown>;
-      // A valid CouchDB database endpoint always includes db_name in its response.
-      setSyncTestStatus(typeof json.db_name === "string" ? "ok" : "error-unreachable");
-    } catch {
-      setSyncTestStatus("error-unreachable");
-    }
-  }
 
   async function handlePushToggle() {
     setPushLoading(true);
@@ -265,7 +172,6 @@ export default function SettingsModal({ onClose }: Props) {
   const CATEGORIES: { id: CategoryId; label: string }[] = [
     { id: "appearance",    label: t.catAppearance },
     { id: "general",       label: t.catGeneral },
-    { id: "sync",          label: "Sync" },
     { id: "data",          label: t.catData },
     ...(pushStatus !== "unsupported" ? [{ id: "notifications" as CategoryId, label: t.catAlerts }] : []),
   ];
@@ -429,151 +335,6 @@ export default function SettingsModal({ onClose }: Props) {
               </div>
             )}
           </Field>
-        </div>
-      );
-
-      case "sync": return (
-        <div className="flex flex-col gap-4">
-          <p className="font-sans text-xs leading-relaxed" style={{ color: "var(--fg-muted)" }}>
-            {t.syncDesc}
-          </p>
-
-          {/* URL field */}
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <p className="font-sans text-[11px] font-medium uppercase tracking-[0.12em]" style={{ color: "var(--fg-muted)" }}>
-                URL
-              </p>
-              {autoFilledFields.has("url") && (
-                <span className="rounded-full px-1.5 py-0.5 font-sans text-[9px] font-medium" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
-                  {t.syncAutoDetected}
-                </span>
-              )}
-            </div>
-            <input
-              value={couchdbInput}
-              onChange={(e) => {
-                setCouchdbInput(e.target.value);
-                setSyncTestStatus(null);
-                resetSyncSaveStatus();
-                setAutoFilledFields((prev) => { const n = new Set(prev); n.delete("url"); return n; });
-              }}
-              placeholder="https://gleaned.example.com/db/gleaned"
-              className="journal-input w-full rounded-xl px-3 py-2.5 font-sans text-xs outline-none"
-              style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--fg)" }}
-              spellCheck={false} autoCapitalize="none" autoCorrect="off"
-            />
-            {!couchdbInput && (
-              <button
-                type="button"
-                onClick={() => { setCouchdbInput(window.location.origin + "/db/gleaned"); setSyncTestStatus(null); }}
-                className="mt-1 font-sans text-[10px] transition-opacity hover:opacity-70"
-                style={{ color: "var(--accent)" }}
-              >
-                {window.location.origin}/db/gleaned ↵
-              </button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            {/* Username field */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <p className="font-sans text-[11px] font-medium uppercase tracking-[0.12em]" style={{ color: "var(--fg-muted)" }}>
-                  {t.username}
-                </p>
-                {autoFilledFields.has("username") && (
-                  <span className="rounded-full px-1.5 py-0.5 font-sans text-[9px] font-medium" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
-                    {t.syncAutoDetected}
-                  </span>
-                )}
-              </div>
-              <input
-                value={couchdbUser}
-                onChange={(e) => {
-                  setCouchdbUser(e.target.value);
-                  setSyncTestStatus(null);
-                  resetSyncSaveStatus();
-                  setAutoFilledFields((prev) => { const n = new Set(prev); n.delete("username"); return n; });
-                }}
-                placeholder={t.username}
-                className="journal-input w-full rounded-xl px-3 py-2.5 font-sans text-xs outline-none"
-                style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--fg)" }}
-                autoCapitalize="none" autoCorrect="off" spellCheck={false}
-              />
-            </div>
-            <Field label={t.dbPassword}>
-              <input
-                type="password"
-                value={couchdbPass}
-                onChange={(e) => { setCouchdbPass(e.target.value); setSyncTestStatus(null); resetSyncSaveStatus(); }}
-                placeholder="••••••••"
-                className="journal-input w-full rounded-xl px-3 py-2.5 font-sans text-xs outline-none"
-                style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--fg)" }}
-                autoCapitalize="none" autoCorrect="off"
-              />
-            </Field>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handleSyncSave}
-              disabled={syncSaveStatus === "saving"}
-              className="btn-3d flex-1 rounded-xl py-2.5 font-sans text-sm font-medium transition-opacity disabled:opacity-60"
-              style={{
-                color: syncSaveStatus === "connected"
-                  ? "var(--accent)"
-                  : syncSaved
-                  ? "var(--accent)"
-                  : "var(--fg-muted)",
-              }}
-            >
-              {syncSaveStatus === "saving" ? "…"
-                : syncSaveStatus === "connected" ? "✓"
-                : syncSaved ? "✓"
-                : t.save}
-            </button>
-            <button
-              onClick={handleSyncTest}
-              disabled={syncTestStatus === "testing" || !couchdbInput.trim()}
-              className="btn-3d flex-1 rounded-xl py-2.5 font-sans text-sm font-medium transition-opacity disabled:opacity-40"
-              style={{ color: "var(--fg-muted)" }}
-            >
-              {syncTestStatus === "testing" ? "…" : t.syncTest}
-            </button>
-          </div>
-
-          {/* Status line — save result takes priority over test result */}
-          {syncSaveStatus === "saving" && (
-            <p className="text-center font-sans text-xs" style={{ color: "var(--fg-muted)" }}>
-              {t.syncConnecting}
-            </p>
-          )}
-          {syncSaveStatus === "connected" && (
-            <p className="text-center font-sans text-xs" style={{ color: "var(--accent)" }}>
-              {t.syncTestOk}
-            </p>
-          )}
-          {syncSaveStatus === "error" && (
-            <p className="text-center font-sans text-xs" style={{ color: "var(--due-overdue)" }}>
-              {t.syncTestFail}
-            </p>
-          )}
-          {syncSaveStatus === null && syncTestStatus && syncTestStatus !== "testing" && (
-            <p className="text-center font-sans text-xs" style={{
-              color: syncTestStatus === "ok" ? "var(--accent)" : "var(--due-overdue)",
-            }}>
-              {syncTestStatus === "ok" ? t.syncTestOk
-                : syncTestStatus === "error-auth" ? t.syncTestAuth
-                : t.syncTestFail}
-            </p>
-          )}
-
-          {/* Last-synced timestamp — shown when sync is configured and has succeeded */}
-          {couchdbInput.trim() && lastSynced && syncSaveStatus === null && (
-            <p className="text-center font-sans text-[11px]" style={{ color: "var(--fg-muted)", opacity: 0.6 }}>
-              {t.syncLastSynced(lastSynced.toLocaleString())}
-            </p>
-          )}
         </div>
       );
 

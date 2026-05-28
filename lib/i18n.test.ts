@@ -73,33 +73,6 @@ describe("entryCount", () => {
   });
 });
 
-// ─── syncConflicts ────────────────────────────────────────────────────────────
-
-describe("syncConflicts", () => {
-  it("de: 1 → singular (no trailing 'e')", () => {
-    expect(T.de.syncConflicts(1)).toBe("1 Sync-Konflikt");
-  });
-  it("de: 0 → plural", () => {
-    expect(T.de.syncConflicts(0)).toBe("0 Sync-Konflikte");
-  });
-  it("de: 2 → plural", () => {
-    expect(T.de.syncConflicts(2)).toBe("2 Sync-Konflikte");
-  });
-  it("de: 99 → plural", () => {
-    expect(T.de.syncConflicts(99)).toBe("99 Sync-Konflikte");
-  });
-
-  it("en: 1 → singular", () => {
-    expect(T.en.syncConflicts(1)).toBe("1 sync conflict");
-  });
-  it("en: 0 → plural", () => {
-    expect(T.en.syncConflicts(0)).toBe("0 sync conflicts");
-  });
-  it("en: 2 → plural", () => {
-    expect(T.en.syncConflicts(2)).toBe("2 sync conflicts");
-  });
-});
-
 // ─── noEntriesTag ─────────────────────────────────────────────────────────────
 
 describe("noEntriesTag", () => {

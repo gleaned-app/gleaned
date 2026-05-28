@@ -12,20 +12,26 @@
     "test:watch": "NODE_OPTIONS=--disable-warning=DEP0205 vitest",
     "test:coverage": "NODE_OPTIONS=--disable-warning=DEP0205 vitest run --coverage",
     "test:e2e": "playwright test",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "prestart": "drizzle-kit migrate",
     "prepare": "[ -d .git ] && git config core.hooksPath .githooks && chmod +x .githooks/pre-commit || true"
   },
   "dependencies": {
+    "argon2": "^0.44.0",
+    "better-sqlite3": "^12.10.0",
     "dompurify": "^3.4.5",
+    "drizzle-orm": "^0.45.2",
     "highlight.js": "^11.11.1",
     "marked": "^18.0.4",
     "next": "16.2.6",
-    "pouchdb": "^9.0.0",
-    "pouchdb-find": "^9.0.0",
     "react": "19.2.6",
     "react-dom": "19.2.6"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "argon2",
+      "better-sqlite3",
       "leveldown",
       "sharp",
       "unrs-resolver"
@@ -38,13 +44,13 @@
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/dompurify": "^3.2.0",
     "@types/node": "^25.9.1",
-    "@types/pouchdb": "^6.4.2",
-    "@types/pouchdb-find": "^7.3.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitest/coverage-v8": "^4.1.7",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9.39.4",
     "eslint-config-next": "16.2.6",
     "sharp": "^0.34.5",

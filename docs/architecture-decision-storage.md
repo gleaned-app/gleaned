@@ -117,7 +117,7 @@ The right place for local-first is the **native mobile app**, where:
 | Before | After |
 |---|---|
 | PouchDB + IndexedDB | No client-side database |
-| CouchDB sync | Server-side database (PostgreSQL or SQLite) accessed via API |
+| CouchDB sync | Server-side SQLite database (`better-sqlite3`) accessed via API |
 | PouchDB HTTP adapter auth | Standard `Authorization` header in API client |
 | CouchDB conflict resolution | Last-write-wins with `If-Match` ETags at the API layer |
 | `output: "export"` static build | Next.js with API routes |
@@ -139,6 +139,25 @@ your server. It does not pretend to work offline, because it does not.
 Both clients share the same server API and the same encryption boundary. Only
 the persistence strategy differs — and it differs for a reason that matches
 each platform's actual capabilities.
+
+### Why SQLite (not Postgres)
+
+gleaned is single-user, self-hosted, and stores opaque ciphertext blobs
+keyed by a few plaintext index columns. None of Postgres's strengths
+(concurrent writers, replication, full-text search, rich types) apply here:
+the encryption boundary makes server-side text search impossible regardless
+of engine, and there is exactly one writer.
+
+SQLite collapses the entire storage layer into one file inside the existing
+Docker volume. Backups are `VACUUM INTO` in a cron sidecar. There is no
+extra container, no extra port, no extra credentials, no extra wait-for-it
+in the compose file. For this workload, Postgres is strictly more
+operational complexity for zero functional gain.
+
+A future multi-instance deployment (e.g. shared family server with
+per-user databases) could revisit this — but the same single-user model
+likely extends naturally as one SQLite file per user, which keeps the
+operational story identical.
 
 ### What is removed from the web client
 
@@ -164,9 +183,9 @@ This decision is not free. The web app loses real things:
   cannot index entry contents. Full-text search must happen client-side after
   decrypting the page of results. This is the same constraint as before, but
   it now matters more because the client no longer has a local index.
-- **Operational complexity moves to the server.** Backups of PostgreSQL or
-  SQLite become the user's responsibility instead of being implicit in
-  CouchDB's data files.
+- **Operational complexity moves to the server.** SQLite backups (via
+  `VACUUM INTO`, scheduled in Docker) become the user's responsibility
+  instead of being implicit in CouchDB's data files.
 
 We accept these because the alternative — keeping local-first in the browser
 — means continuing to pay the bug-bow-wave cost forever, and because users
@@ -177,7 +196,7 @@ who genuinely need offline have the native apps for that.
 ## Architecture Summary
 
 ```
-Browser    →  HTTP/JSON API  →  Server DB (Postgres/SQLite)
+Browser    →  HTTP/JSON API  →  Server DB (SQLite)
                     ↑
 iOS App    ←→  sync (HTTPS)  ←→  Server API
                     ↑
@@ -189,12 +208,78 @@ E2E encryption is a property of the data shape, not of any one client.
 
 ---
 
+## Technical Stack: SQLite
+
+**Library:** `better-sqlite3`, not `libsql`.  
+`libsql` is Turso's fork of SQLite, its headline feature being Embedded Replicas that
+sync to Turso's cloud. Gleaned is self-hosted by design; that feature is a
+commercial cloud product dressed as open source. `better-sqlite3` is a thin,
+stable N-API binding to mainline SQLite with no business interests attached.
+
+**Synchronous API is a feature, not a limitation.**  
+SQLite I/O is in the microsecond range. The overhead of Promise-boxing would be
+measurably larger than the I/O itself. Async here is cargo-cult.
+
+**Three non-obvious requirements:**
+
+1. **WAL mode.** SQLite's default rollback-journal mode blocks readers during
+   writes. Enable WAL at startup — one-time, persisted in the file:
+   ```ts
+   db.pragma("journal_mode = WAL");
+   db.pragma("synchronous = NORMAL"); // faster than FULL, still crash-safe
+   ```
+
+2. **Node Runtime only.** `better-sqlite3` is a native N-API binding. It does
+   not run in Next.js's Edge Runtime. Every API route that touches the DB must
+   declare (or inherit from a route group):
+   ```ts
+   export const runtime = "nodejs";
+   ```
+   Edge Runtime is not useful here anyway — the DB file lives on the server,
+   not at the edge.
+
+3. **Singleton connection.** Next.js can reload modules on hot-reload (dev) and
+   worker recycling (prod). Opening a new `Database` on every import leaks file
+   descriptors. Use the `globalThis` singleton pattern:
+   ```ts
+   const g = globalThis as { _db?: Database.Database };
+   export const db = g._db ?? new Database(process.env.DB_PATH!);
+   if (!g._db) { g._db = db; db.pragma("journal_mode = WAL"); }
+   ```
+
+**ORM:** Drizzle (`drizzle-orm` + `drizzle-kit`).  
+Generates real SQL migration files that are committed and reviewed. No magic
+schema inference at runtime.
+
+**Schema sharing with native apps.**  
+Drizzle's table definitions are adapter-agnostic. The same `schema/entries.ts`
+and `schema/threads.ts` files can be imported by the future iOS/Android apps
+using the `expo-sqlite` or `op-sqlite` Drizzle adapter. Structure the schema
+from day one to support this:
+
+```
+lib/db/
+  schema/
+    entries.ts      ← shared: web server + native apps
+    threads.ts      ← shared: web server + native apps
+    settings.ts     ← server-only (native apps manage settings locally)
+    sessions.ts     ← server-only (native apps use OS-level auth tokens)
+  server.ts         ← better-sqlite3 singleton + WAL init
+  migrations/       ← drizzle-kit output, committed to git
+```
+
+Not splitting this correctly now means duplicating and diverging schema across
+platforms later.
+
+---
+
 ## Migration Path (Web App)
 
 1. Remove `output: "export"` from `next.config.ts`
 2. Add Next.js API routes under `app/api/`
-3. Add a server-side database (SQLite via `better-sqlite3` for simplicity, or
-   PostgreSQL for multi-instance setups)
+3. Add SQLite via `better-sqlite3` (with Drizzle ORM for schema and
+   migrations). See the [migration plan](./migration-plan-pouchdb-to-sqlite.md)
+   for why SQLite over Postgres.
 4. Replace the PouchDB calls in `lib/db/` with `fetch` calls to the API; keep
    the public function signatures so `components/` does not need to change
 5. Keep all encryption logic in `lib/crypto.ts` — unchanged
