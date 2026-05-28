@@ -35,6 +35,14 @@ export const metadata: Metadata = {
   title: "gleaned",
   description: "Dein persönliches Lern-Journal",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/icon-apple.png" }],
+    shortcut: "/icon-192.png",
+  },
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "gleaned" },
   other: { "mobile-web-app-capable": "yes" },
 };
@@ -53,9 +61,6 @@ export default function RootLayout({
       <head>
         <meta name="theme-color" content="#F3EDE3" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#15100C" media="(prefers-color-scheme: dark)" />
-        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-        <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
-        <link rel="apple-touch-icon" href="/icon-apple.png" />
         {/* Inline script runs synchronously before first paint — prevents FOUC.
             strategy="beforeInteractive" with src in App Router does NOT inline;
             it pushes to __next_s queue which runs after hydration. */}
