@@ -4,7 +4,11 @@ export default defineConfig({
   testDir: "./e2e",
   timeout: 30_000,
   expect: { timeout: 8_000 },
-  fullyParallel: true,
+  // Tests run serially (workers: 1) because all browser contexts share the same
+  // server-side SQLite database — parallel execution would cause race conditions
+  // on auth state and data created by other tests.
+  fullyParallel: false,
+  workers: 1,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",

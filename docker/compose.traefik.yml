@@ -50,6 +50,12 @@ services:
       - "traefik.http.middlewares.gleaned-redirect-www.redirectregex.regex=^https://www\\.${DOMAIN}/(.*)"
       - "traefik.http.middlewares.gleaned-redirect-www.redirectregex.replacement=https://${DOMAIN}/$${1}"
       - "traefik.http.middlewares.gleaned-redirect-www.redirectregex.permanent=true"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   pusher:
     image: ghcr.io/gleaned-app/gleaned-pusher:latest
@@ -62,53 +68,20 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@${DOMAIN}}
-      # TODO(Phase 6): remove COUCHDB_URL after CouchDB is removed
-      COUCHDB_URL: http://${COUCHDB_USER:-admin}:${COUCHDB_PASSWORD:-changeme}@couchdb:5984
+      APP_URL: http://app:3000
       PUSH_HOUR: ${PUSH_HOUR:-20}
       PUSH_MINUTE: ${PUSH_MINUTE:-0}
       DUE_HOUR: ${DUE_HOUR:-9}
       DUE_MINUTE: ${DUE_MINUTE:-0}
       SEND_SECRET: ${SEND_SECRET}
     depends_on:
-      couchdb:
+      app:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - internal
-
-  # TODO(Phase 6): remove couchdb and couchdb-init after data migration is verified
-  couchdb:
-    image: couchdb:3
-    restart: unless-stopped
-    environment:
-      COUCHDB_USER: ${COUCHDB_USER:-admin}
-      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:-changeme}
-    volumes:
-      - couchdb_data:/opt/couchdb/data
-      - ./couchdb/cors.ini:/opt/couchdb/etc/local.d/cors.ini
-    healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:5984/"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 15s
-    networks:
-      - internal
-
-  # TODO(Phase 6): remove after CouchDB is removed
-  couchdb-init:
-    image: couchdb:3
-    restart: "no"
-    entrypoint: ["sh", "-c"]
-    command:
-      - 'curl -sX PUT "http://${COUCHDB_USER:-admin}:${COUCHDB_PASSWORD:-changeme}@couchdb:5984/gleaned"; echo'
-    depends_on:
-      couchdb:
-        condition: service_healthy
     networks:
       - internal
 
@@ -134,4 +107,3 @@ networks:
 
 volumes:
   gleaned_data:
-  couchdb_data:
