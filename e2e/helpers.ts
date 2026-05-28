@@ -36,12 +36,4 @@ export async function authenticate(page: Page): Promise<void> {
   }
 
   await expect(page.locator("nav.fixed")).toBeVisible({ timeout: 10_000 });
-
-  // Playwright's APIRequestContext syncs httpOnly cookies from browser JS fetch()
-  // with a slight delay. A browser-side probe confirms the session is live before
-  // tests that call page.request proceed.
-  await page.waitForFunction(
-    async () => { const r = await fetch("/api/settings", { credentials: "include" }); return r.ok; },
-    { timeout: 10_000 },
-  );
 }
