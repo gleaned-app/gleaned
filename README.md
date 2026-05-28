@@ -2,7 +2,7 @@
 
 > *to collect gradually and bit by bit; to gather the knowledge left behind by each day.*
 
-A personal, offline-first learning journal. Encrypted. Self-hosted. No accounts.
+A personal learning journal. End-to-end encrypted. Self-hosted. No accounts.
 
 ---
 
@@ -34,9 +34,8 @@ I'm 18. This is the first project I've shipped. [Read the full story →](docs/s
 - **Search** — instant full-text search across all entries (⌘K / Ctrl+K)
 - **Calendar** — browse any day's entries in a heatmap view
 - **Learning list** — todos with due dates, color labels, and overdue indicators
-- **End-to-end encryption** — PBKDF2 + AES-GCM; the key never leaves your device
-- **CouchDB sync** — optional self-hosted sync across browsers and devices
-- **PWA** — installable, works fully offline
+- **End-to-end encryption** — PBKDF2 + AES-GCM; the encryption key never leaves your device
+- **PWA** — installable on mobile and desktop
 - **Themes** — Auto / Light / Dark / Sepia, all in OKLCH
 - **Fonts** — Modern (DM Sans) / Classic (Lora) / Elegant (Playfair Display) / Handwriting (Caveat)
 - **i18n** — German and English, switchable at runtime
@@ -80,58 +79,33 @@ pnpm dev
 # → http://localhost:3000
 ```
 
-On first launch you'll be asked to set a password. This password encrypts all your entries — it cannot be recovered if lost.
+On first launch you'll be asked to set a password. This password derives your encryption key — it cannot be recovered if lost.
 
 ---
 
-## CouchDB sync (optional)
+## Self-hosting
 
-Sync lets you share your journal across browsers and devices. Each browser has its own local PouchDB; CouchDB merges them so all your devices see the same entries.
+gleaned runs as a single Docker container. All data is stored in a SQLite file on the server, mounted via a named volume so it survives container restarts.
 
-**Development** — run only CouchDB locally, Next.js on the host:
-
-```bash
-docker compose -f docker/compose.dev.yml up -d
-pnpm dev
-```
-
-**Production (port-based):**
+**Port-based (HTTP):**
 
 ```bash
-sh docker/setup.sh          # creates docker/.env and generates secrets
-# edit docker/.env — set COUCHDB_PASSWORD at minimum
+sh docker/setup.sh       # generates docker/.env with random secrets
 docker compose -f docker/compose.yml up -d
 # → http://localhost:3000
 ```
 
-**Production (Traefik + TLS):**
+**Traefik + TLS (recommended for production):**
 
 ```bash
-sh docker/setup.sh          # creates docker/.env and generates secrets
-# edit docker/.env — set DOMAIN and COUCHDB_PASSWORD
+sh docker/setup.sh
+# edit docker/.env — set DOMAIN
 docker compose -f docker/compose.traefik.yml pull
 docker compose -f docker/compose.traefik.yml up -d
+# → https://your-domain.com
 ```
 
-Then open **Settings → Sync**. The URL is always your domain with `/db/gleaned` — the app proxies CouchDB through nginx so CouchDB is never exposed directly:
-
-```
-https://gleaned.example.com/db/gleaned
-```
-
-The Settings page shows a clickable hint with the correct URL for your current deployment. Enter your CouchDB username and password in the separate fields.
-
-For local development with `docker/compose.dev.yml`, use the direct CouchDB port instead:
-
-```
-http://localhost:5984/gleaned
-```
-
-### Adding a second device
-
-On a device that has no local account yet, tap **Connect device** on the welcome screen. Enter the sync URL and CouchDB credentials — the app pulls your settings (including the encryption salt) from CouchDB, then asks for your app password. No re-registration needed.
-
-If a device already has a local account with the wrong encryption key, use the **Connect device** link at the bottom of the login screen. Export your data first (Settings → Export) if you have local entries that have not yet synced.
+Both stacks include an optional push-notification service (`pusher`) for daily reminders.
 
 ---
 
@@ -139,11 +113,12 @@ If a device already has a local account with the wrong encryption key, use the *
 
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 16 (static export, Turbopack) |
+| Framework | Next.js 16 (Turbopack) |
 | UI | React 19, Tailwind CSS v4 |
-| Local database | PouchDB (IndexedDB) |
-| Sync | CouchDB (Docker, optional) |
-| Encryption | PBKDF2 + AES-GCM |
+| Database | SQLite via better-sqlite3, server-side |
+| API | Next.js API routes |
+| Auth | Argon2id (server) + PBKDF2-HMAC-SHA-256 (client key derivation) |
+| Encryption | AES-GCM-256, client-side |
 | Fonts | DM Sans, Lora, Playfair Display, Caveat |
 | Package manager | pnpm |
 
@@ -151,37 +126,33 @@ If a device already has a local account with the wrong encryption key, use the *
 
 ## Security model
 
+### Architecture
+
+gleaned is a self-hosted server application. Your data lives in a SQLite database on your server. The browser encrypts all content with AES-GCM before sending it — the server only ever stores ciphertext and never sees plaintext.
+
 ### What is encrypted
 
-Everything you write is encrypted with AES-GCM-256 before it is stored in IndexedDB. The key is derived from your password using PBKDF2-HMAC-SHA-256 (600 000 iterations, 128-bit random salt). The key never leaves your device and is never written to storage — it lives only in JS memory for the duration of the session.
+Everything you write is encrypted in the browser before it is sent to the server. The encryption key is derived from your password using PBKDF2-HMAC-SHA-256 (600 000 iterations, 128-bit random salt). The key never leaves the browser and is never written to any storage — it lives only in JS memory for the duration of the session.
 
-Encrypted fields per entry: content, tags, source, stake, gap, attachment binaries, attachment metadata. The `context` (learning location) field is intentionally stored unencrypted — see the metadata tradeoff section below.
+Encrypted fields per entry: content, tags, source, stake, gap, attachment binaries, attachment metadata.
 Encrypted fields per thread: text.
-The CouchDB password (if configured) is also stored encrypted.
 
 ### What is not encrypted — metadata tradeoff
 
-The following fields are stored **in plaintext** in IndexedDB to allow scheduling and filtering without decryption:
+The following fields are stored in plaintext in SQLite to allow scheduling and filtering on the server:
 
 | Field | Why unencrypted |
 |---|---|
-| `date`, `createdAt` | Required for calendar view and entry ordering |
-| `entryType` | Used to select the correct review prompt |
-| `context` | Learning location (Arbeit, Schule, …); stored plain for filtering |
-| `gapStatus` | Drives gap-aware queue prioritisation |
-| `nextReview`, `reviewInterval` | Scheduling without full DB scan |
-| `stability`, `difficulty` | FSRS-5 parameters; needed for interval calculation without decryption |
-| `lastReviewOutcome`, `reviewHistory` | Calibration score computation |
+| `date`, `created_at` | Required for calendar view and entry ordering |
+| `next_review`, `review_interval` | Scheduling without full table scan |
 
-**Implication:** someone with access to your IndexedDB (e.g. another user on the same device, a malicious browser extension) can see *when* you made entries and how they are classified (Insight, Observation, etc.) — without knowing your password. The actual content, tags, and personal context fields remain encrypted.
-
-If this is a concern, do not share the device or browser profile.
+**Implication:** someone with access to the server database (the SQLite file) can see *when* you made entries and when they are due for review — without knowing your password. The actual content, tags, and all personal fields remain encrypted.
 
 ### Threat model
 
-- **Remote / network attackers** — no attack surface; the app is local-only and there is no server.
-- **CouchDB sync** — data is encrypted before it leaves the browser. The CouchDB server stores only ciphertext.
-- **Same-origin JS (extensions, XSS)** — the AES key is in the JS heap and is accessible to any same-origin script for the duration of the session. Lock the app (⌘L) when stepping away.
+- **Remote / network attackers** — the server exposes only the Next.js app. All data returned by the API is ciphertext; an attacker who intercepts traffic or reads the database cannot read your entries.
+- **Server compromise** — an attacker with full server access sees only ciphertext. The encryption key is never transmitted.
+- **Same-origin JS (extensions, XSS)** — the AES key is in the JS heap and is accessible to any same-origin script during the session. Lock the app (⌘L) when stepping away.
 - **Physical access to an unlocked device** — not protected; the key is live in memory. Lock before stepping away.
 - **Physical access to a locked device** — protected; the key is wiped from memory on lock, and a wrong password cannot decrypt the data.
-- **Brute force** — PBKDF2 at 600 000 iterations makes each attempt slow (~600 ms on a modern CPU). The UI adds exponential backoff (1 s, 2 s, 4 s … 30 s cap) persisted across page reloads.
+- **Brute force** — server-side Argon2id makes each verification attempt slow. The UI adds exponential backoff (1 s, 2 s, 4 s … 30 s cap) persisted across page reloads.
