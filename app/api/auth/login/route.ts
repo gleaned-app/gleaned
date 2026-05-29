@@ -7,13 +7,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db/server";
 import { settings } from "@/lib/db/schema/server/settings";
 import { sessions } from "@/lib/db/schema/server/sessions";
+import { getClientIp, checkLoginRateLimit, recordLoginFailure, clearLoginAttempts } from "@/app/api/_rate-limit";
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+const WINDOW_FALLBACK_MS = 15 * 60 * 1000;
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const body = await request.json().catch(() => null);
   if (!body?.password) {
     return NextResponse.json({ error: "password required" }, { status: 400 });
+  }
+
+  const ip = getClientIp(request);
+  const limit = checkLoginRateLimit(ip);
+  if (limit.limited) {
+    const retryAfterSecs = Math.ceil((limit.retryAfterMs ?? WINDOW_FALLBACK_MS) / 1000);
+    return NextResponse.json(
+      { error: "Too many failed attempts. Try again later." },
+      { status: 429, headers: { "Retry-After": String(retryAfterSecs) } },
+    );
   }
 
   const db = getDb();
@@ -24,8 +36,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const valid = await argon2.verify(row.password_verifier, body.password);
   if (!valid) {
+    recordLoginFailure(ip);
     return NextResponse.json({ error: "Invalid password" }, { status: 401 });
   }
+
+  clearLoginAttempts(ip);
 
   // Sweep expired sessions on the busiest endpoint — cheap and sufficient.
   db.delete(sessions).where(lt(sessions.expires_at, new Date().toISOString())).run();

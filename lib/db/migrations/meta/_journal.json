@@ -22,6 +22,13 @@
       "when": 1780065083085,
       "tag": "0002_majestic_gorgon",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1780085583567,
+      "tag": "0003_eminent_firelord",
+      "breakpoints": true
     }
   ]
 }
