@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Before submitting, please read the [scope section in CONTRIBUTING.md](../blob/main/CONTRIBUTING.md#whats-out-of-scope).
-        Features that conflict with gleaned's design principles (offline-first, no accounts, no cloud lock-in) will be closed.
+        Features that conflict with gleaned's design principles (E2E encryption, self-hosted, no accounts) will be closed.
 
   - type: textarea
     id: problem
@@ -36,8 +36,8 @@ body:
         - Review (spaced repetition)
         - Search
         - Settings / theming
-        - Sync (CouchDB)
-        - PWA / offline / install
+        - Push notifications
+        - PWA / install
         - Performance
         - Accessibility
         - i18n / language support
@@ -65,5 +65,5 @@ body:
       options:
         - label: I searched existing issues and this hasn't been requested yet
           required: true
-        - label: This fits the scope of gleaned (offline-first personal journal, no accounts, self-hosted)
+        - label: This fits the scope of gleaned (E2E encrypted personal journal, no accounts, self-hosted)
           required: true

@@ -47,9 +47,9 @@ body:
         - Review (spaced repetition)
         - Search
         - Settings
-        - Sync (CouchDB)
         - Authentication (lock screen / password)
-        - PWA / install / offline
+        - Push notifications
+        - PWA / install
         - Other
     validations:
       required: true
