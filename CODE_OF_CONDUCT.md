@@ -15,29 +15,41 @@ Examples of behavior that contributes to a positive environment:
 - Giving and gracefully accepting constructive feedback
 - Accepting responsibility and apologizing to those affected by our mistakes
 - Focusing on what is best for the overall community
+- Supporting newcomers and people with less experience — everyone starts somewhere
 
 Examples of unacceptable behavior:
 
 - The use of sexualized language or imagery, and sexual attention or advances of any kind
 - Trolling, insulting or derogatory comments, and personal or political attacks
-- Public or private harassment
+- Public or private harassment of any kind
 - Publishing others' private information without explicit permission
+- Dismissing or belittling contributions based on experience level, background, or identity
 - Other conduct which could reasonably be considered inappropriate in a professional setting
 
-## Enforcement Responsibilities
+## Zero Tolerance Policy
 
-The project maintainer is responsible for clarifying and enforcing these standards and will take appropriate and fair corrective action in response to any behavior deemed inappropriate, threatening, offensive, or harmful.
+This project enforces a **zero-tolerance policy** for violations of this Code of Conduct.
+
+Most projects use a graduated response — a warning, then a temporary ban, then a permanent ban. We do not. The reason is simple: warnings send the message that one free violation is acceptable. It is not. Harassment, discrimination, and abusive behavior cause real harm regardless of whether it is a "first offence." People who have been targeted do not get to un-experience what happened to them because the perpetrator received a warning first.
+
+Zero tolerance means:
+
+- **No warnings.** A violation results in immediate removal.
+- **No appeals based on intent.** Impact matters more than intent.
+- **No exceptions** based on contribution history, seniority, or reputation.
+
+This is not about being punitive. It is about making clear from the start that this is a space where people can contribute without fear. A community that tolerates bad behavior — even once — signals to everyone who might be affected that their safety is negotiable. Ours is not.
 
 ## Scope
 
-This Code of Conduct applies within all project spaces — GitHub issues, pull requests, discussions, and any other official channel.
+This Code of Conduct applies within all project spaces — GitHub issues, pull requests, discussions, code review comments, and any other official channel. It also applies when an individual is representing the project in public spaces.
 
 ## Enforcement
 
-This project operates a **zero-tolerance policy**. Violations of this Code of Conduct result in immediate and permanent removal from the project — no warnings, no second chances.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to **gleaned.security@proton.me**. All complaints will be reviewed promptly and confidentially. The reporter's privacy will be protected throughout the process.
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to **gleaned.security@proton.me**. All complaints will be reviewed promptly and investigated with respect for the privacy of the reporter.
+Upon confirmation of a violation, the responsible individual will be permanently removed from all project spaces without prior warning.
 
 ## Attribution
 
-This Code of Conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org), version 2.1.
+This Code of Conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org), version 2.1, with an expanded zero-tolerance enforcement policy.
