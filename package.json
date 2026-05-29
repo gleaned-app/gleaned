@@ -20,7 +20,7 @@
   "dependencies": {
     "argon2": "^0.44.0",
     "better-sqlite3": "^12.10.0",
-    "dompurify": "^3.4.5",
+    "dompurify": "^3.4.7",
     "drizzle-orm": "^0.45.2",
     "highlight.js": "^11.11.1",
     "marked": "^18.0.4",
