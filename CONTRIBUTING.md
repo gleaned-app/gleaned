@@ -15,20 +15,15 @@ git clone https://github.com/gleaned-app/gleaned.git
 cd gleaned
 pnpm install
 pnpm dev
+# → http://localhost:3000
 ```
 
-For CouchDB sync during development:
-
-```bash
-docker compose -f docker-compose.dev.yml up -d
-pnpm dev
-```
+On first launch you'll be asked to set a password. The app stores all data in a local SQLite file (`gleaned.db`) — no external database needed for development.
 
 ## Code style
 
 - **TypeScript** everywhere — no `any` unless unavoidable.
 - **Tailwind CSS v4** for styles, OKLCH variables for colors — no hardcoded hex/rgb values.
-- **PouchDB only in Client Components** — never import it in server-side code.
 - **i18n**: all user-facing strings go through `useT()` — no hardcoded German or English text in components.
 - **No new dependencies** without discussion — keep the bundle lean.
 
@@ -44,9 +39,17 @@ pnpm dev
 - Describe what changed and why — not just what the code does.
 - If your PR changes the UI, include a screenshot.
 
+## Tests
+
+```bash
+pnpm test          # unit tests (Vitest)
+pnpm test:coverage # coverage report
+pnpm test:e2e      # Playwright E2E (requires dev server running)
+```
+
 ## What's out of scope
 
-- Cloud sync to anything other than CouchDB (no Firebase, Supabase, etc.)
+- Cloud sync or external database backends (no Firebase, Supabase, CouchDB, etc.)
 - Account systems or server-side user management
-- Mobile-native builds (the PWA covers mobile)
+- Mobile-native builds (covered by the native app roadmap)
 - AI writing features inside the app (writing assistance, content suggestions, summaries)

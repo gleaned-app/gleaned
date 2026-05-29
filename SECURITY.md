@@ -18,21 +18,38 @@ You will receive a response within 7 days. Once the issue is confirmed and fixed
 The following are in scope:
 
 - Vulnerabilities in the encryption implementation (`lib/crypto.ts`) — key derivation, AES-GCM usage, key storage
-- Authentication bypass (lock screen, session handling in `lib/auth.ts`)
-- Data leakage — entry content reaching IndexedDB or network in plaintext
-- XSS in entry rendering (Markdown via `marked` + `highlight.js`)
-- CouchDB sync security issues (credential exposure, unauthorized access)
+- Authentication bypass (lock screen, session handling in `lib/auth.ts`, server-side session validation in `app/api/_auth.ts`)
+- Data leakage — entry content reaching the server or network in plaintext
+- XSS in entry rendering (Markdown via `marked` + `highlight.js` + DOMPurify)
+- SQL injection in API routes
 
 The following are **out of scope**:
 
 - Issues that require physical access to an unlocked device
-- The security of the user's own CouchDB deployment
+- The security of the user's own server or Docker deployment
 - Browser or OS vulnerabilities not specific to gleaned
 
 ## Encryption model
 
-gleaned uses PBKDF2 (600,000 iterations, SHA-256) to derive an AES-GCM-256 key from the user's password. Entry content, tags, and the CouchDB sync password are encrypted before being written to IndexedDB. The derived key is held only in the JavaScript module cache for the lifetime of the page — it is never written to `sessionStorage`, `localStorage`, or any other persistent store. A page reload requires re-authentication; this is intentional.
+gleaned uses PBKDF2-HMAC-SHA-256 (600,000 iterations, 256-bit random salt) to derive an AES-GCM-256 key from the user's password. All entry content, tags, and attachments are encrypted in the browser before being sent to the server. The server stores only ciphertext and never receives the plaintext or the key.
 
-The login verification token stored in the database is an AES-GCM ciphertext of a known plaintext, encrypted under the derived key. Successful decryption proves knowledge of the password without storing anything reversible.
+The derived key is held only in the JavaScript module cache for the lifetime of the page — it is never written to `sessionStorage`, `localStorage`, or any other persistent store. A page reload requires re-authentication; this is intentional.
 
-Brute-force protection is applied on the lock screen: each failed login attempt increases the lockout delay exponentially (1 s, 2 s, 4 s … up to 30 s).
+The login verification token stored in the server database is an AES-GCM ciphertext of a known plaintext, encrypted under the derived key. Successful decryption proves knowledge of the password without storing anything reversible.
+
+### Metadata trade-off
+
+The following fields are stored in plaintext in SQLite to allow server-side scheduling and filtering:
+
+| Field | Why unencrypted |
+|---|---|
+| `date`, `created_at` | Required for calendar view and entry ordering |
+| `next_review`, `review_interval` | Scheduling without full table scan |
+
+Someone with access to the SQLite file can see *when* entries were made and when they are due for review — without knowing your password. The actual content, tags, and all personal fields remain encrypted.
+
+### Brute-force protection
+
+Server-side: Argon2id is used to verify the password hash, making each verification attempt slow.
+
+Client-side: each failed login attempt increases the lockout delay exponentially (1 s, 2 s, 4 s … up to 30 s cap), persisted across page reloads.

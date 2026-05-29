@@ -43,9 +43,7 @@ export async function login(password: string): Promise<boolean> {
     const statusRes = await apiFetch("/api/auth/status");
     const status = await statusRes.json();
 
-    if (!status.setup) {
-      return await _bootstrapFromPouchDB(password);
-    }
+    if (!status.setup) return false;
 
     const loginRes = await apiFetch("/api/auth/login", {
       method: "POST",
@@ -69,13 +67,6 @@ export async function login(password: string): Promise<boolean> {
     // Unexpected error — propagate
     throw err;
   }
-}
-
-// Phase 2-era PouchDB bootstrap is no longer possible once PouchDB is removed.
-// Users upgrading directly from Phase 1 will go through the normal setup flow
-// and import their existing data via the Phase 5 migration path.
-async function _bootstrapFromPouchDB(_password: string): Promise<boolean> {
-  return false;
 }
 
 export async function logout(): Promise<void> {

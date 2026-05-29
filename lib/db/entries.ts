@@ -4,8 +4,16 @@ import { encryptEntryToApi, decryptEntryFromRow, type ApiEntryRow } from "./entr
 import { apiFetch } from "../api-client";
 
 // ─── Search cache ─────────────────────────────────────────────────────────────
-// All decrypted entries in memory so searchEntries never re-decrypts on each
-// query. Cleared on lock, updated incrementally on save/update/delete.
+// All decrypted entries are held in memory so searchEntries never re-decrypts
+// on each keystroke. This is a deliberate tradeoff: because the server stores
+// only ciphertext, full-text search must happen client-side after decryption.
+// Decrypting the entire journal on every search would be prohibitively slow, so
+// we decrypt once on first access and cache the result for the session.
+// The cache is cleared on lock and updated incrementally on save/update/delete,
+// so it never grows stale during a session.
+// Practical upper bound: 10 years of daily entries ≈ 3 650 rows. Even at ~2 KB
+// average content per entry (generous), that is ~7 MB in memory — well within
+// any browser's budget.
 const cache = {
   entries: null as Entry[] | null,
   add(e: Entry)      { if (this.entries) this.entries = [e, ...this.entries]; },
