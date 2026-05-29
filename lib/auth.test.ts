@@ -67,14 +67,17 @@ describe("hasPassword", () => {
 // ─── setupPassword ────────────────────────────────────────────────────────────
 
 describe("setupPassword", () => {
-  it("calls /api/auth/setup and stores the derived key", async () => {
+  it("calls /api/auth/setup with token and stores the derived key", async () => {
     mockApiFetch.mockResolvedValue(makeResponse({ ok: true }, 200));
 
-    await setupPassword("newpassword");
+    await setupPassword("newpassword", "abc123token");
 
     expect(mockApiFetch).toHaveBeenCalledWith(
       "/api/auth/setup",
-      expect.objectContaining({ method: "POST" }),
+      expect.objectContaining({
+        method: "POST",
+        body: expect.stringContaining("abc123token"),
+      }),
     );
     expect(mockStoreKey).toHaveBeenCalledOnce();
     expect(isAuthenticated()).toBe(true);

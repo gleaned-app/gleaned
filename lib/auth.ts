@@ -21,14 +21,14 @@ export async function hasPassword(): Promise<boolean> {
   }
 }
 
-export async function setupPassword(password: string): Promise<void> {
+export async function setupPassword(password: string, setupToken: string): Promise<void> {
   const salt = generateSalt();
   const key = await deriveKey(password, salt, PBKDF2_ITERATIONS);
   const encryptionSalt = saltToBase64(salt);
 
   await apiFetch("/api/auth/setup", {
     method: "POST",
-    body: JSON.stringify({ password, encryptionSalt }),
+    body: JSON.stringify({ password, encryptionSalt, setupToken }),
   });
 
   await storeKey(key);

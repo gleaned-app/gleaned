@@ -213,12 +213,13 @@ export default function LockScreen({ onAuth }: Props) {
   const [confirm,  setConfirm]  = useState("");
   const [error,    setError]    = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [focused,  setFocused]  = useState<"pw" | "confirm" | null>(null);
+  const [focused,  setFocused]  = useState<"pw" | "confirm" | "token" | null>(null);
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockUntil, setLockUntil] = useState<number | null>(null);
   const [lockSecsLeft, setLockSecsLeft] = useState(0);
   const [acceptShortPw, setAcceptShortPw] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [setupToken, setSetupToken] = useState("");
 
   const t = useT();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -273,7 +274,7 @@ export default function LockScreen({ onAuth }: Props) {
       if (password.length < MIN_PASSWORD_LENGTH && !acceptShortPw) { setError(t.passwordTooShort); return; }
       setSubmitting(true);
       try {
-        await setupPassword(password);
+        await setupPassword(password, setupToken);
         onAuth();
       } catch {
         setError(t.genericError);
@@ -443,7 +444,7 @@ export default function LockScreen({ onAuth }: Props) {
               {t.firstTimePrompt}
             </p>
             <button
-              onClick={() => { setMode("setup"); setError(""); setPassword(""); setConfirm(""); }}
+              onClick={() => { setMode("setup"); setError(""); setPassword(""); setConfirm(""); setSetupToken(""); }}
               className="w-full rounded-full py-2.5 font-sans text-sm font-medium tracking-wide transition-all"
               style={{
                 background: "var(--fg)",
@@ -603,6 +604,37 @@ export default function LockScreen({ onAuth }: Props) {
             </div>
           )}
 
+          {mode === "setup" && (
+            <div>
+              <label
+                className="mb-1.5 block font-sans text-[10px] uppercase tracking-[0.18em]"
+                style={{ color: "var(--fg-muted)" }}
+              >
+                {t.setupTokenLabel}
+              </label>
+              <p className="mb-2 font-sans text-[11px] leading-relaxed" style={{ color: "var(--fg-muted)", opacity: 0.6 }}>
+                {t.setupTokenRequired}
+              </p>
+              <div style={{
+                borderBottom: `2px solid ${focused === "token" ? "var(--accent)" : "var(--border-rule)"}`,
+                transition: "border-color 200ms",
+              }}>
+                <input
+                  type="text"
+                  value={setupToken}
+                  onChange={(e) => setSetupToken(e.target.value.trim())}
+                  onFocus={() => setFocused("token")}
+                  onBlur={() => setFocused(null)}
+                  placeholder={t.setupTokenHint}
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="journal-input w-full bg-transparent py-2 font-mono text-sm outline-none"
+                  style={{ color: "var(--fg)", caretColor: "var(--accent)" }}
+                />
+              </div>
+            </div>
+          )}
+
           {error && (
             <p className="font-sans text-sm" style={{ color: "oklch(55% 0.18 25)" }}>
               {error}
@@ -611,7 +643,8 @@ export default function LockScreen({ onAuth }: Props) {
 
           {(() => {
             const shortBlocked = mode === "setup" && password.length > 0 && password.length < MIN_PASSWORD_LENGTH && !acceptShortPw;
-            const btnActive = !!password.trim() && !lockUntil && !shortBlocked;
+            const tokenBlocked = mode === "setup" && !setupToken.trim();
+            const btnActive = !!password.trim() && !lockUntil && !shortBlocked && !tokenBlocked;
             return (
               <div className="flex items-center justify-between pt-1">
                 <span className="font-serif text-sm italic" style={{ color: "var(--fg-muted)", opacity: 0.4 }}>
@@ -619,7 +652,7 @@ export default function LockScreen({ onAuth }: Props) {
                 </span>
                 <button
                   type="submit"
-                  disabled={submitting || !password.trim() || !!lockUntil || shortBlocked}
+                  disabled={submitting || !password.trim() || !!lockUntil || shortBlocked || tokenBlocked}
                   className="rounded-full px-6 py-2.5 font-sans text-sm font-medium tracking-wide transition-all"
                   style={{
                     background: btnActive ? "var(--fg)" : "transparent",
@@ -641,7 +674,7 @@ export default function LockScreen({ onAuth }: Props) {
                 type="button"
                 onClick={() => {
                   setMode(hasLocalAccount ? "login" : "choose");
-                  setError(""); setPassword(""); setConfirm("");
+                  setError(""); setPassword(""); setConfirm(""); setSetupToken("");
                 }}
                 className="font-sans text-xs transition-opacity hover:opacity-60"
                 style={{ color: "var(--fg-muted)" }}
@@ -651,7 +684,7 @@ export default function LockScreen({ onAuth }: Props) {
             ) : mode === "login" && hasLocalAccount ? (
               <button
                 type="button"
-                onClick={() => { setMode("setup"); setError(""); setPassword(""); setConfirm(""); }}
+                onClick={() => { setMode("setup"); setError(""); setPassword(""); setConfirm(""); setSetupToken(""); }}
                 className="font-sans text-xs transition-opacity hover:opacity-70"
                 style={{ color: "var(--fg-muted)" }}
               >

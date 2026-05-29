@@ -150,6 +150,7 @@ export async function encryptEntryToApi(
   entry: Omit<Entry, "_rev" | "encrypted" | "enc">,
 ): Promise<ApiEntryRow> {
   const key = await loadKey();
+  if (!key) throw new Error("encryption key not loaded — authenticate before writing entries");
   const payload: ApiEncPayload = {
     content: entry.content,
     tags: entry.tags,
@@ -166,9 +167,7 @@ export async function encryptEntryToApi(
     ...(entry.difficulty  !== undefined ? { difficulty:  entry.difficulty  } : {}),
   };
   const json = JSON.stringify(payload);
-  const data_enc = key
-    ? await encryptText(key, json)
-    : bytesToBase64(new TextEncoder().encode(json));
+  const data_enc = await encryptText(key, json);
   return {
     id: entry._id,
     date: entry.date,
@@ -182,11 +181,10 @@ export async function encryptEntryToApi(
 
 export async function decryptEntryFromRow(row: ApiEntryRow): Promise<Entry> {
   const key = await loadKey();
+  if (!key) throw new Error("encryption key not loaded — authenticate before reading entries");
   let payload: ApiEncPayload = { content: "", tags: [] };
   try {
-    const json = key
-      ? await decryptText(key, row.data_enc)
-      : new TextDecoder().decode(Uint8Array.from(atob(row.data_enc), (c) => c.charCodeAt(0)));
+    const json = await decryptText(key, row.data_enc);
     payload = JSON.parse(json) as ApiEncPayload;
   } catch {}
   return {

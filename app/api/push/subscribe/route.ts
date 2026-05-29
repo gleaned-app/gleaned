@@ -6,6 +6,8 @@ import { requireAuth } from "@/app/api/_auth";
 import { getDb } from "@/lib/db/server";
 import { push_subscriptions } from "@/lib/db/schema/server/push_subscriptions";
 
+const VALID_TIMEZONES = new Set(Intl.supportedValuesOf("timeZone"));
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const auth = requireAuth(request);
   if (auth instanceof NextResponse) return auth;
@@ -21,7 +23,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const id         = Buffer.from(endpoint).toString("base64url").slice(0, 64);
   const lang       = (body.lang as string | undefined) === "en" ? "en" : "de";
-  const tz         = (body.tz as string | undefined) ?? "UTC";
+  const rawTz      = (body.tz as string | undefined) ?? "UTC";
+  const tz         = VALID_TIMEZONES.has(rawTz) ? rawTz : "UTC";
   const created_at = new Date().toISOString();
 
   const db = getDb();

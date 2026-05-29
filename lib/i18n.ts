@@ -35,6 +35,9 @@ export interface Translations {
   noLocalAccount: string;
   resetAccountWarning: string;
   tooManyAttempts(secs: number): string;
+  setupTokenLabel: string;
+  setupTokenHint: string;
+  setupTokenRequired: string;
 
   // Journal
   filterBack: string;
@@ -218,6 +221,9 @@ const de: Translations = {
   acceptShortPw: "Kurzes Passwort akzeptieren — ich verstehe das erhöhte Risiko.",
   wrongPassword: "Falsches Passwort.",
   noLocalAccount: "Kein Konto in diesem Browser.",
+  setupTokenLabel: "Setup-Token",
+  setupTokenHint: "Token aus den Server-Logs",
+  setupTokenRequired: "Gib den Token ein, der beim Serverstart in den Logs angezeigt wurde.",
   resetAccountWarning: "Achtung: Hiermit wird das bestehende lokale Konto ersetzt. Alle gespeicherten Einträge auf diesem Gerät werden unlesbar.",
   tooManyAttempts: (secs) => `Zu viele Versuche — bitte ${secs}s warten.`,
 
@@ -393,6 +399,9 @@ const en: Translations = {
   acceptShortPw: "Accept short password — I understand the increased risk.",
   wrongPassword: "Wrong password.",
   noLocalAccount: "No account in this browser.",
+  setupTokenLabel: "Setup Token",
+  setupTokenHint: "Token from server logs",
+  setupTokenRequired: "Enter the token displayed in the server logs on startup.",
   resetAccountWarning: "Warning: This will replace the existing local account. All stored entries on this device will become unreadable.",
   tooManyAttempts: (secs) => `Too many attempts — please wait ${secs}s.`,
 

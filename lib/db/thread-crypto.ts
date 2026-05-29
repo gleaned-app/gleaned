@@ -1,5 +1,5 @@
 import type { Thread } from "@/types/thread";
-import { loadKey, encryptText, decryptText, bytesToBase64 } from "../crypto";
+import { loadKey, encryptText, decryptText } from "../crypto";
 
 /* @internal — exported for unit tests only */
 export async function encryptThread(
@@ -55,10 +55,9 @@ export async function encryptThreadToApi(
   thread: Omit<Thread, "_rev" | "encrypted" | "textEnc">,
 ): Promise<ThreadApiRow> {
   const key = await loadKey();
+  if (!key) throw new Error("encryption key not loaded — authenticate before writing threads");
   const json = JSON.stringify({ text: thread.text });
-  const data_enc = key
-    ? await encryptText(key, json)
-    : bytesToBase64(new TextEncoder().encode(json));
+  const data_enc = await encryptText(key, json);
   return {
     id: thread._id,
     done: thread.done ? 1 : 0,
@@ -72,11 +71,10 @@ export async function encryptThreadToApi(
 
 export async function decryptThreadFromRow(row: ThreadApiRow): Promise<Thread> {
   const key = await loadKey();
+  if (!key) throw new Error("encryption key not loaded — authenticate before reading threads");
   let text = "";
   try {
-    const json = key
-      ? await decryptText(key, row.data_enc)
-      : new TextDecoder().decode(Uint8Array.from(atob(row.data_enc), (c) => c.charCodeAt(0)));
+    const json = await decryptText(key, row.data_enc);
     const payload = JSON.parse(json) as { text?: string };
     text = payload.text ?? "";
   } catch {}
