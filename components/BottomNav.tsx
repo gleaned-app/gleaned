@@ -68,7 +68,7 @@ export default function BottomNav({ current, onChange, reviewCount = 0 }: Props)
       }}
     >
       <div
-        className="relative flex w-full items-stretch sm:w-auto sm:min-w-[380px]"
+        className="relative flex w-full max-w-[480px] items-stretch"
         style={{
           pointerEvents: "auto",
           background: "color-mix(in oklch, var(--bg-glass) 60%, transparent)",
@@ -106,7 +106,7 @@ export default function BottomNav({ current, onChange, reviewCount = 0 }: Props)
               key={tab.id}
               data-active={active}
               onClick={() => { haptic(); onChange(tab.id); }}
-              className="btn-3d relative z-10 flex flex-1 flex-col items-center justify-center gap-1.5 rounded-[22px] py-2.5 sm:py-3 font-sans transition-opacity active:opacity-60"
+              className="btn-3d relative z-10 flex flex-1 flex-col items-center justify-center gap-0 md:gap-1 rounded-[22px] py-2.5 md:py-3 font-sans transition-opacity active:opacity-60"
               style={{ color: active ? "var(--accent)" : "var(--fg-muted)" }}
             >
               <span className="relative">
@@ -121,7 +121,7 @@ export default function BottomNav({ current, onChange, reviewCount = 0 }: Props)
                   </span>
                 )}
               </span>
-              <span className="hidden sm:block text-[11px] font-medium tracking-wide">{tab.label}</span>
+              <span className="hidden md:block text-[11.5px] font-medium tracking-[0.04em]">{tab.label}</span>
             </button>
           );
         })}
