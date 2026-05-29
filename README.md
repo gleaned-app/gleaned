@@ -81,6 +81,8 @@ pnpm dev
 
 On first launch you'll be asked to set a password. This password derives your encryption key — it cannot be recovered if lost.
 
+gleaned is single-user by design. Each instance supports exactly one registration. If you want a second journal, run a second instance.
+
 ---
 
 ## Self-hosting

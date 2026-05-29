@@ -1,7 +1,8 @@
 # Migration Plan: PouchDB/CouchDB → SQLite + Next.js API
 
 **Date:** 2026-05-27
-**Status:** Planned
+**Completed:** 2026-05-29
+**Status:** Completed
 **Relates to:** [Architecture Decision: Storage Layer](./architecture-decision-storage.md)
 
 ---
