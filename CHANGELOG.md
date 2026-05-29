@@ -2,6 +2,20 @@
 
 All notable changes to gleaned are documented here.
 
+## [0.4.0] — 2026-05-29
+
+### Changed
+- **Push notifications integrated into main app** — the separate `pusher` container is gone. Scheduling now runs inside the gleaned server process via `instrumentation.ts` and `node-cron`. No second container to deploy, configure, or monitor.
+- **Push subscriptions stored in SQLite** — subscriptions are part of `gleaned.db` and are backed up automatically alongside all other data. No separate CouchDB database required.
+- **Push endpoints moved to `/api/push/`** — subscribe, vapid-key, and manual broadcast are now standard Next.js API routes with session-cookie auth.
+
+### Removed
+- `pusher/` service and Docker image (`ghcr.io/gleaned-app/gleaned-pusher`)
+- `docker/nginx.conf` and `docker/nginx-entrypoint.sh` (leftover from static-export era)
+- CouchDB dependency removed entirely — the last remaining use was push subscription storage
+
+---
+
 ## [0.3.0] — 2026-05-23
 
 ### Added
