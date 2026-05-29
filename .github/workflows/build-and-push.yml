@@ -1,4 +1,4 @@
-name: Build & Push Docker Images
+name: Build & Push Docker Image
 
 on:
   workflow_run:
@@ -37,8 +37,8 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Docker metadata — app
-        id: meta-app
+      - name: Docker metadata
+        id: meta
         uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}
@@ -48,35 +48,39 @@ jobs:
             type=raw,value=latest
             type=sha,prefix=
 
-      - name: Docker metadata — pusher
-        id: meta-pusher
-        uses: docker/metadata-action@v6
-        with:
-          images: ghcr.io/${{ github.repository }}-pusher
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest
-            type=sha,prefix=
-
-      - name: Build and push app
+      - name: Build and push
         uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta-app.outputs.tags }}
-          labels: ${{ steps.meta-app.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=app
           cache-to: type=gha,mode=max,scope=app
 
-      - name: Build and push pusher
-        uses: docker/build-push-action@v7
-        with:
-          context: ./pusher
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta-pusher.outputs.tags }}
-          labels: ${{ steps.meta-pusher.outputs.labels }}
-          cache-from: type=gha,scope=pusher
-          cache-to: type=gha,mode=max,scope=pusher
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: docker
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Extract release notes from CHANGELOG
+        id: notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          NOTES=$(awk "/^## \[$VERSION\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md | sed '/^[[:space:]]*$/d')
+          printf 'notes<<EOF\n%s\nEOF\n' "$NOTES" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "gleaned $GITHUB_REF_NAME" \
+            --notes "${{ steps.notes.outputs.notes }}"

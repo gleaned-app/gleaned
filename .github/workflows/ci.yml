@@ -5,14 +5,12 @@ on:
     paths-ignore:
       - '**/*.md'
       - 'docker/compose*.yml'
-      - 'docker/couchdb/**'
       - 'docker/.env.example'
       - 'docs/**'
   pull_request:
     paths-ignore:
       - '**/*.md'
       - 'docker/compose*.yml'
-      - 'docker/couchdb/**'
       - 'docker/.env.example'
       - 'docs/**'
 
@@ -46,6 +44,14 @@ jobs:
       - name: Test with coverage
         run: pnpm test:coverage
 
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
+
       - name: Audit dependencies
         run: pnpm audit --audit-level=high
 
@@ -70,7 +76,7 @@ jobs:
         run: pnpm exec playwright install chromium --with-deps
 
       - name: Run E2E tests
-        run: pnpm test:e2e
+        run: pnpm test:e2e --forbid-only
 
       - name: Upload test report
         if: failure()
