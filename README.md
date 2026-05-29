@@ -111,6 +111,8 @@ docker compose -f docker/compose.traefik.yml up -d
 
 Both stacks run as a single container. Push notifications (daily reminders, due-date alerts) are built in — configure VAPID keys via `setup.sh` and set `PUSH_TZ` in `docker/.env`.
 
+> **Important:** Open the app and set your password before making the URL publicly accessible. gleaned accepts the first registration it receives — whoever sets the password first owns the instance.
+
 ---
 
 ## Stack
