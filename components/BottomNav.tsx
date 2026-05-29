@@ -22,7 +22,7 @@ export default function BottomNav({ current, onChange, reviewCount = 0 }: Props)
       id: "journal",
       label: t.navJournal,
       icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
         </svg>
       ),
@@ -31,7 +31,7 @@ export default function BottomNav({ current, onChange, reviewCount = 0 }: Props)
       id: "calendar",
       label: t.navCalendar,
       icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
         </svg>
       ),
@@ -40,7 +40,7 @@ export default function BottomNav({ current, onChange, reviewCount = 0 }: Props)
       id: "threads",
       label: t.navLearn,
       icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
         </svg>
       ),
@@ -49,7 +49,7 @@ export default function BottomNav({ current, onChange, reviewCount = 0 }: Props)
       id: "review",
       label: t.navReview,
       icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
           <path d="M3 3v5h5"/>
         </svg>
@@ -59,17 +59,45 @@ export default function BottomNav({ current, onChange, reviewCount = 0 }: Props)
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50"
+      className="fixed bottom-0 left-0 right-0 z-50 flex justify-center"
       style={{
-        background: "color-mix(in oklch, var(--bg-nav) 88%, transparent)",
-        backdropFilter: "blur(24px) saturate(2) brightness(1.04)",
-        WebkitBackdropFilter: "blur(24px) saturate(2) brightness(1.04)",
-        borderTop: "0.5px solid color-mix(in oklch, var(--border) 60%, transparent)",
-        paddingBottom: "max(16px, env(safe-area-inset-bottom))",
-        paddingTop: "4px",
+        paddingBottom: "max(10px, env(safe-area-inset-bottom))",
+        paddingTop: "8px",
+        paddingInline: "16px",
+        pointerEvents: "none",
       }}
     >
-      <div className="mx-auto flex w-full max-w-lg items-stretch">
+      <div
+        className="relative flex w-full items-stretch sm:w-auto sm:min-w-[380px]"
+        style={{
+          pointerEvents: "auto",
+          background: "color-mix(in oklch, var(--bg-glass) 60%, transparent)",
+          backdropFilter: "blur(40px) saturate(2.4) brightness(1.06)",
+          WebkitBackdropFilter: "blur(40px) saturate(2.4) brightness(1.06)",
+          borderRadius: "24px",
+          border: "1px solid oklch(100% 0 0 / 0.18)",
+          borderBottomColor: "oklch(0% 0 0 / 0.06)",
+          boxShadow: [
+            "0 22px 64px oklch(0% 0 0 / 0.28)",
+            "0 8px 24px oklch(0% 0 0 / 0.16)",
+            "0 2px 6px oklch(0% 0 0 / 0.08)",
+            "inset 0 1.5px 0 oklch(100% 0 0 / 0.24)",
+            "inset 0 -1px 0 oklch(0% 0 0 / 0.06)",
+          ].join(", "),
+        }}
+      >
+        {/* Glass face gradient */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "24px",
+            background: "linear-gradient(160deg, oklch(100% 0 0 / 0.08) 0%, oklch(100% 0 0 / 0.02) 45%, transparent 100%)",
+            pointerEvents: "none",
+          }}
+        />
+
         {tabs.map((tab) => {
           const active = current === tab.id;
           const showBadge = tab.id === "review" && reviewCount > 0;
@@ -78,48 +106,22 @@ export default function BottomNav({ current, onChange, reviewCount = 0 }: Props)
               key={tab.id}
               data-active={active}
               onClick={() => { haptic(); onChange(tab.id); }}
-              className="relative flex flex-1 flex-col items-center justify-center gap-[5px] py-3 font-sans transition-opacity active:opacity-60"
-              style={{
-                color: active ? "var(--accent)" : "var(--fg-muted)",
-                WebkitTapHighlightColor: "transparent",
-              }}
+              className="btn-3d relative z-10 flex flex-1 flex-col items-center justify-center gap-1.5 rounded-[22px] py-3 font-sans transition-opacity active:opacity-60"
+              style={{ color: active ? "var(--accent)" : "var(--fg-muted)" }}
             >
-              {/* active indicator line at top */}
-              {active && (
-                <span
-                  aria-hidden
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    width: "28px",
-                    height: "2px",
-                    borderRadius: "0 0 2px 2px",
-                    background: "var(--accent)",
-                  }}
-                />
-              )}
-
               <span className="relative">
                 {tab.icon}
                 {showBadge && (
                   <span
                     key={reviewCount}
-                    className="badge-pop absolute -right-2 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full px-0.5 font-sans text-[9px] font-bold"
+                    className="badge-pop absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full px-0.5 font-sans text-[9px] font-bold"
                     style={{ background: "var(--due-overdue)", color: "#fff", lineHeight: 1 }}
                   >
                     {reviewCount > 9 ? "9+" : reviewCount}
                   </span>
                 )}
               </span>
-
-              <span
-                className="text-[10px] font-medium tracking-wide"
-                style={{ opacity: active ? 1 : 0.72 }}
-              >
-                {tab.label}
-              </span>
+              <span className="text-[11px] font-medium tracking-wide">{tab.label}</span>
             </button>
           );
         })}
