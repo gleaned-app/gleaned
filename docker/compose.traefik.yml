@@ -23,8 +23,16 @@ services:
     image: ghcr.io/gleaned-app/gleaned:latest
     restart: unless-stopped
     environment:
-      DB_PATH: /data/gleaned.db
-      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      DB_PATH:           /data/gleaned.db
+      VAPID_PUBLIC_KEY:  ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT:     ${VAPID_SUBJECT:-mailto:admin@${DOMAIN}}
+      SEND_SECRET:       ${SEND_SECRET:-}
+      PUSH_HOUR:         ${PUSH_HOUR:-20}
+      PUSH_MINUTE:       ${PUSH_MINUTE:-0}
+      DUE_HOUR:          ${DUE_HOUR:-9}
+      DUE_MINUTE:        ${DUE_MINUTE:-0}
+      PUSH_TZ:           ${PUSH_TZ:-UTC}
     volumes:
       - gleaned_data:/data
     security_opt:
@@ -33,7 +41,6 @@ services:
       - ALL
     networks:
       - traefik
-      - internal
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=${TRAEFIK_NETWORK:-frontend}"
@@ -57,34 +64,6 @@ services:
       retries: 5
       start_period: 20s
 
-  pusher:
-    image: ghcr.io/gleaned-app/gleaned-pusher:latest
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    environment:
-      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
-      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
-      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@${DOMAIN}}
-      APP_URL: http://app:3000
-      PUSH_HOUR: ${PUSH_HOUR:-20}
-      PUSH_MINUTE: ${PUSH_MINUTE:-0}
-      DUE_HOUR: ${DUE_HOUR:-9}
-      DUE_MINUTE: ${DUE_MINUTE:-0}
-      SEND_SECRET: ${SEND_SECRET}
-    depends_on:
-      app:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - internal
-
   # Backup sidecar: runs nightly, safe under concurrent writes.
   # Uncomment and adjust BACKUP_DIR to enable automated SQLite backups.
   #
@@ -102,8 +81,6 @@ networks:
   traefik:
     external: true
     name: ${TRAEFIK_NETWORK:-frontend}
-  internal:
-    internal: true
 
 volumes:
   gleaned_data:

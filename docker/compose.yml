@@ -6,36 +6,21 @@ services:
       - "3000:3000"
     environment:
       DB_PATH: /data/gleaned.db
-      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PUBLIC_KEY:  ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT:     ${VAPID_SUBJECT:-mailto:admin@gleaned.local}
+      SEND_SECRET:       ${SEND_SECRET:-}
+      PUSH_HOUR:         ${PUSH_HOUR:-20}
+      PUSH_MINUTE:       ${PUSH_MINUTE:-0}
+      DUE_HOUR:          ${DUE_HOUR:-9}
+      DUE_MINUTE:        ${DUE_MINUTE:-0}
+      PUSH_TZ:           ${PUSH_TZ:-UTC}
     volumes:
       - gleaned_data:/data
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
-
-  pusher:
-    image: ghcr.io/gleaned-app/gleaned-pusher:latest
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    environment:
-      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
-      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
-      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@gleaned.local}
-      APP_URL: http://app:3000
-      PUSH_HOUR: ${PUSH_HOUR:-20}
-      PUSH_MINUTE: ${PUSH_MINUTE:-0}
-      DUE_HOUR: ${DUE_HOUR:-9}
-      DUE_MINUTE: ${DUE_MINUTE:-0}
-      SEND_SECRET: ${SEND_SECRET}
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
 volumes:
   gleaned_data:
