@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/app/api/_auth";
+import { readJsonWithLimit } from "@/app/api/_body";
 import { getDb } from "@/lib/db/server";
 import { entries } from "@/lib/db/schema/shared/entries";
 import { threads } from "@/lib/db/schema/shared/threads";
@@ -33,13 +34,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const auth = requireAuth(request);
   if (auth instanceof NextResponse) return auth;
 
-  const body = await request.json().catch(() => null);
+  const body = await readJsonWithLimit(request);
+  if (body === undefined) {
+    return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+  }
   if (!body || typeof body !== "object") {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  const rawEntries: unknown[] = Array.isArray(body.entries) ? body.entries : [];
-  const rawThreads: unknown[] = Array.isArray(body.threads) ? body.threads : [];
+  const b = body as Record<string, unknown>;
+  const rawEntries: unknown[] = Array.isArray(b.entries) ? b.entries : [];
+  const rawThreads: unknown[] = Array.isArray(b.threads) ? b.threads : [];
 
   const validEntries = rawEntries.filter(isValidEntry);
   const validThreads = rawThreads.filter(isValidThread);
