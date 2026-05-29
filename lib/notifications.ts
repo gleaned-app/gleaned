@@ -1,7 +1,4 @@
-// Web Push subscription management.
-// The pusher service is proxied by nginx at /push/ — same origin, no CORS.
-
-const PUSH_BASE = "/push";
+const PUSH_BASE = "/api/push";
 
 export function urlBase64ToUint8Array(b64: string): Uint8Array {
   const padding = "=".repeat((4 - (b64.length % 4)) % 4);

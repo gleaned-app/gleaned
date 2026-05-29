@@ -120,7 +120,7 @@ self.addEventListener("fetch", (e) => {
   if (url.pathname === "/config.json") return;
 
   // Push API — never cache
-  if (url.pathname.startsWith("/push/")) return;
+  if (url.pathname.startsWith("/api/push/")) return;
 
   // Other same-origin assets (icons, manifest): stale-while-revalidate
   e.respondWith(
