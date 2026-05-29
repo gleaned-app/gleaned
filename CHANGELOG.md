@@ -4,15 +4,26 @@ All notable changes to gleaned are documented here.
 
 ## [0.4.0] — 2026-05-29
 
+This release replaces the entire storage layer and consolidates the deployment from three containers down to one. The architectural reasoning is documented in [docs/architecture-decision-storage.md](docs/architecture-decision-storage.md).
+
 ### Changed
-- **Push notifications integrated into main app** — the separate `pusher` container is gone. Scheduling now runs inside the gleaned server process via `instrumentation.ts` and `node-cron`. No second container to deploy, configure, or monitor.
-- **Push subscriptions stored in SQLite** — subscriptions are part of `gleaned.db` and are backed up automatically alongside all other data. No separate CouchDB database required.
+- **Storage: PouchDB/CouchDB → SQLite** — all data now lives in a single `gleaned.db` file on the server, accessed via Next.js API routes. No client-side database, no sync protocol, no conflict resolution. The E2E encryption boundary is unchanged — the server still only ever stores ciphertext.
+- **Auth: PBKDF2-SHA-1 → Argon2id** — stronger password hashing with automatic silent upgrade on next login.
+- **Push notifications integrated into main app** — the separate `pusher` container is gone. Scheduling now runs inside the gleaned server process via `instrumentation.ts` and `node-cron`. Daily reminders and due-date reminders read from SQLite directly.
+- **Push subscriptions stored in SQLite** — subscriptions are part of `gleaned.db` and backed up automatically alongside all other data.
 - **Push endpoints moved to `/api/push/`** — subscribe, vapid-key, and manual broadcast are now standard Next.js API routes with session-cookie auth.
+- **Docker: three containers → one** — `app + nginx + couchdb + pusher` replaced by a single `app` service.
+
+### Added
+- Drizzle ORM with committed migration files (`lib/db/migrations/`)
+- `docker/setup.sh` — generates SEND_SECRET and VAPID keys before first launch
+- GitHub Releases created automatically from CHANGELOG on version tags
 
 ### Removed
+- PouchDB, CouchDB, and all sync infrastructure
 - `pusher/` service and Docker image (`ghcr.io/gleaned-app/gleaned-pusher`)
-- `docker/nginx.conf` and `docker/nginx-entrypoint.sh` (leftover from static-export era)
-- CouchDB dependency removed entirely — the last remaining use was push subscription storage
+- `docker/nginx.conf` and `docker/nginx-entrypoint.sh`
+- Conflict resolution UI (`ConflictModal`)
 
 ---
 
@@ -32,7 +43,7 @@ All notable changes to gleaned are documented here.
 - **Security — Markdown links**: Links now open with `rel="noopener noreferrer"` to prevent tab-napping
 - **Security — Todo encryption**: Todos are now encrypted end-to-end like entries
 - **Security — CSP**: Stricter Content-Security-Policy headers, hardened auth guard, validated import format
-- **Attachments**: Migrated from base64-in-JSON to PouchDB native attachments — faster sync, less memory
+- **Attachments**: Migrated from base64-in-JSON to native attachments — faster sync, less memory (note: attachment storage was later redesigned in v0.4.0 alongside the SQLite migration)
 - **DB architecture**: `db.ts` (1200+ lines) split into 12 focused modules for maintainability
 - **Review queue**: Interleaved queue with type-specific prompts, calibration score, and attachment display in review cards
 
@@ -80,7 +91,7 @@ Initial release.
 - **Search**: Full-text search across all entries (⌘K / Ctrl+K)
 - **Attachments**: Images, audio, video, PDFs, and code files with syntax highlighting
 - **End-to-end encryption**: PBKDF2 + AES-GCM; the key never leaves the device
-- **CouchDB sync**: Optional self-hosted sync across browsers and devices
+- **CouchDB sync**: Optional self-hosted sync across browsers and devices (replaced by server-side SQLite in v0.4.0)
 - **Themes**: Auto / Light / Dark / Sepia, all in OKLCH
 - **Fonts**: DM Sans, Lora, Playfair Display, Caveat
 - **i18n**: German and English, switchable at runtime
