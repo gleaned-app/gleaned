@@ -13,27 +13,17 @@ export const TEST_PASSWORD = "GleanedTest1!";
 export async function authenticate(page: Page): Promise<void> {
   await page.goto("/");
 
-  // Wait for loading spinner to disappear (mode transitions from "loading")
-  await page.waitForFunction(() => {
-    return !document.querySelector(".animate-spin");
-  }, { timeout: 10_000 });
-
-  // Watch for the first authenticated API response BEFORE triggering login so
-  // we capture responses that fire immediately after the session is established.
-  // In Next.js dev mode, routes are compiled on first access; waiting for a
-  // successful response confirms both the session and route compilation are done.
-  const firstAuthResponse = page.waitForResponse(
-    (r) =>
-      r.url().includes("/api/") &&
-      !r.url().includes("/api/auth/") &&
-      r.status() === 200,
-    { timeout: 20_000 },
-  ).catch(() => null);
-
   const unlockBtn = page.getByRole("button", { name: "Entsperren" });
   const registerChoiceBtn = page.getByRole("button", { name: "Registrieren" }).first();
 
-  const hasAccount = await unlockBtn.isVisible().catch(() => false);
+  // Wait for the LockScreen to settle: hasPassword() is async, so neither button
+  // appears until it resolves. We wait for whichever shows up first.
+  await Promise.any([
+    unlockBtn.waitFor({ state: "visible", timeout: 15_000 }),
+    registerChoiceBtn.waitFor({ state: "visible", timeout: 15_000 }),
+  ]);
+
+  const hasAccount = await unlockBtn.isVisible();
 
   if (hasAccount) {
     await page.locator("input[type='password']").fill(TEST_PASSWORD);
@@ -47,10 +37,16 @@ export async function authenticate(page: Page): Promise<void> {
     await page.getByRole("button", { name: "Loslegen" }).click();
   }
 
-  await expect(page.locator("nav.fixed")).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator("nav.fixed")).toBeVisible({ timeout: 15_000 });
 
-  // Wait for the app's first successful authenticated data response. This
-  // ensures the session cookie is live and the API routes are fully compiled
-  // before the test makes its own API calls.
-  await firstAuthResponse;
+  // Poll /api/settings until the session cookie is confirmed working.
+  // The login flow involves client-side PBKDF2 after the server sets the cookie,
+  // so there can be a brief delay before React mounts and the session is live.
+  await expect(async () => {
+    const ok = await page.evaluate(async () => {
+      const res = await fetch("/api/settings", { credentials: "include" });
+      return res.ok;
+    });
+    expect(ok, "session not established after nav.fixed appeared").toBe(true);
+  }).toPass({ timeout: 15_000 });
 }

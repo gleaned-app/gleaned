@@ -15,6 +15,9 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",
+    // Block SW registration so it can't interfere with authenticated requests
+    // via clients.claim() or alter fetch behaviour during E2E runs.
+    serviceWorkers: "block",
   },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
