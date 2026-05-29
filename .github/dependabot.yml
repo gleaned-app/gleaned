@@ -12,13 +12,6 @@ updates:
       production-dependencies:
         dependency-type: production
 
-  - package-ecosystem: npm
-    directory: /pusher
-    schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 3
-
   - package-ecosystem: docker
     directory: /
     schedule:
