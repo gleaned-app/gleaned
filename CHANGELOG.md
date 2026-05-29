@@ -2,6 +2,17 @@
 
 All notable changes to gleaned are documented here.
 
+## [0.4.1] — 2026-05-29
+
+### Security
+
+- **Setup token** — gleaned now generates a random 16-byte token on first boot and prints it to stdout. The setup form requires this token to complete initial registration, preventing an attacker who finds a freshly deployed instance from setting the password before the owner does.
+- **Rate limiting on setup endpoint** — `/api/auth/setup` now enforces the same 5-attempts / 15-minute window as `/api/auth/login`. Failed token attempts count against the limit.
+- **Fixed silent plaintext fallback** — `encryptEntryToApi` and `encryptThreadToApi` previously fell back to base64-encoding the plaintext payload when the encryption key was not loaded, storing unencrypted data without any warning. Both functions now throw immediately if the key is absent — entries and threads can only be written when the user is authenticated and the key is in memory.
+- **Timezone validation** — the `tz` field in `/api/push/subscribe` is now validated against `Intl.supportedValuesOf("timeZone")` before being stored. Invalid values fall back to UTC. The `PUSH_TZ` environment variable is validated at startup with a console warning on invalid input.
+
+---
+
 ## [0.4.0] — 2026-05-29
 
 This release replaces the entire storage layer and consolidates the deployment from three containers down to one. The architectural reasoning is documented in [docs/architecture-decision-storage.md](docs/architecture-decision-storage.md).
