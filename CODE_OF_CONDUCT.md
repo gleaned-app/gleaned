@@ -34,6 +34,8 @@ This Code of Conduct applies within all project spaces — GitHub issues, pull r
 
 ## Enforcement
 
+This project operates a **zero-tolerance policy**. Violations of this Code of Conduct result in immediate and permanent removal from the project — no warnings, no second chances.
+
 Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to **gleaned.security@proton.me**. All complaints will be reviewed promptly and investigated with respect for the privacy of the reporter.
 
 ## Attribution
