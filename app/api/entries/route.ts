@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { and, eq, gte, lte } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/app/api/_auth";
+import { parseDate } from "@/app/api/_params";
 import { getDb } from "@/lib/db/server";
 import { entries } from "@/lib/db/schema/shared/entries";
 
@@ -18,9 +19,9 @@ export function GET(request: NextRequest): NextResponse {
   if (auth instanceof NextResponse) return auth;
 
   const { searchParams } = new URL(request.url);
-  const date = searchParams.get("date");
-  const from = searchParams.get("from");
-  const to = searchParams.get("to");
+  const date = parseDate(searchParams.get("date"));
+  const from = parseDate(searchParams.get("from"));
+  const to   = parseDate(searchParams.get("to"));
 
   const db = getDb();
 
@@ -38,7 +39,7 @@ export function GET(request: NextRequest): NextResponse {
     return NextResponse.json(rows.map(rowToWire));
   }
 
-  return NextResponse.json({ error: "Provide ?date= or ?from=&to=" }, { status: 400 });
+  return NextResponse.json({ error: "Provide ?date=YYYY-MM-DD or ?from=YYYY-MM-DD&to=YYYY-MM-DD" }, { status: 400 });
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
