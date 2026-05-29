@@ -1,5 +1,7 @@
 # gleaned
 
+[![CI](https://github.com/gleaned-app/gleaned/actions/workflows/ci.yml/badge.svg)](https://github.com/gleaned-app/gleaned/actions/workflows/ci.yml)
+
 > *to collect gradually and bit by bit; to gather the knowledge left behind by each day.*
 
 A personal learning journal. End-to-end encrypted. Self-hosted. No accounts.
@@ -107,7 +109,7 @@ docker compose -f docker/compose.traefik.yml up -d
 # → https://your-domain.com
 ```
 
-Both stacks include an optional push-notification service (`pusher`) for daily reminders.
+Both stacks run as a single container. Push notifications (daily reminders, due-date alerts) are built in — configure VAPID keys via `setup.sh` and set `PUSH_TZ` in `docker/.env`.
 
 ---
 
