@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { authenticate, TEST_PASSWORD } from "./helpers";
+import { authenticate, TEST_PASSWORD, TEST_SETUP_TOKEN } from "./helpers";
 
 test("registers or logs in and shows the main app", async ({ page }) => {
   await authenticate(page);
@@ -25,6 +25,7 @@ test("shows an error when passwords do not match", async ({ page }) => {
   const pwInputs = page.locator("input[type='password']");
   await pwInputs.first().fill(TEST_PASSWORD);
   await pwInputs.last().fill("WrongConfirm9!");
+  await page.locator("input[placeholder='Token from server logs']").fill(TEST_SETUP_TOKEN);
   await page.getByRole("button", { name: "Loslegen" }).click();
 
   await expect(page.getByText("Passwörter stimmen nicht überein.")).toBeVisible();

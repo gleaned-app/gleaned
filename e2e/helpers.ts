@@ -1,6 +1,7 @@
 import { type Page, expect } from "@playwright/test";
 
 export const TEST_PASSWORD = "GleanedTest1!";
+export const TEST_SETUP_TOKEN = "playwright-test-token";
 
 /**
  * Ensures the app is authenticated. Works regardless of whether the server DB
@@ -34,6 +35,7 @@ export async function authenticate(page: Page): Promise<void> {
     const pwInputs = page.locator("input[type='password']");
     await pwInputs.first().fill(TEST_PASSWORD);
     await pwInputs.last().fill(TEST_PASSWORD);
+    await page.locator("input[placeholder='Token from server logs']").fill(TEST_SETUP_TOKEN);
     await page.getByRole("button", { name: "Loslegen" }).click();
   }
 

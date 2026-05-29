@@ -8,6 +8,13 @@ export function initSetupToken(): void {
   const existing = getDb().select().from(settings).get();
   if (existing?.password_verifier) return;
 
+  // SETUP_TOKEN env var lets CI/provisioning scripts supply a known token
+  // instead of reading a random one from the logs.
+  if (process.env.SETUP_TOKEN) {
+    _token = process.env.SETUP_TOKEN;
+    return;
+  }
+
   _token = randomBytes(16).toString("hex");
   process.stdout.write(
     `\n[gleaned] ═══════════════════════════════════════════\n` +

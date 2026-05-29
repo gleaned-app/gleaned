@@ -23,7 +23,7 @@ export default defineConfig({
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
   ],
   webServer: {
-    command: "NEXT_TELEMETRY_DISABLED=1 pnpm dev",
+    command: "NEXT_TELEMETRY_DISABLED=1 SETUP_TOKEN=playwright-test-token pnpm dev",
     port: 3000,
     timeout: 120_000,
     reuseExistingServer: !process.env.CI,
