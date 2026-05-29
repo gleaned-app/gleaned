@@ -8,6 +8,7 @@ import { getDb } from "@/lib/db/server";
 import { settings } from "@/lib/db/schema/server/settings";
 import { sessions } from "@/lib/db/schema/server/sessions";
 import { getClientIp, checkLoginRateLimit, recordLoginFailure, clearLoginAttempts } from "@/app/api/_rate-limit";
+import { secureCookie } from "@/app/api/_cookie";
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 const WINDOW_FALLBACK_MS = 15 * 60 * 1000;
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   });
   response.cookies.set("sid", sessionId, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: secureCookie,
     sameSite: "strict",
     path: "/",
     maxAge: SESSION_TTL_MS / 1000,

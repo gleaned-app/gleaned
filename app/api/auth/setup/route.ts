@@ -8,6 +8,7 @@ import { settings } from "@/lib/db/schema/server/settings";
 import { sessions } from "@/lib/db/schema/server/sessions";
 import { getClientIp, checkLoginRateLimit, recordLoginFailure } from "@/app/api/_rate-limit";
 import { getSetupToken, consumeSetupToken } from "@/lib/setup-token.server";
+import { secureCookie } from "@/app/api/_cookie";
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const response = NextResponse.json({ ok: true });
   response.cookies.set("sid", sessionId, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: secureCookie,
     sameSite: "strict",
     path: "/",
     maxAge: SESSION_TTL_MS / 1000,
