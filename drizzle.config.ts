@@ -7,6 +7,7 @@ export default defineConfig({
     "./lib/db/schema/shared/threads.ts",
     "./lib/db/schema/server/settings.ts",
     "./lib/db/schema/server/sessions.ts",
+    "./lib/db/schema/server/push_subscriptions.ts",
   ],
   out: "./lib/db/migrations",
   dbCredentials: {
