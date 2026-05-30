@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/gleaned-app/gleaned:latest
+    image: ${GLEANED_IMAGE:-ghcr.io/gleaned-app/gleaned:latest}
     restart: unless-stopped
     ports:
       - "3000:3000"

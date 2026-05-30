@@ -20,7 +20,7 @@ name: gleaned
 
 services:
   app:
-    image: ghcr.io/gleaned-app/gleaned:latest
+    image: ${GLEANED_IMAGE:-ghcr.io/gleaned-app/gleaned:latest}
     restart: unless-stopped
     environment:
       DB_PATH:           /data/gleaned.db

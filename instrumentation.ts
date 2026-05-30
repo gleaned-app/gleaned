@@ -4,6 +4,16 @@ export async function register() {
   const { initSetupToken } = await import("./lib/setup-token.server");
   initSetupToken();
 
+  if (process.env.NODE_ENV === "production" && !process.env.DB_PATH) {
+    process.stderr.write(
+      "\n[gleaned] WARNING: DB_PATH is not set.\n" +
+      "[gleaned]   Defaulting to ./gleaned.db (relative to the server CWD).\n" +
+      "[gleaned]   In Docker the CWD is /app, so data goes to /app/gleaned.db —\n" +
+      "[gleaned]   NOT the /data volume mount. Data will be lost on container restart.\n" +
+      "[gleaned]   Set DB_PATH=/data/gleaned.db and mount a volume at /data.\n\n",
+    );
+  }
+
   if (process.env.TRUST_PROXY !== "true" && process.env.TRUST_PROXY !== "false") {
     process.stderr.write(
       "\n[gleaned] WARNING: TRUST_PROXY is not set.\n" +
