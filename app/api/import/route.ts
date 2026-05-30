@@ -6,29 +6,7 @@ import { readJsonWithLimit } from "@/app/api/_body";
 import { getDb } from "@/lib/db/server";
 import { entries } from "@/lib/db/schema/shared/entries";
 import { threads } from "@/lib/db/schema/shared/threads";
-
-function isValidEntry(e: unknown): e is Record<string, unknown> {
-  if (!e || typeof e !== "object") return false;
-  const r = e as Record<string, unknown>;
-  return (
-    typeof r.id === "string" &&
-    typeof r.date === "string" &&
-    typeof r.created_at === "string" &&
-    typeof r.updated_at === "string" &&
-    typeof r.data_enc === "string"
-  );
-}
-
-function isValidThread(t: unknown): t is Record<string, unknown> {
-  if (!t || typeof t !== "object") return false;
-  const r = t as Record<string, unknown>;
-  return (
-    typeof r.id === "string" &&
-    typeof r.created_at === "string" &&
-    typeof r.updated_at === "string" &&
-    typeof r.data_enc === "string"
-  );
-}
+import { isValidEntry, isValidThread } from "@/lib/import-validate";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const auth = requireAuth(request);
