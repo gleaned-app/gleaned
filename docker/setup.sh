@@ -41,9 +41,17 @@ if ! grep -qE "^VAPID_PUBLIC_KEY=.+" "$ENV_FILE" 2>/dev/null; then
     " 2>/dev/null || true)
   fi
 
-  # 2. Fall back to the gleaned Docker image (no local Node needed)
+  # 2. Fall back to the gleaned Docker image (no local Node needed).
+  #    Read the configured image reference from the env file so digest-pinned
+  #    deployments use the same image they run in production.
+  #    --pull=never prevents any network contact during setup: if the image is
+  #    not already cached locally, docker run fails immediately and we fall
+  #    through to the manual instructions below. This closes the supply-chain
+  #    window where a compromised registry could return attacker-known keys.
   if [ -z "$VAPID" ] && command -v docker >/dev/null 2>&1; then
-    VAPID=$(docker run --rm ghcr.io/gleaned-app/gleaned:latest \
+    _img=$(grep -m1 "^GLEANED_IMAGE=" "$ENV_FILE" 2>/dev/null | cut -d= -f2- | tr -d '"' | tr -d "'")
+    _img="${_img:-ghcr.io/gleaned-app/gleaned:latest}"
+    VAPID=$(docker run --rm --pull=never "$_img" \
       node -e "const v=require('/app/node_modules/web-push').generateVAPIDKeys();process.stdout.write(v.publicKey+'\n'+v.privateKey)" \
       2>/dev/null || true)
   fi
