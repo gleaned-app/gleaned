@@ -621,6 +621,7 @@ export default function LockScreen({ onAuth }: Props) {
               }}>
                 <input
                   type="text"
+                  data-testid="setup-token-input"
                   value={setupToken}
                   onChange={(e) => setSetupToken(e.target.value.trim())}
                   onFocus={() => setFocused("token")}
