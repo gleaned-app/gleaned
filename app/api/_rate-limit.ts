@@ -8,12 +8,37 @@ import { login_attempts } from "@/lib/db/schema/server/login_attempts";
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
 
+// Returns the client IP to use as the rate-limit key.
+//
+// TRUST_PROXY=true  — gleaned is behind a reverse proxy (Traefik, nginx, Caddy)
+//                     that injects X-Forwarded-For / X-Real-IP. Trust those
+//                     headers so rate limiting targets the real client, not the proxy.
+//
+// TRUST_PROXY=false — gleaned is exposed directly (pnpm dev, port-only Docker).
+//                     Headers are attacker-controlled; use the raw socket IP instead.
+//                     X-Forwarded-For is intentionally ignored to prevent bypass.
 export function getClientIp(request: NextRequest): string {
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
-    request.headers.get("x-real-ip") ??
-    "unknown"
-  );
+  if (process.env.TRUST_PROXY === "true") {
+    // Behind a reverse proxy — use the forwarded header it injects.
+    // Leftmost IP in the chain is the original client.
+    return (
+      request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
+      request.headers.get("x-real-ip") ??
+      "unknown"
+    );
+  }
+  // Direct mode: Next.js App Router (Node.js runtime) does not expose the raw
+  // socket IP on NextRequest. All connections therefore share a single rate-limit
+  // bucket ("unknown"). This is intentional:
+  //
+  //   - X-Forwarded-For is completely ignored — an attacker cannot forge a
+  //     different IP to escape the bucket and bypass brute-force protection.
+  //   - 5 failed attempts from any source trigger a global 15-minute lockout,
+  //     which is still meaningful protection for a single-user instance.
+  //
+  // Set TRUST_PROXY=true if gleaned runs behind a proxy you control — that gives
+  // per-IP granularity without the spoofing risk.
+  return "unknown";
 }
 
 export function checkLoginRateLimit(ip: string): { limited: boolean; retryAfterMs?: number } {

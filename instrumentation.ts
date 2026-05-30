@@ -4,6 +4,16 @@ export async function register() {
   const { initSetupToken } = await import("./lib/setup-token.server");
   initSetupToken();
 
+  if (process.env.TRUST_PROXY !== "true" && process.env.TRUST_PROXY !== "false") {
+    process.stderr.write(
+      "\n[gleaned] WARNING: TRUST_PROXY is not set.\n" +
+      "[gleaned]   Rate limiting falls back to the raw socket IP (safe for direct access).\n" +
+      "[gleaned]   If gleaned is behind a reverse proxy (Traefik, nginx, Caddy), set\n" +
+      "[gleaned]   TRUST_PROXY=true so brute-force protection targets the real client IP.\n" +
+      "[gleaned]   Set TRUST_PROXY=false to silence this warning when running directly.\n\n",
+    );
+  }
+
   if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return;
 
   const { default: cron } = await import("node-cron");

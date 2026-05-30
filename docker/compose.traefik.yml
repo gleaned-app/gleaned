@@ -24,6 +24,8 @@ services:
     restart: unless-stopped
     environment:
       DB_PATH:           /data/gleaned.db
+      # Traefik is always in front — trust the X-Forwarded-For header it injects.
+      TRUST_PROXY:       "true"
       VAPID_PUBLIC_KEY:  ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT:     ${VAPID_SUBJECT:-mailto:admin@${DOMAIN}}
