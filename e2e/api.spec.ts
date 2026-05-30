@@ -31,21 +31,26 @@ test("API rejects unauthenticated requests with 401", async ({ request }) => {
 // ─── Auth status accuracy ─────────────────────────────────────────────────────
 
 test("status endpoint reports accurate auth state", async ({ page, request }) => {
-  // Without a valid session cookie → authenticated must be false
-  const before = await request.get("/api/auth/status");
-  expect(before.ok()).toBe(true);
-  const beforeBody = await before.json() as { setup: boolean; authenticated: boolean };
-  expect(beforeBody.setup).toBe(true);
-  expect(beforeBody.authenticated).toBe(false);
-
-  // With a real session from login → authenticated must be true
+  // Ensure the account is set up (registers on first run, logs in on subsequent).
+  // authenticate() must come first — api.spec.ts runs before auth.spec.ts
+  // alphabetically, so no prior test has set up the account yet.
   await authenticate(page);
-  const after = await page.evaluate(async () => {
+
+  // With a live session → setup:true, authenticated:true
+  const withSession = await page.evaluate(async () => {
     const res = await fetch("/api/auth/status", { credentials: "include" });
     return res.json() as Promise<{ setup: boolean; authenticated: boolean }>;
   });
-  expect(after.setup).toBe(true);
-  expect(after.authenticated).toBe(true);
+  expect(withSession.setup).toBe(true);
+  expect(withSession.authenticated).toBe(true);
+
+  // Without a session cookie (Playwright's APIRequestContext does not share
+  // cookies with the page) → setup:true, authenticated:false
+  const withoutSession = await request.get("/api/auth/status");
+  expect(withoutSession.ok()).toBe(true);
+  const withoutBody = await withoutSession.json() as { setup: boolean; authenticated: boolean };
+  expect(withoutBody.setup).toBe(true);
+  expect(withoutBody.authenticated).toBe(false);
 });
 
 // ─── Authenticated API calls ──────────────────────────────────────────────────
