@@ -28,6 +28,26 @@ test("API rejects unauthenticated requests with 401", async ({ request }) => {
   }
 });
 
+// ─── Auth status accuracy ─────────────────────────────────────────────────────
+
+test("status endpoint reports accurate auth state", async ({ page, request }) => {
+  // Without a valid session cookie → authenticated must be false
+  const before = await request.get("/api/auth/status");
+  expect(before.ok()).toBe(true);
+  const beforeBody = await before.json() as { setup: boolean; authenticated: boolean };
+  expect(beforeBody.setup).toBe(true);
+  expect(beforeBody.authenticated).toBe(false);
+
+  // With a real session from login → authenticated must be true
+  await authenticate(page);
+  const after = await page.evaluate(async () => {
+    const res = await fetch("/api/auth/status", { credentials: "include" });
+    return res.json() as Promise<{ setup: boolean; authenticated: boolean }>;
+  });
+  expect(after.setup).toBe(true);
+  expect(after.authenticated).toBe(true);
+});
+
 // ─── Authenticated API calls ──────────────────────────────────────────────────
 
 test("authenticated session can reach settings endpoint", async ({ page }) => {
