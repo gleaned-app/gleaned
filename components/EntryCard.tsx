@@ -1,27 +1,14 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { marked } from "marked";
-import DOMPurify from "dompurify";
 import type { Entry, EntryType } from "@/types/entry";
 import { updateEntry, deleteEntry } from "@/lib/db";
 import { useT } from "@/lib/i18n";
 import { useSettings, locale } from "@/lib/settings-context";
 import { parseSource } from "@/lib/entry-utils";
+import { renderMarkdown } from "@/lib/markdown";
 import type { Translations } from "@/lib/i18n";
 import { AttachmentView } from "./AttachmentView";
-
-marked.use({
-  breaks: true,
-  gfm: true,
-  renderer: {
-    html: () => "",
-    link({ href, title, text }: { href: string; title?: string | null; text: string }) {
-      const t = title ? ` title="${title}"` : "";
-      return `<a href="${href}"${t} target="_blank" rel="noopener noreferrer">${text}</a>`;
-    },
-  },
-});
 
 const ENTRY_TYPES: { value: EntryType; labelKey: keyof Translations }[] = [
   { value: "insight",     labelKey: "typeInsight"     },
@@ -178,7 +165,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
   }
 
   const mdHtml = useMemo(
-    () => entry.content ? DOMPurify.sanitize(marked.parse(entry.content) as string, { ADD_ATTR: ["target"] }) : "",
+    () => renderMarkdown(entry.content),
     [entry.content],
   );
 
