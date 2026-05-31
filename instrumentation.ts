@@ -5,22 +5,22 @@ export async function register() {
   initSetupToken();
 
   if (process.env.NODE_ENV === "production" && !process.env.DB_PATH) {
-    process.stderr.write(
+    console.warn(
       "\n[gleaned] WARNING: DB_PATH is not set.\n" +
       "[gleaned]   Defaulting to ./gleaned.db (relative to the server CWD).\n" +
       "[gleaned]   In Docker the CWD is /app, so data goes to /app/gleaned.db —\n" +
       "[gleaned]   NOT the /data volume mount. Data will be lost on container restart.\n" +
-      "[gleaned]   Set DB_PATH=/data/gleaned.db and mount a volume at /data.\n\n",
+      "[gleaned]   Set DB_PATH=/data/gleaned.db and mount a volume at /data.\n",
     );
   }
 
   if (process.env.TRUST_PROXY !== "true" && process.env.TRUST_PROXY !== "false") {
-    process.stderr.write(
+    console.warn(
       "\n[gleaned] WARNING: TRUST_PROXY is not set.\n" +
       "[gleaned]   Rate limiting falls back to the raw socket IP (safe for direct access).\n" +
       "[gleaned]   If gleaned is behind a reverse proxy (Traefik, nginx, Caddy), set\n" +
       "[gleaned]   TRUST_PROXY=true so brute-force protection targets the real client IP.\n" +
-      "[gleaned]   Set TRUST_PROXY=false to silence this warning when running directly.\n\n",
+      "[gleaned]   Set TRUST_PROXY=false to silence this warning when running directly.\n",
     );
   }
 
