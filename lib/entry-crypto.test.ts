@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { deriveKey, generateSalt, storeKey, clearKey } from "./crypto";
-import { encryptEntry, decryptEntry } from "./db/entry-crypto";
+import { encryptEntry, decryptEntry, encryptEntryToApi, decryptEntryFromRow } from "./db/entry-crypto";
 import type { Entry } from "@/types/entry";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -228,5 +228,128 @@ describe("full v2 round-trip", () => {
     expect(dec.gap).toBe("Need to test whether this holds under stress");
     expect(dec.content).toBe(input.content);
     expect(dec.tags).toEqual(input.tags);
+  });
+});
+
+// ─── encryptEntryToApi ────────────────────────────────────────────────────────
+
+describe("encryptEntryToApi", () => {
+  it("throws when no key is loaded", async () => {
+    await expect(encryptEntryToApi(baseEntry())).rejects.toThrow("encryption key not loaded");
+  });
+
+  it("returns correct ApiEntryRow shape", async () => {
+    await setupKey();
+    const input = baseEntry({ nextReview: "2026-01-16", reviewInterval: 1 });
+    const row = await encryptEntryToApi(input);
+    expect(row.id).toBe(input._id);
+    expect(row.date).toBe(input.date);
+    expect(row.created_at).toBe(input.createdAt);
+    expect(row.next_review).toBe("2026-01-16");
+    expect(row.review_interval).toBe(1);
+    expect(typeof row.data_enc).toBe("string");
+    expect(row.data_enc.length).toBeGreaterThan(0);
+  });
+
+  it("sets next_review to null when nextReview is undefined", async () => {
+    await setupKey();
+    const row = await encryptEntryToApi(baseEntry({ nextReview: undefined }));
+    expect(row.next_review).toBeNull();
+  });
+
+  it("sets review_interval to null when reviewInterval is undefined", async () => {
+    await setupKey();
+    const row = await encryptEntryToApi(baseEntry({ reviewInterval: undefined }));
+    expect(row.review_interval).toBeNull();
+  });
+
+  it("sets updated_at to a current ISO timestamp", async () => {
+    await setupKey();
+    const before = new Date().toISOString();
+    const row = await encryptEntryToApi(baseEntry());
+    const after = new Date().toISOString();
+    expect(row.updated_at >= before).toBe(true);
+    expect(row.updated_at <= after).toBe(true);
+  });
+
+  it("data_enc is valid base64", async () => {
+    await setupKey();
+    const row = await encryptEntryToApi(baseEntry());
+    expect(() => atob(row.data_enc)).not.toThrow();
+  });
+
+  it("produces different data_enc on each call (random IV)", async () => {
+    await setupKey();
+    const r1 = await encryptEntryToApi(baseEntry());
+    const r2 = await encryptEntryToApi(baseEntry());
+    expect(r1.data_enc).not.toBe(r2.data_enc);
+  });
+});
+
+// ─── decryptEntryFromRow ──────────────────────────────────────────────────────
+
+describe("decryptEntryFromRow", () => {
+  async function makeRow() {
+    await setupKey();
+    return encryptEntryToApi(baseEntry({ nextReview: "2026-01-16", reviewInterval: 1 }));
+  }
+
+  it("throws when no key is loaded", async () => {
+    const row = { id: "e1", date: "2026-01-01", created_at: "2026-01-01T00:00:00.000Z",
+      updated_at: "2026-01-01T00:00:00.000Z", next_review: null, review_interval: null, data_enc: "enc" };
+    await expect(decryptEntryFromRow(row)).rejects.toThrow("encryption key not loaded");
+  });
+
+  it("round-trip: content and tags survive", async () => {
+    await setupKey();
+    const row = await encryptEntryToApi(baseEntry({ content: "API round-trip", tags: ["api", "test"] }));
+    const entry = await decryptEntryFromRow(row);
+    expect(entry.content).toBe("API round-trip");
+    expect(entry.tags).toEqual(["api", "test"]);
+  });
+
+  it("round-trip: all optional encrypted fields survive", async () => {
+    await setupKey();
+    const row = await encryptEntryToApi(baseEntry({
+      source: "Knuth 1997", stake: "changes my approach", gap: "unclear boundary",
+      entryType: "insight", gapStatus: "open",
+    }));
+    const entry = await decryptEntryFromRow(row);
+    expect(entry.source).toBe("Knuth 1997");
+    expect(entry.stake).toBe("changes my approach");
+    expect(entry.gap).toBe("unclear boundary");
+    expect(entry.entryType).toBe("insight");
+    expect(entry.gapStatus).toBe("open");
+  });
+
+  it("maps id to _id, preserves date and createdAt from row", async () => {
+    const row = await makeRow();
+    const entry = await decryptEntryFromRow(row);
+    expect(entry._id).toBe(row.id);
+    expect(entry.date).toBe(row.date);
+    expect(entry.createdAt).toBe(row.created_at);
+    expect(entry.type).toBe("entry");
+  });
+
+  it("omits nextReview when row.next_review is null", async () => {
+    const row = { ...(await makeRow()), next_review: null };
+    const entry = await decryptEntryFromRow(row);
+    expect("nextReview" in entry).toBe(false);
+  });
+
+  it("omits reviewInterval when row.review_interval is null", async () => {
+    const row = { ...(await makeRow()), review_interval: null };
+    const entry = await decryptEntryFromRow(row);
+    expect("reviewInterval" in entry).toBe(false);
+  });
+
+  it("returns empty content and tags when data_enc is corrupted", async () => {
+    await setupKey();
+    const row = { id: "e1", date: "2026-01-01", created_at: "2026-01-01T00:00:00.000Z",
+      updated_at: "2026-01-01T00:00:00.000Z", next_review: null, review_interval: null,
+      data_enc: btoa("this is not valid aes-gcm ciphertext") };
+    const entry = await decryptEntryFromRow(row);
+    expect(entry.content).toBe("");
+    expect(entry.tags).toEqual([]);
   });
 });

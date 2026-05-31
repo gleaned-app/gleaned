@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { deriveKey, generateSalt, storeKey, clearKey } from "./crypto";
-import { encryptThread, decryptThread, withoutPlaintext } from "./db/thread-crypto";
+import { encryptThread, decryptThread, withoutPlaintext, encryptThreadToApi, decryptThreadFromRow } from "./db/thread-crypto";
 import type { Thread } from "@/types/thread";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -268,5 +268,138 @@ describe("update-without-text-leak flow", () => {
     const reloaded = await decryptThread(forDb);
     expect(reloaded.text).toBe("recoverable");
     expect(reloaded.dueDate).toBe("2026-12-31");
+  });
+});
+
+// ─── encryptThreadToApi ────────────────────────────────────────────────────────
+
+describe("encryptThreadToApi", () => {
+  it("throws when no key is loaded", async () => {
+    await expect(encryptThreadToApi(baseThread())).rejects.toThrow("encryption key not loaded");
+  });
+
+  it("returns correct ThreadApiRow shape", async () => {
+    await setupKey();
+    const input = baseThread({ done: true, dueDate: "2026-06-01", color: "#ff0000" });
+    const row = await encryptThreadToApi(input);
+    expect(row.id).toBe(input._id);
+    expect(row.done).toBe(1);
+    expect(row.due_date).toBe("2026-06-01");
+    expect(row.color).toBe("#ff0000");
+    expect(row.created_at).toBe(input.createdAt);
+    expect(typeof row.data_enc).toBe("string");
+    expect(row.data_enc.length).toBeGreaterThan(0);
+  });
+
+  it("converts done=false to integer 0", async () => {
+    await setupKey();
+    const row = await encryptThreadToApi(baseThread({ done: false }));
+    expect(row.done).toBe(0);
+  });
+
+  it("converts done=true to integer 1", async () => {
+    await setupKey();
+    const row = await encryptThreadToApi(baseThread({ done: true }));
+    expect(row.done).toBe(1);
+  });
+
+  it("sets due_date to null when dueDate is absent", async () => {
+    await setupKey();
+    const row = await encryptThreadToApi(baseThread());
+    expect(row.due_date).toBeNull();
+  });
+
+  it("sets color to null when color is absent", async () => {
+    await setupKey();
+    const row = await encryptThreadToApi(baseThread());
+    expect(row.color).toBeNull();
+  });
+
+  it("data_enc is valid base64", async () => {
+    await setupKey();
+    const row = await encryptThreadToApi(baseThread());
+    expect(() => atob(row.data_enc)).not.toThrow();
+  });
+
+  it("produces different data_enc on each call (random IV)", async () => {
+    await setupKey();
+    const r1 = await encryptThreadToApi(baseThread());
+    const r2 = await encryptThreadToApi(baseThread());
+    expect(r1.data_enc).not.toBe(r2.data_enc);
+  });
+});
+
+// ─── decryptThreadFromRow ──────────────────────────────────────────────────────
+
+describe("decryptThreadFromRow", () => {
+  it("throws when no key is loaded", async () => {
+    const row = { id: "t1", done: 0, due_date: null, color: null,
+      created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z", data_enc: "enc" };
+    await expect(decryptThreadFromRow(row)).rejects.toThrow("encryption key not loaded");
+  });
+
+  it("round-trip: text survives encrypt → decrypt", async () => {
+    await setupKey();
+    const row = await encryptThreadToApi(baseThread({ text: "API round-trip thread" }));
+    const thread = await decryptThreadFromRow(row);
+    expect(thread.text).toBe("API round-trip thread");
+  });
+
+  it("maps id to _id and preserves createdAt", async () => {
+    await setupKey();
+    const row = await encryptThreadToApi(baseThread());
+    const thread = await decryptThreadFromRow(row);
+    expect(thread._id).toBe(row.id);
+    expect(thread.createdAt).toBe(row.created_at);
+    expect(thread.type).toBe("thread");
+  });
+
+  it("maps done=0 to boolean false", async () => {
+    await setupKey();
+    const row = { ...(await encryptThreadToApi(baseThread())), done: 0 };
+    expect((await decryptThreadFromRow(row)).done).toBe(false);
+  });
+
+  it("maps done=1 to boolean true", async () => {
+    await setupKey();
+    const row = { ...(await encryptThreadToApi(baseThread())), done: 1 };
+    expect((await decryptThreadFromRow(row)).done).toBe(true);
+  });
+
+  it("maps any non-zero done to boolean true", async () => {
+    await setupKey();
+    const row = { ...(await encryptThreadToApi(baseThread())), done: 42 };
+    expect((await decryptThreadFromRow(row)).done).toBe(true);
+  });
+
+  it("omits dueDate when row.due_date is null", async () => {
+    await setupKey();
+    const row = { ...(await encryptThreadToApi(baseThread())), due_date: null };
+    const thread = await decryptThreadFromRow(row);
+    expect("dueDate" in thread).toBe(false);
+  });
+
+  it("omits color when row.color is null", async () => {
+    await setupKey();
+    const row = { ...(await encryptThreadToApi(baseThread())), color: null };
+    const thread = await decryptThreadFromRow(row);
+    expect("color" in thread).toBe(false);
+  });
+
+  it("preserves dueDate and color from row when present", async () => {
+    await setupKey();
+    const row = { ...(await encryptThreadToApi(baseThread())), due_date: "2026-06-01", color: "#abc123" };
+    const thread = await decryptThreadFromRow(row);
+    expect(thread.dueDate).toBe("2026-06-01");
+    expect(thread.color).toBe("#abc123");
+  });
+
+  it("returns empty text when data_enc is corrupted", async () => {
+    await setupKey();
+    const row = { id: "t1", done: 0, due_date: null, color: null,
+      created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z",
+      data_enc: btoa("this is not valid aes-gcm ciphertext") };
+    const thread = await decryptThreadFromRow(row);
+    expect(thread.text).toBe("");
   });
 });
