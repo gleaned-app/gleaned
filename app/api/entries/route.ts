@@ -3,9 +3,11 @@ export const runtime = "nodejs";
 import { and, eq, gte, lte } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/app/api/_auth";
+import { readJsonWithLimit } from "@/app/api/_body";
 import { parseDate } from "@/app/api/_params";
 import { getDb } from "@/lib/db/server";
 import { entries } from "@/lib/db/schema/shared/entries";
+import { isValidEntry } from "@/lib/import-validate";
 
 function rowToWire(row: typeof entries.$inferSelect) {
   return {
@@ -46,19 +48,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const auth = requireAuth(request);
   if (auth instanceof NextResponse) return auth;
 
-  const body = await request.json().catch(() => null);
-  if (!body?.id || !body?.date || !body?.created_at || !body?.updated_at || !body?.data_enc) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-  }
+  const body = await readJsonWithLimit(request);
+  if (body === undefined) return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+  if (!isValidEntry(body)) return NextResponse.json({ error: "Invalid entry" }, { status: 422 });
 
   const row = {
-    id: body.id as string,
-    date: body.date as string,
-    created_at: body.created_at as string,
-    updated_at: body.updated_at as string,
-    next_review: (body.next_review as string | undefined) ?? null,
+    id:              body.id as string,
+    date:            body.date as string,
+    created_at:      body.created_at as string,
+    updated_at:      body.updated_at as string,
+    next_review:     (body.next_review as string | undefined) ?? null,
     review_interval: (body.review_interval as number | undefined) ?? null,
-    data_enc: Buffer.from(body.data_enc as string, "base64"),
+    data_enc:        Buffer.from(body.data_enc as string, "base64"),
   };
 
   getDb().insert(entries).values(row).run();

@@ -21,6 +21,10 @@ const DATE_RE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+export function isValidId(s: unknown): s is string {
+  return typeof s === "string" && UUID_RE.test(s);
+}
+
 // Standard base64 alphabet with correct padding structure.
 // Node's Buffer.from(str, "base64") silently drops unknown characters, so we
 // must validate the character set and padding before calling it.
@@ -97,5 +101,40 @@ export function isValidThread(t: unknown): t is Record<string, unknown> {
     // Optional string fields
     (r.due_date == null || isIsoDate(r.due_date)) &&
     (r.color == null || (typeof r.color === "string" && r.color.length <= 50))
+  );
+}
+
+// Validators for PUT (update) payloads — id comes from the URL, not the body.
+// updated_at and data_enc are always required; all other fields are optional.
+
+// date and created_at are required because encryptEntryToApi always sends them
+// (they are immutable entry metadata, not fields the user edits).
+export function isValidEntryUpdate(b: unknown): b is Record<string, unknown> {
+  if (!b || typeof b !== "object") return false;
+  const r = b as Record<string, unknown>;
+  return (
+    isIsoDate(r.date) &&
+    isIsoTimestamp(r.created_at) &&
+    isIsoTimestamp(r.updated_at) &&
+    isValidDataEnc(r.data_enc) &&
+    (r.next_review     == null || isIsoTimestamp(r.next_review)) &&
+    (r.review_interval == null ||
+      (typeof r.review_interval === "number" &&
+        isFinite(r.review_interval) &&
+        r.review_interval > 0))
+  );
+}
+
+// created_at is required — the client always sends it with thread updates.
+export function isValidThreadUpdate(b: unknown): b is Record<string, unknown> {
+  if (!b || typeof b !== "object") return false;
+  const r = b as Record<string, unknown>;
+  return (
+    isIsoTimestamp(r.created_at) &&
+    isIsoTimestamp(r.updated_at) &&
+    isValidDataEnc(r.data_enc) &&
+    (r.done     == null || r.done === 0 || r.done === 1) &&
+    (r.due_date == null || isIsoDate(r.due_date)) &&
+    (r.color    == null || (typeof r.color === "string" && r.color.length <= 50))
   );
 }

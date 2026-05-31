@@ -5,6 +5,9 @@ import {
   isValidDataEnc,
   isValidEntry,
   isValidThread,
+  isValidId,
+  isValidEntryUpdate,
+  isValidThreadUpdate,
 } from "./import-validate";
 
 // Minimum valid AES-GCM base64: 30 zero bytes → 40 base64 chars (all 'A's)
@@ -417,5 +420,143 @@ describe("isValidThread — optional field failures", () => {
 
   it("rejects non-string color", () => {
     expect(isValidThread(validThread({ color: 42 }))).toBe(false);
+  });
+});
+
+// ─── isValidId ────────────────────────────────────────────────────────────────
+
+describe("isValidId", () => {
+  it("accepts a canonical UUID v4", () => {
+    expect(isValidId(VALID_UUID)).toBe(true);
+  });
+
+  it("accepts uppercase UUID", () => {
+    expect(isValidId(VALID_UUID.toUpperCase())).toBe(true);
+  });
+
+  it("rejects a string without hyphens", () => {
+    expect(isValidId("12345678123412341234123456789abc")).toBe(false);
+  });
+
+  it("rejects an empty string", () => {
+    expect(isValidId("")).toBe(false);
+  });
+
+  it("rejects a non-string", () => {
+    expect(isValidId(42)).toBe(false);
+    expect(isValidId(null)).toBe(false);
+  });
+});
+
+// ─── isValidEntryUpdate ───────────────────────────────────────────────────────
+
+describe("isValidEntryUpdate", () => {
+  function validUpdate(overrides: Record<string, unknown> = {}): unknown {
+    return { date: VALID_DATE, created_at: VALID_TS, updated_at: VALID_TS, data_enc: REAL_ENC, ...overrides };
+  }
+
+  it("accepts a valid update with all required fields", () => {
+    expect(isValidEntryUpdate(validUpdate())).toBe(true);
+  });
+
+  it("accepts update with all optional fields", () => {
+    expect(isValidEntryUpdate(validUpdate({
+      next_review: VALID_TS,
+      review_interval: 7,
+    }))).toBe(true);
+  });
+
+  it("accepts null optional fields", () => {
+    expect(isValidEntryUpdate(validUpdate({ next_review: null, review_interval: null }))).toBe(true);
+  });
+
+  it("rejects missing date", () => {
+    expect(isValidEntryUpdate({ created_at: VALID_TS, updated_at: VALID_TS, data_enc: REAL_ENC })).toBe(false);
+  });
+
+  it("rejects missing created_at", () => {
+    expect(isValidEntryUpdate({ date: VALID_DATE, updated_at: VALID_TS, data_enc: REAL_ENC })).toBe(false);
+  });
+
+  it("rejects missing updated_at", () => {
+    expect(isValidEntryUpdate({ date: VALID_DATE, created_at: VALID_TS, data_enc: REAL_ENC })).toBe(false);
+  });
+
+  it("rejects missing data_enc", () => {
+    expect(isValidEntryUpdate({ date: VALID_DATE, created_at: VALID_TS, updated_at: VALID_TS })).toBe(false);
+  });
+
+  it("rejects invalid date", () => {
+    expect(isValidEntryUpdate(validUpdate({ date: "2024-02-30" }))).toBe(false);
+  });
+
+  it("rejects invalid updated_at", () => {
+    expect(isValidEntryUpdate(validUpdate({ updated_at: "not-a-date" }))).toBe(false);
+  });
+
+  it("rejects invalid data_enc (too short)", () => {
+    expect(isValidEntryUpdate(validUpdate({ data_enc: "abc" }))).toBe(false);
+  });
+
+  it("rejects negative review_interval", () => {
+    expect(isValidEntryUpdate(validUpdate({ review_interval: -1 }))).toBe(false);
+  });
+
+  it("rejects zero review_interval", () => {
+    expect(isValidEntryUpdate(validUpdate({ review_interval: 0 }))).toBe(false);
+  });
+
+  it("rejects non-object", () => {
+    expect(isValidEntryUpdate(null)).toBe(false);
+    expect(isValidEntryUpdate("string")).toBe(false);
+  });
+});
+
+// ─── isValidThreadUpdate ──────────────────────────────────────────────────────
+
+describe("isValidThreadUpdate", () => {
+  function validUpdate(overrides: Record<string, unknown> = {}): unknown {
+    return { created_at: VALID_TS, updated_at: VALID_TS, data_enc: REAL_ENC, ...overrides };
+  }
+
+  it("accepts a valid update with all required fields", () => {
+    expect(isValidThreadUpdate(validUpdate())).toBe(true);
+  });
+
+  it("accepts update with all optional fields", () => {
+    expect(isValidThreadUpdate(validUpdate({
+      done: 1,
+      due_date: VALID_DATE,
+      color: "oklch(70% 0.15 140)",
+    }))).toBe(true);
+  });
+
+  it("accepts null optional fields", () => {
+    expect(isValidThreadUpdate(validUpdate({ done: null, due_date: null, color: null }))).toBe(true);
+  });
+
+  it("rejects missing created_at", () => {
+    expect(isValidThreadUpdate({ updated_at: VALID_TS, data_enc: REAL_ENC })).toBe(false);
+  });
+
+  it("rejects missing updated_at", () => {
+    expect(isValidThreadUpdate({ created_at: VALID_TS, data_enc: REAL_ENC })).toBe(false);
+  });
+
+  it("rejects missing data_enc", () => {
+    expect(isValidThreadUpdate({ created_at: VALID_TS, updated_at: VALID_TS })).toBe(false);
+  });
+
+  it("rejects invalid done value", () => {
+    expect(isValidThreadUpdate(validUpdate({ done: 2 }))).toBe(false);
+    expect(isValidThreadUpdate(validUpdate({ done: true }))).toBe(false);
+  });
+
+  it("rejects invalid due_date", () => {
+    expect(isValidThreadUpdate(validUpdate({ due_date: "2024-13-01" }))).toBe(false);
+  });
+
+  it("rejects color string over 50 chars", () => {
+    expect(isValidThreadUpdate(validUpdate({ color: "x".repeat(51) }))).toBe(false);
   });
 });

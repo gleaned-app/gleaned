@@ -3,8 +3,10 @@ export const runtime = "nodejs";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/app/api/_auth";
+import { readJsonWithLimit } from "@/app/api/_body";
 import { getDb } from "@/lib/db/server";
 import { entries } from "@/lib/db/schema/shared/entries";
+import { isValidId, isValidEntryUpdate } from "@/lib/import-validate";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -13,10 +15,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams): Promis
   if (auth instanceof NextResponse) return auth;
 
   const { id } = await params;
-  const body = await request.json().catch(() => null);
-  if (!body?.updated_at || !body?.data_enc) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-  }
+  if (!isValidId(id)) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+
+  const body = await readJsonWithLimit(request);
+  if (body === undefined) return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+  if (!isValidEntryUpdate(body)) return NextResponse.json({ error: "Invalid entry" }, { status: 422 });
 
   const db = getDb();
 
@@ -32,12 +35,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams): Promis
 
   const row = {
     id,
-    date: body.date as string,
-    created_at: body.created_at as string,
-    updated_at: body.updated_at as string,
-    next_review: (body.next_review as string | undefined) ?? null,
+    date:            body.date as string,
+    created_at:      body.created_at as string,
+    updated_at:      body.updated_at as string,
+    next_review:     (body.next_review as string | undefined) ?? null,
     review_interval: (body.review_interval as number | undefined) ?? null,
-    data_enc: Buffer.from(body.data_enc as string, "base64"),
+    data_enc:        Buffer.from(body.data_enc as string, "base64"),
   };
 
   db.insert(entries)
