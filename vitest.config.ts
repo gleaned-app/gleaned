@@ -10,8 +10,8 @@ export default defineConfig({
     exclude: ["**/node_modules/**", "**/e2e/**"],
     coverage: {
       provider: "v8",
-      include: ["lib/**/*.ts"],
-      exclude: ["lib/**/*.test.ts"],
+      include: ["lib/**/*.ts", "app/api/**/*.ts"],
+      exclude: ["lib/**/*.test.ts", "app/api/**/*.test.ts", "app/api/_test-db.ts"],
     },
   },
 });

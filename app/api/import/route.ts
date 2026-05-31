@@ -16,7 +16,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (body === undefined) {
     return NextResponse.json({ error: "Payload too large" }, { status: 413 });
   }
-  if (!body || typeof body !== "object") {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
