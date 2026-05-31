@@ -100,7 +100,7 @@ describe("saveEntry", () => {
     expect(arg.content).toBe("new insight");
     expect(arg.tags).toEqual(["test"]);
     expect(arg.type).toBe("entry");
-    expect(arg._id).toMatch(/^entry_\d+_/);
+    expect(arg._id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
   });
 
   it("sets nextReview to tomorrow and reviewInterval to 1", async () => {

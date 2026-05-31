@@ -7,7 +7,7 @@ export async function saveThread(text: string, dueDate?: string, color?: string)
   requireAuth();
   const now = new Date();
   const thread: Omit<Thread, "_rev" | "encrypted" | "textEnc"> = {
-    _id: `thread_${now.getTime()}_${Math.random().toString(36).slice(2, 7)}`,
+    _id: crypto.randomUUID(),
     type: "thread",
     text,
     done: false,

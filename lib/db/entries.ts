@@ -49,7 +49,7 @@ export async function saveEntry(draft: EntryDraft): Promise<Entry> {
   const now = new Date();
   const tomorrow = toLocalDateStr(new Date(now.getTime() + 86_400_000));
   const entry: Omit<Entry, "_rev" | "encrypted" | "enc"> = {
-    _id: `entry_${now.getTime()}_${Math.random().toString(36).slice(2, 7)}`,
+    _id: crypto.randomUUID(),
     type: "entry",
     content,
     tags,

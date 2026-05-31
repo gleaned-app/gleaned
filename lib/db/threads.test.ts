@@ -82,7 +82,7 @@ describe("saveThread", () => {
     expect(arg.color).toBe("#ff0000");
     expect(arg.done).toBe(false);
     expect(arg.type).toBe("thread");
-    expect(arg._id).toMatch(/^thread_\d+_/);
+    expect(arg._id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
   });
 
   it("returns thread without dueDate/color when not provided", async () => {
