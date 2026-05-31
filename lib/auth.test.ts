@@ -147,6 +147,29 @@ describe("logout", () => {
     expect(isAuthenticated()).toBe(false);
   });
 
+  it("calls POST /api/auth/logout to delete the server session", async () => {
+    mockApiFetch.mockResolvedValueOnce(makeResponse({ ok: true }));
+    await logout();
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/api/auth/logout",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("clears local state even when the server call fails", async () => {
+    mockApiFetch
+      .mockResolvedValueOnce(makeResponse({ setup: true }))
+      .mockResolvedValueOnce(makeResponse({ encryptionSalt: "s", encryptionIterations: 600_000 }));
+    await login("correct");
+    expect(isAuthenticated()).toBe(true);
+
+    mockApiFetch.mockRejectedValueOnce(new Error("network error"));
+    await logout();
+
+    expect(isAuthenticated()).toBe(false);
+    expect(mockClearKey).toHaveBeenCalled();
+  });
+
   it("calls clearKey to wipe the encryption key", async () => {
     await logout();
     expect(mockClearKey).toHaveBeenCalledOnce();

@@ -14,6 +14,11 @@ export function initSetupToken(): void {
   // SETUP_TOKEN env var lets CI/provisioning scripts supply a known token
   // instead of reading a random one from the logs.
   if (process.env.SETUP_TOKEN) {
+    process.stderr.write(
+      `[gleaned] WARNING: SETUP_TOKEN is set via environment variable.\n` +
+      `[gleaned]          Only use this in CI/CD pipelines with encrypted secrets —\n` +
+      `[gleaned]          never in a production .env file. Remove it after setup.\n`,
+    );
     g._gleaned_setup_token = process.env.SETUP_TOKEN;
     return;
   }
