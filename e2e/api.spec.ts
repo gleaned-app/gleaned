@@ -85,9 +85,14 @@ test("entry data_enc is opaque — server cannot read plaintext", async ({ page 
 
   const plaintext = "API-Test: dieser Text muss verschlüsselt auf dem Server liegen.";
 
-  // Create entry via UI (client encrypts before sending)
+  // Create entry via UI (client encrypts before sending).
+  // Wait for the POST response so the server has stored the row before we query it.
   await page.locator("form textarea").first().fill(plaintext);
-  await page.locator("form button[type='submit']").click();
+  const [postResponse] = await Promise.all([
+    page.waitForResponse(r => r.url().includes("/api/entries") && r.request().method() === "POST"),
+    page.locator("form button[type='submit']").click(),
+  ]);
+  expect(postResponse.status()).toBe(201);
 
   // UI shows decrypted text
   await expect(page.getByText(plaintext).last()).toBeVisible();
@@ -116,7 +121,11 @@ test("thread data_enc is opaque — server cannot read thread text", async ({ pa
 
   const threadText = "API-Test: dieser Thread-Text muss verschlüsselt sein.";
 
-  const { status, ok } = await page.evaluate(async (id: string) => {
+  const { status, ok } = await page.evaluate(async () => {
+    const id = crypto.randomUUID();
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    const dataEnc = btoa(String.fromCharCode(...bytes));
     const res = await fetch("/api/threads", {
       method: "POST",
       credentials: "include",
@@ -128,11 +137,11 @@ test("thread data_enc is opaque — server cannot read thread text", async ({ pa
         color: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        data_enc: "placeholder",
+        data_enc: dataEnc,
       }),
     });
     return { status: res.status, ok: res.ok };
-  }, `thread_${Date.now()}_test`);
+  });
   expect([200, 201]).toContain(status);
 
   // Check that threads are encrypted
