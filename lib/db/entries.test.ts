@@ -20,6 +20,7 @@ import {
   saveEntry, getEntriesByDate, searchEntries, updateEntry,
   deleteEntry, getAllTags, getEntriesByTag, getStreakData,
   getEntryCountsByDate, getAllEntries, invalidateSearchCache,
+  getEntryMonths, getEntriesForMonth, deleteTag,
 } from "./entries";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -431,5 +432,104 @@ describe("getStreakData", () => {
     const result = await getStreakData();
     expect(result.streak).toBe(2);
     expect(result.todayCount).toBe(2);
+  });
+});
+
+// ── getEntryMonths ────────────────────────────────────────────────────────────
+
+describe("getEntryMonths", () => {
+  it("returns unique months sorted descending", async () => {
+    await populateCache([
+      makeEntry({ _id: "e1", date: "2026-01-15" }),
+      makeEntry({ _id: "e2", date: "2026-01-20" }),
+      makeEntry({ _id: "e3", date: "2025-12-01" }),
+      makeEntry({ _id: "e4", date: "2026-03-05" }),
+    ]);
+    const months = await getEntryMonths();
+    expect(months).toEqual(["2026-03", "2026-01", "2025-12"]);
+  });
+
+  it("deduplicates months with multiple entries", async () => {
+    await populateCache([
+      makeEntry({ _id: "e1", date: "2026-01-01" }),
+      makeEntry({ _id: "e2", date: "2026-01-31" }),
+    ]);
+    const months = await getEntryMonths();
+    expect(months).toHaveLength(1);
+    expect(months[0]).toBe("2026-01");
+  });
+
+  it("returns empty array when no entries exist", async () => {
+    mockApiFetch.mockResolvedValueOnce(makeResponse([]) as unknown as Response);
+    expect(await getEntryMonths()).toHaveLength(0);
+  });
+});
+
+// ── getEntriesForMonth ────────────────────────────────────────────────────────
+
+describe("getEntriesForMonth", () => {
+  it("calls GET with correct from/to range (month is 0-based)", async () => {
+    mockApiFetch.mockResolvedValue(makeResponse([]) as unknown as Response);
+    await getEntriesForMonth(2026, 0); // January
+    expect(mockApiFetch).toHaveBeenCalledWith("/api/entries?from=2026-01-01&to=2026-01-31");
+  });
+
+  it("pads single-digit months", async () => {
+    mockApiFetch.mockResolvedValue(makeResponse([]) as unknown as Response);
+    await getEntriesForMonth(2026, 2); // March (month index 2)
+    expect(mockApiFetch).toHaveBeenCalledWith("/api/entries?from=2026-03-01&to=2026-03-31");
+  });
+
+  it("decrypts and returns rows", async () => {
+    mockApiFetch.mockResolvedValue(makeResponse([makeRow({ id: "e1" }), makeRow({ id: "e2" })]) as unknown as Response);
+    const entries = await getEntriesForMonth(2026, 0);
+    expect(entries).toHaveLength(2);
+    expect(mockDecrypt).toHaveBeenCalledTimes(2);
+  });
+});
+
+// ── deleteTag ─────────────────────────────────────────────────────────────────
+
+describe("deleteTag", () => {
+  it("calls PUT for each entry containing the tag", async () => {
+    await populateCache([
+      makeEntry({ _id: "e1", tags: ["remove", "keep"] }),
+      makeEntry({ _id: "e2", tags: ["keep"] }),
+      makeEntry({ _id: "e3", tags: ["remove"] }),
+    ]);
+    mockApiFetch.mockResolvedValue(makeResponse() as unknown as Response);
+    await deleteTag("remove");
+    const putCalls = mockApiFetch.mock.calls.filter(([, opts]) => (opts as RequestInit)?.method === "PUT");
+    expect(putCalls).toHaveLength(2); // e1 and e3, not e2
+  });
+
+  it("passes the tag-filtered array to encryptEntryToApi", async () => {
+    await populateCache([makeEntry({ _id: "e1", tags: ["remove", "keep"] })]);
+    mockApiFetch.mockResolvedValue(makeResponse() as unknown as Response);
+    await deleteTag("remove");
+    const [arg] = mockEncrypt.mock.calls[0];
+    expect(arg.tags).toEqual(["keep"]);
+    expect(arg.tags).not.toContain("remove");
+  });
+
+  it("invalidates the cache after completion", async () => {
+    await populateCache([makeEntry({ _id: "e1", tags: ["del"] })]);
+    mockApiFetch.mockResolvedValue(makeResponse() as unknown as Response);
+    await deleteTag("del");
+    // cache is now null — next getAllEntries must refetch
+    mockApiFetch.mockResolvedValueOnce(makeResponse([]) as unknown as Response);
+    await getAllEntries();
+    expect(mockApiFetch).toHaveBeenLastCalledWith(expect.stringContaining("from=2000-01-01"));
+  });
+
+  it("is a no-op when no entries have the tag", async () => {
+    await populateCache([makeEntry({ _id: "e1", tags: ["other"] })]);
+    mockApiFetch.mockResolvedValue(makeResponse() as unknown as Response);
+    await deleteTag("nonexistent");
+    expect(mockEncrypt).not.toHaveBeenCalled();
+    expect(mockApiFetch).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ method: "PUT" }),
+    );
   });
 });

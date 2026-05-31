@@ -108,6 +108,36 @@ describe("encryptEntry", () => {
     expect(doc.content).toBe("plaintext");
     expect(doc.source).toBe("visible source");
   });
+
+  it("stores attachment metadata (id/name/mimeType/size) in the encrypted payload", async () => {
+    await setupKey();
+    const input = baseEntry({
+      attachments: [{ id: "att1", name: "photo.png", mimeType: "image/png", size: 1024 }],
+    });
+    const doc = await encryptEntry(input) as Entry;
+    expect(doc.encrypted).toBe(true);
+    // metadata is inside enc — verify it round-trips
+    const decrypted = await decryptEntry(doc);
+    expect(decrypted.attachments).toHaveLength(1);
+    expect(decrypted.attachments![0].id).toBe("att1");
+    expect(decrypted.attachments![0].name).toBe("photo.png");
+    expect(decrypted.attachments![0].mimeType).toBe("image/png");
+    expect(decrypted.attachments![0].size).toBe(1024);
+  });
+
+  it("encrypts attachment binary data into _attachments when data URL is provided", async () => {
+    await setupKey();
+    // 1×1 white PNG as base64 data URL
+    const dataUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwADhQGAWjR9awAAAABJRU5ErkJggg==";
+    const input = baseEntry({
+      attachments: [{ id: "img1", name: "dot.png", mimeType: "image/png", size: 68, data: dataUrl }],
+    });
+    const doc = await encryptEntry(input) as (Entry & { _attachments?: Record<string, { data: string }> });
+    expect(doc._attachments).toBeDefined();
+    expect(doc._attachments!["img1"]).toBeDefined();
+    // encrypted attachment data must differ from the original
+    expect(doc._attachments!["img1"].data).not.toBe(dataUrl);
+  });
 });
 
 // ─── decryptEntry ─────────────────────────────────────────────────────────────

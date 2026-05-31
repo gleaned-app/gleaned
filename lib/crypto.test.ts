@@ -6,6 +6,8 @@ import {
   base64ToSalt,
   encryptText,
   decryptText,
+  encryptBytes,
+  decryptBytes,
   storeKey,
   loadKey,
   clearKey,
@@ -286,5 +288,65 @@ describe("storeKey / loadKey / clearKey", () => {
     expect(await loadKey()).toBeNull();
     await storeKey(key);
     expect(await loadKey()).toBe(key);
+  });
+});
+
+// ─── encryptBytes / decryptBytes ──────────────────────────────────────────────
+
+describe("encryptBytes / decryptBytes", () => {
+  async function freshKey(): Promise<CryptoKey> {
+    return deriveKey("testpassword", generateSalt());
+  }
+
+  it("round-trip: decrypted buffer matches original", async () => {
+    const key = await freshKey();
+    const original = new Uint8Array([1, 2, 3, 255, 128, 0, 64]).buffer;
+    const ciphertext = await encryptBytes(key, original);
+    const decrypted = await decryptBytes(key, ciphertext);
+    expect(new Uint8Array(decrypted)).toEqual(new Uint8Array(original));
+  });
+
+  it("round-trip: empty buffer", async () => {
+    const key = await freshKey();
+    const original = new ArrayBuffer(0);
+    const ciphertext = await encryptBytes(key, original);
+    const decrypted = await decryptBytes(key, ciphertext);
+    expect(new Uint8Array(decrypted)).toHaveLength(0);
+  });
+
+  it("round-trip: larger binary payload (1 KB)", async () => {
+    const key = await freshKey();
+    const original = new Uint8Array(1024).fill(42).buffer;
+    const decrypted = await decryptBytes(key, await encryptBytes(key, original));
+    expect(new Uint8Array(decrypted)).toEqual(new Uint8Array(original));
+  });
+
+  it("ciphertext is a non-empty base64 string", async () => {
+    const key = await freshKey();
+    const ct = await encryptBytes(key, new Uint8Array([1, 2, 3]).buffer);
+    expect(typeof ct).toBe("string");
+    expect(ct.length).toBeGreaterThan(0);
+    expect(() => atob(ct)).not.toThrow();
+  });
+
+  it("produces different ciphertext on each call (random IV)", async () => {
+    const key = await freshKey();
+    const data = new Uint8Array([1, 2, 3]).buffer;
+    expect(await encryptBytes(key, data)).not.toBe(await encryptBytes(key, data));
+  });
+
+  it("throws when decrypting with a different key", async () => {
+    const key1 = await freshKey();
+    const key2 = await freshKey();
+    const ct = await encryptBytes(key1, new Uint8Array([7]).buffer);
+    await expect(decryptBytes(key2, ct)).rejects.toThrow();
+  });
+
+  it("throws when ciphertext is tampered", async () => {
+    const key = await freshKey();
+    const ct = await encryptBytes(key, new Uint8Array([1, 2, 3, 4, 5]).buffer);
+    const bytes = Uint8Array.from(atob(ct), (c) => c.charCodeAt(0));
+    bytes[bytes.length - 1] ^= 0xff;
+    await expect(decryptBytes(key, btoa(String.fromCharCode(...bytes)))).rejects.toThrow();
   });
 });

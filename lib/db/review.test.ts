@@ -24,7 +24,7 @@ const mockUpdateCache     = vi.mocked(updateEntryInCache);
 const mockScheduleEntry   = vi.mocked(scheduleEntry);
 const mockInterleaveQueue = vi.mocked(interleaveQueue);
 
-import { getRecentEntries, getReviewDue, getReviewCount, markReviewed } from "./review";
+import { getRecentEntries, getReviewDue, getReviewCount, markReviewed, getCalibrationData, undoMarkReviewed } from "./review";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -289,5 +289,58 @@ describe("markReviewed", () => {
     mockApiFetch.mockResolvedValue(makeResponse());
     const result = await markReviewed(makeReviewEntry({ gapStatus: "open" }), "still_holds", "resolved");
     expect(result.gapStatus).toBe("resolved");
+  });
+});
+
+// ── getCalibrationData ────────────────────────────────────────────────────────
+
+describe("getCalibrationData", () => {
+  it("returns _id and reviewHistory for every entry", async () => {
+    const history = [{ date: "2026-01-10", outcome: "still_holds" as const }];
+    mockGetAllEntries.mockResolvedValue([
+      makeEntry({ _id: "e1", reviewHistory: history }),
+      makeEntry({ _id: "e2" }),
+    ]);
+    const data = await getCalibrationData();
+    expect(data).toHaveLength(2);
+    expect(data[0]).toEqual({ _id: "e1", reviewHistory: history });
+    expect(data[1]).toEqual({ _id: "e2", reviewHistory: undefined });
+  });
+
+  it("returns empty array when there are no entries", async () => {
+    mockGetAllEntries.mockResolvedValue([]);
+    expect(await getCalibrationData()).toHaveLength(0);
+  });
+
+  it("throws when state is locked", async () => {
+    setAuthState("locked");
+    await expect(getCalibrationData()).rejects.toThrow("gleaned: not authenticated");
+  });
+});
+
+// ── undoMarkReviewed ──────────────────────────────────────────────────────────
+
+describe("undoMarkReviewed", () => {
+  it("calls PUT /api/entries/:id with the previous entry encrypted", async () => {
+    mockApiFetch.mockResolvedValue(makeResponse());
+    const prev = makeEntry({ _id: "e_undo", reviewInterval: 1 });
+    await undoMarkReviewed(prev);
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/api/entries/e_undo",
+      expect.objectContaining({ method: "PUT" }),
+    );
+    expect(mockEncrypt).toHaveBeenCalledWith(prev);
+  });
+
+  it("calls updateEntryInCache with the previous entry", async () => {
+    mockApiFetch.mockResolvedValue(makeResponse());
+    const prev = makeEntry({ _id: "e_undo" });
+    await undoMarkReviewed(prev);
+    expect(mockUpdateCache).toHaveBeenCalledWith(prev);
+  });
+
+  it("throws when state is locked", async () => {
+    setAuthState("locked");
+    await expect(undoMarkReviewed(makeEntry())).rejects.toThrow("gleaned: not authenticated");
   });
 });
