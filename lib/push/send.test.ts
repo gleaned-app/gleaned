@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { parsePushOverride } from "./parse-override";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
@@ -195,5 +196,78 @@ describe("broadcast — VAPID configured", () => {
 
     const result = await broadcast({ title: "static", body: "payload" });
     expect(result.sent).toBe(1);
+  });
+});
+
+// ─── parsePushOverride ────────────────────────────────────────────────────────
+
+describe("parsePushOverride", () => {
+  it("returns empty object for non-object input", () => {
+    expect(parsePushOverride(null)).toEqual({});
+    expect(parsePushOverride("string")).toEqual({});
+    expect(parsePushOverride(42)).toEqual({});
+    expect(parsePushOverride([])).toEqual({});
+  });
+
+  it("returns empty object for empty input", () => {
+    expect(parsePushOverride({})).toEqual({});
+  });
+
+  it("passes through valid title, body, and relative url", () => {
+    expect(parsePushOverride({ title: "Hello", body: "World", url: "/review" }))
+      .toEqual({ title: "Hello", body: "World", url: "/review" });
+  });
+
+  it("trims whitespace from title and body", () => {
+    const result = parsePushOverride({ title: "  hi  ", body: "  there  " });
+    expect(result.title).toBe("hi");
+    expect(result.body).toBe("there");
+  });
+
+  it("accepts url '/' (root path)", () => {
+    expect(parsePushOverride({ url: "/" })).toEqual({ url: "/" });
+  });
+
+  it("rejects external http url", () => {
+    expect(parsePushOverride({ url: "http://evil.com" })).toEqual({});
+  });
+
+  it("rejects external https url", () => {
+    expect(parsePushOverride({ url: "https://evil.com/gleaned" })).toEqual({});
+  });
+
+  it("rejects protocol-relative url (//)", () => {
+    expect(parsePushOverride({ url: "//evil.com" })).toEqual({});
+  });
+
+  it("rejects javascript: url", () => {
+    expect(parsePushOverride({ url: "javascript:alert(1)" })).toEqual({});
+  });
+
+  it("rejects url that exceeds 2000 chars", () => {
+    expect(parsePushOverride({ url: "/" + "a".repeat(2001) })).toEqual({});
+  });
+
+  it("rejects title over 100 chars", () => {
+    expect(parsePushOverride({ title: "a".repeat(101) })).toEqual({});
+  });
+
+  it("rejects body over 300 chars", () => {
+    expect(parsePushOverride({ body: "a".repeat(301) })).toEqual({});
+  });
+
+  it("omits fields that are not title, body, or url", () => {
+    const result = parsePushOverride({ title: "ok", icon: "https://evil.com/icon.png", data: { secret: 1 } });
+    expect(result).toEqual({ title: "ok" });
+    expect(result).not.toHaveProperty("icon");
+    expect(result).not.toHaveProperty("data");
+  });
+
+  it("omits whitespace-only title and body", () => {
+    expect(parsePushOverride({ title: "   ", body: "\t\n" })).toEqual({});
+  });
+
+  it("omits fields with non-string values", () => {
+    expect(parsePushOverride({ title: 42, body: true, url: null })).toEqual({});
   });
 });
