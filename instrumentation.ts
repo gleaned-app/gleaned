@@ -29,17 +29,23 @@ export async function register() {
   const { default: cron } = await import("node-cron");
   const { sendDailyReminder, sendDueReminders } = await import("./lib/push/scheduler");
 
-  const rawTz    = process.env.PUSH_TZ    ?? "UTC";
-  const pushHour = process.env.PUSH_HOUR  ?? "20";
-  const pushMin  = process.env.PUSH_MINUTE ?? "0";
-  const dueHour  = process.env.DUE_HOUR   ?? "9";
-  const dueMin   = process.env.DUE_MINUTE ?? "0";
+  const rawTz = process.env.PUSH_TZ ?? "UTC";
 
   const validTimezones = Intl.supportedValuesOf("timeZone");
   const tz = validTimezones.includes(rawTz) ? rawTz : "UTC";
   if (tz !== rawTz) {
     console.warn(`[push] Invalid PUSH_TZ "${rawTz}", falling back to UTC`);
   }
+
+  function parseCronField(val: string | undefined, min: number, max: number, fallback: number): number {
+    const n = parseInt(val ?? "", 10);
+    return Number.isFinite(n) && n >= min && n <= max ? n : fallback;
+  }
+
+  const pushHour = parseCronField(process.env.PUSH_HOUR,   0, 23, 20);
+  const pushMin  = parseCronField(process.env.PUSH_MINUTE, 0, 59,  0);
+  const dueHour  = parseCronField(process.env.DUE_HOUR,    0, 23,  9);
+  const dueMin   = parseCronField(process.env.DUE_MINUTE,  0, 59,  0);
 
   cron.schedule(`${pushMin} ${pushHour} * * *`, () => {
     sendDailyReminder().catch((e: unknown) =>

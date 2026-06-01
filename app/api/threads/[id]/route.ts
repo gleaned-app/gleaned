@@ -45,6 +45,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams): Pro
   if (auth instanceof NextResponse) return auth;
 
   const { id } = await params;
+  if (!isValidId(id)) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   getDb().delete(threads).where(eq(threads.id, id)).run();
   return new NextResponse(null, { status: 204 });
 }

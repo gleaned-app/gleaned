@@ -22,6 +22,32 @@ function toClient(row: typeof settings.$inferSelect) {
 
 type ClientSettings = ReturnType<typeof toClient>;
 
+const VALID_LANGUAGES  = new Set(["de", "en"]);
+const VALID_THEMES     = new Set(["system", "light", "dark", "sepia"]);
+const VALID_FONTS      = new Set(["sans", "serif", "playfair", "handwriting"]);
+const VALID_VIEWS      = new Set(["journal", "calendar", "threads", "review"]);
+const VALID_WEEK_START = new Set(["monday", "sunday"]);
+const VALID_AUTO_LOCK  = new Set([0, 5, 15, 30]);
+const MAX_LIST_ITEMS   = 20;
+const MAX_ITEM_LEN     = 100;
+
+function validateSettingsUpdate(data: Partial<ClientSettings>): string | null {
+  if (data.language    !== undefined && !VALID_LANGUAGES.has(data.language))   return "Invalid language";
+  if (data.theme       !== undefined && !VALID_THEMES.has(data.theme))         return "Invalid theme";
+  if (data.bodyFont    !== undefined && !VALID_FONTS.has(data.bodyFont))       return "Invalid bodyFont";
+  if (data.defaultView !== undefined && !VALID_VIEWS.has(data.defaultView))    return "Invalid defaultView";
+  if (data.weekStart   !== undefined && !VALID_WEEK_START.has(data.weekStart)) return "Invalid weekStart";
+  if (data.autoLockAfter !== undefined && !VALID_AUTO_LOCK.has(data.autoLockAfter)) return "Invalid autoLockAfter";
+  for (const field of ["customEntryTypes", "contextSources"] as const) {
+    const list = data[field];
+    if (list === undefined) continue;
+    if (!Array.isArray(list))              return `Invalid ${field}`;
+    if (list.length > MAX_LIST_ITEMS)      return `Too many ${field}`;
+    if (list.some(s => typeof s !== "string" || s.length > MAX_ITEM_LEN)) return `Invalid ${field} item`;
+  }
+  return null;
+}
+
 // Maps a partial client update to DB columns.
 function toDb(data: Partial<ClientSettings>): Partial<typeof settings.$inferInsert> {
   const result: Partial<typeof settings.$inferInsert> = {};
@@ -53,6 +79,9 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
   if (!body || typeof body !== "object") {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
+
+  const validationError = validateSettingsUpdate(body as Partial<ClientSettings>);
+  if (validationError) return NextResponse.json({ error: validationError }, { status: 422 });
 
   const db = getDb();
   const updates = toDb(body as Partial<ClientSettings>);
