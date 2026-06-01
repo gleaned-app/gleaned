@@ -397,6 +397,45 @@ body {
 }
 .thread-appear { animation: thread-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
+/* Markdown rendered inside thread notes */
+.notes-rendered p         { margin: 0 0 0.5em; }
+.notes-rendered p:last-child { margin-bottom: 0; }
+.notes-rendered ul        { margin: 0.3em 0 0.5em 1.4em; padding: 0; list-style: disc; }
+.notes-rendered ol        { margin: 0.3em 0 0.5em 1.4em; padding: 0; list-style: decimal; }
+.notes-rendered li        { margin: 0.2em 0; }
+.notes-rendered li input[type="checkbox"] {
+  accent-color: var(--accent);
+  margin-right: 0.4em;
+  cursor: pointer;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+}
+.notes-rendered h1,.notes-rendered h2,.notes-rendered h3 {
+  font-weight: 600;
+  margin: 0.5em 0 0.2em;
+  line-height: 1.3;
+}
+.notes-rendered h1 { font-size: 1em; }
+.notes-rendered h2 { font-size: 0.95em; }
+.notes-rendered h3 { font-size: 0.9em; }
+.notes-rendered code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.85em;
+  background: var(--border);
+  border-radius: 3px;
+  padding: 0.1em 0.3em;
+}
+.notes-rendered pre {
+  background: var(--border);
+  border-radius: 6px;
+  padding: 0.6em 0.8em;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+.notes-rendered pre code { background: none; padding: 0; }
+.notes-rendered a { color: var(--accent); text-underline-offset: 2px; }
+
 @keyframes check-pop {
   0%   { transform: scale(1); }
   45%  { transform: scale(1.22); }

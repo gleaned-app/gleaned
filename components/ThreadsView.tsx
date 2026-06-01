@@ -8,12 +8,14 @@ import {
   updateThreadText,
   updateThreadDueDate,
   updateThreadColor,
+  updateThreadNotes,
   deleteThread,
   toLocalDateStr,
 } from "@/lib/db";
 import type { Thread } from "@/types/thread";
 import { useT, type Translations } from "@/lib/i18n";
 import { useSettings, locale } from "@/lib/settings-context";
+import { renderNotesMarkdown } from "@/lib/markdown";
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
 
@@ -160,6 +162,21 @@ export default function ThreadsView() {
         )
       );
       const updated = await updateThreadColor(thread, color);
+      setThreads((prev) =>
+        prev.map((t) => (t._id === updated._id ? updated : t))
+      );
+    },
+    []
+  );
+
+  const handleUpdateNotes = useCallback(
+    async (thread: Thread, notes: string | undefined) => {
+      setThreads((prev) =>
+        prev.map((t) =>
+          t._id === thread._id ? { ...t, notes: notes ?? undefined } : t
+        )
+      );
+      const updated = await updateThreadNotes(thread, notes);
       setThreads((prev) =>
         prev.map((t) => (t._id === updated._id ? updated : t))
       );
@@ -457,6 +474,7 @@ export default function ThreadsView() {
                 onUpdateText={handleUpdateText}
                 onUpdateDueDate={handleUpdateDueDate}
                 onUpdateColor={handleUpdateColor}
+                onUpdateNotes={handleUpdateNotes}
                 onDelete={handleDelete}
               />
             ))}
@@ -490,6 +508,7 @@ export default function ThreadsView() {
                     onUpdateText={handleUpdateText}
                     onUpdateDueDate={handleUpdateDueDate}
                     onUpdateColor={handleUpdateColor}
+                    onUpdateNotes={handleUpdateNotes}
                     onDelete={handleDelete}
                     dimmed
                   />
@@ -505,6 +524,15 @@ export default function ThreadsView() {
 
 // ─── Thread item ──────────────────────────────────────────────────────────────
 
+// Toggles the nth `- [ ]` / `- [x]` occurrence in a markdown string.
+function toggleNthCheckbox(markdown: string, index: number): string {
+  let count = 0;
+  return markdown.replace(/- \[([ xX])\]/g, (match, state) => {
+    if (count++ === index) return state === " " ? "- [x]" : "- [ ]";
+    return match;
+  });
+}
+
 type OpenPanel = "date" | "color" | null;
 
 const ThreadItem = memo(function ThreadItem({
@@ -514,6 +542,7 @@ const ThreadItem = memo(function ThreadItem({
   onUpdateText,
   onUpdateDueDate,
   onUpdateColor,
+  onUpdateNotes,
   onDelete,
   dimmed = false,
 }: {
@@ -523,6 +552,7 @@ const ThreadItem = memo(function ThreadItem({
   onUpdateText: (t: Thread, text: string) => void;
   onUpdateDueDate: (t: Thread, dueDate: string | undefined) => void;
   onUpdateColor: (t: Thread, color: string | undefined) => void;
+  onUpdateNotes: (t: Thread, notes: string | undefined) => void;
   onDelete: (id: string) => void;
   dimmed?: boolean;
 }) {
@@ -534,8 +564,18 @@ const ThreadItem = memo(function ThreadItem({
   const [popping, setPopping] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(false);
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [notesMode, setNotesMode] = useState<"edit" | "preview">("edit");
+  const [notesVal, setNotesVal] = useState(thread.notes ?? "");
   const editRef = useRef<HTMLInputElement>(null);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
   const itemRef = useRef<HTMLDivElement>(null);
+
+  // Keep local notes in sync if the parent updates the thread (e.g. optimistic revert).
+  useEffect(() => {
+    setNotesVal(thread.notes ?? "");
+  }, [thread.notes]);
+
 
   useEffect(() => {
     if (editing) {
@@ -563,6 +603,23 @@ const ThreadItem = memo(function ThreadItem({
     const trimmed = val.trim();
     if (trimmed && trimmed !== thread.text) onUpdateText(thread, trimmed);
     else setVal(thread.text);
+  }
+
+  function commitNotes() {
+    const v = notesVal.trim();
+    onUpdateNotes(thread, v || undefined);
+  }
+
+  function handleCheckboxClick(e: React.MouseEvent<HTMLDivElement>) {
+    const target = e.target as HTMLElement;
+    if (target.tagName !== "INPUT" || target.getAttribute("type") !== "checkbox") return;
+    e.preventDefault();
+    const boxes = e.currentTarget.querySelectorAll('input[type="checkbox"]');
+    const idx = Array.from(boxes).indexOf(target as HTMLInputElement);
+    if (idx === -1) return;
+    const updated = toggleNthCheckbox(notesVal, idx);
+    setNotesVal(updated);
+    onUpdateNotes(thread, updated || undefined);
   }
 
   function handleToggleClick() {
@@ -667,7 +724,7 @@ const ThreadItem = memo(function ThreadItem({
           ) : (
             <span
               onClick={() => !thread.done && setEditing(true)}
-              className="truncate font-sans text-sm leading-relaxed"
+              className={`font-sans text-sm leading-relaxed${expanded ? "" : " truncate"}`}
               style={{
                 color: "var(--fg)",
                 textDecorationLine: thread.done ? "line-through" : "none",
@@ -675,6 +732,7 @@ const ThreadItem = memo(function ThreadItem({
                 opacity: thread.done ? 0.55 : 1,
                 cursor: thread.done ? "default" : "text",
                 transition: "opacity 200ms ease",
+                wordBreak: expanded ? "break-word" : undefined,
               }}
             >
               {thread.text}
@@ -725,6 +783,40 @@ const ThreadItem = memo(function ThreadItem({
             </button>
           )
         )}
+
+        {/* Expand / Collapse chevron */}
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="relative flex-shrink-0 rounded-md p-1 transition-opacity"
+          style={{
+            color: "var(--fg-muted)",
+            opacity: expanded ? 0.7 : notesVal ? 0.6 : 0.42,
+          }}
+          aria-label={expanded ? "Einklappen" : "Ausklappen"}
+        >
+          {notesVal && !expanded && (
+            <span
+              className="absolute right-0.5 top-0.5 block h-1.5 w-1.5 rounded-full"
+              style={{ background: "var(--accent)" }}
+            />
+          )}
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{
+              transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 220ms cubic-bezier(0.16,1,0.3,1)",
+            }}
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
 
         {/* Delete / Confirmation */}
         {pendingDelete ? (
@@ -900,6 +992,72 @@ const ThreadItem = memo(function ThreadItem({
                 </button>
               )}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Expanded notes section */}
+      {expanded && (
+        <div
+          className="rounded-2xl px-4 pb-3 pt-2"
+          style={{
+            background: "var(--bg-card)",
+            border: "1px solid var(--border)",
+            boxShadow: "var(--shadow-card)",
+            animation: "thread-in 0.2s cubic-bezier(0.16,1,0.3,1) both",
+          }}
+        >
+          {/* Edit / Preview tabs */}
+          <div className="mb-2.5 flex gap-1">
+            {(["edit", "preview"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => {
+                  if (mode === "preview") commitNotes();
+                  setNotesMode(mode);
+                  if (mode === "edit") requestAnimationFrame(() => notesRef.current?.focus());
+                }}
+                className="rounded-lg px-2.5 py-0.5 font-sans text-[11px] font-medium transition-all"
+                style={{
+                  background: notesMode === mode ? "var(--accent-soft)" : "transparent",
+                  color: notesMode === mode ? "var(--accent)" : "var(--fg-muted)",
+                }}
+              >
+                {mode === "edit" ? "✏ Bearbeiten" : "👁 Vorschau"}
+              </button>
+            ))}
+          </div>
+
+          {notesMode === "edit" ? (
+            <textarea
+              ref={notesRef}
+              value={notesVal}
+              onChange={(e) => setNotesVal(e.target.value)}
+              onBlur={commitNotes}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") { e.preventDefault(); commitNotes(); }
+              }}
+              placeholder={tr.threadNotesPlaceholder}
+              rows={Math.max(3, (notesVal.match(/\n/g)?.length ?? 0) + 2)}
+              className="w-full resize-none bg-transparent font-sans text-sm leading-relaxed outline-none placeholder:text-[color:var(--fg-placeholder)]"
+              style={{ color: "var(--fg)" }}
+              autoFocus
+            />
+          ) : notesVal ? (
+            <div
+              className="notes-rendered font-sans text-sm leading-relaxed"
+              style={{ color: "var(--fg)", minHeight: "3rem" }}
+              onClick={handleCheckboxClick}
+              dangerouslySetInnerHTML={{ __html: renderNotesMarkdown(notesVal) }}
+            />
+          ) : (
+            <p
+              className="font-sans text-sm italic"
+              style={{ color: "var(--fg-muted)", minHeight: "3rem" }}
+            >
+              {tr.threadNotesPlaceholder}
+            </p>
           )}
         </div>
       )}

@@ -71,6 +71,8 @@ export interface Translations {
   markDone: string;
   overdue(d: number): string;
   color: string;
+  threadNotesPlaceholder: string;
+  threadPreview: string;
 
   // Review
   navReview: string;
@@ -256,6 +258,8 @@ const de: Translations = {
   markDone: "Als erledigt markieren",
   overdue: (d) => `${d}d überfällig`,
   color: "Farbe",
+  threadNotesPlaceholder: "Notizen… z.B.:\n- [ ] offene Aufgabe\n- [x] erledigt\n**fett**, *kursiv*, # Überschrift",
+  threadPreview: "Vorschau",
 
   navReview: "Review",
   reviewTitle: "Wiederholen",
@@ -434,6 +438,8 @@ const en: Translations = {
   markDone: "Mark as done",
   overdue: (d) => `${d}d overdue`,
   color: "Color",
+  threadNotesPlaceholder: "Notes… e.g.:\n- [ ] open task\n- [x] done\n**bold**, *italic*, # Heading",
+  threadPreview: "Preview",
 
   navReview: "Review",
   reviewTitle: "Review",
