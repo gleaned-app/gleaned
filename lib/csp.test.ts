@@ -38,7 +38,7 @@ describe("buildCsp — structure", () => {
     expect(buildCsp(NONCE, false)).toContain("font-src 'self'");
   });
 
-  it("contains connect-src 'self'", () => {
+  it("contains connect-src 'self' in prod", () => {
     expect(buildCsp(NONCE, false)).toContain("connect-src 'self'");
   });
 
@@ -66,7 +66,7 @@ describe("buildCsp — structure", () => {
     expect(buildCsp(NONCE, false)).toContain("frame-ancestors 'none'");
   });
 
-  it("contains upgrade-insecure-requests", () => {
+  it("contains upgrade-insecure-requests in prod", () => {
     expect(buildCsp(NONCE, false)).toContain("upgrade-insecure-requests");
   });
 });
@@ -78,6 +78,20 @@ describe("buildCsp — dev vs prod", () => {
 
   it("omits 'unsafe-eval' in prod mode", () => {
     expect(buildCsp(NONCE, false)).not.toContain("'unsafe-eval'");
+  });
+
+  it("omits upgrade-insecure-requests in dev (HTTP localhost; Safari would block all resources)", () => {
+    expect(buildCsp(NONCE, true)).not.toContain("upgrade-insecure-requests");
+  });
+
+  it("includes ws: wss: in connect-src in dev (Safari bug: 'self' doesn't cover WebSocket)", () => {
+    expect(buildCsp(NONCE, true)).toContain("connect-src 'self' ws: wss:");
+  });
+
+  it("omits ws:/wss: from connect-src in prod", () => {
+    const csp = buildCsp(NONCE, false);
+    const connectMatch = csp.match(/connect-src ([^;]+)/);
+    expect(connectMatch?.[1].trim()).toBe("'self'");
   });
 });
 

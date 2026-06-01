@@ -11,6 +11,15 @@
 // media-src / img-src include data: because attachment blobs are stored as
 // data: URIs. img-src also includes blob: for the export flow
 // (URL.createObjectURL in SettingsModal).
+//
+// Dev-mode differences:
+//   - upgrade-insecure-requests is omitted: the dev server runs on plain HTTP,
+//     and Safari (unlike Chrome) applies this directive literally even on HTTP
+//     pages, causing it to upgrade http://localhost resource loads to https://
+//     which fails with a connection error → blank page.
+//   - connect-src includes ws: and wss: explicitly: Safari has a bug where
+//     connect-src 'self' does not automatically cover WebSocket origins, so
+//     Turbopack's HMR WebSocket gets blocked.
 export function buildCsp(nonce: string, isDev: boolean): string {
   const scriptSrc = [
     "'self'",
@@ -19,6 +28,8 @@ export function buildCsp(nonce: string, isDev: boolean): string {
     ...(isDev ? ["'unsafe-eval'"] : []),
   ].join(" ");
 
+  const connectSrc = isDev ? "'self' ws: wss:" : "'self'";
+
   return [
     "default-src 'self'",
     `script-src ${scriptSrc}`,
@@ -26,13 +37,13 @@ export function buildCsp(nonce: string, isDev: boolean): string {
     "img-src 'self' data: blob:",
     "media-src 'self' data:",
     "font-src 'self'",
-    "connect-src 'self'",
+    `connect-src ${connectSrc}`,
     "worker-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
     "frame-src 'none'",
     "frame-ancestors 'none'",
-    "upgrade-insecure-requests",
+    ...(!isDev ? ["upgrade-insecure-requests"] : []),
   ].join("; ");
 }
