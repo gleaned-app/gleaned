@@ -51,13 +51,22 @@ export interface ThreadApiRow {
   data_enc: string; // base64: encryptText output (IV || ciphertext, base64-encoded)
 }
 
+// Content fields that live inside data_enc (never as plain DB columns).
+// Add new fields here to extend what gets encrypted per thread.
+interface ThreadPayload {
+  text: string;
+  notes?: string;
+  // future fields go here — the shape is forward-compatible (unknown keys are ignored on read)
+}
+
 export async function encryptThreadToApi(
   thread: Omit<Thread, "_rev" | "encrypted" | "textEnc">,
 ): Promise<ThreadApiRow> {
   const key = await loadKey();
   if (!key) throw new Error("encryption key not loaded — authenticate before writing threads");
-  const json = JSON.stringify({ text: thread.text });
-  const data_enc = await encryptText(key, json);
+  const payload: ThreadPayload = { text: thread.text };
+  if (thread.notes) payload.notes = thread.notes;
+  const data_enc = await encryptText(key, JSON.stringify(payload));
   return {
     id: thread._id,
     done: thread.done ? 1 : 0,
@@ -72,19 +81,19 @@ export async function encryptThreadToApi(
 export async function decryptThreadFromRow(row: ThreadApiRow): Promise<Thread> {
   const key = await loadKey();
   if (!key) throw new Error("encryption key not loaded — authenticate before reading threads");
-  let text = "";
+  let payload: ThreadPayload = { text: "" };
   try {
     const json = await decryptText(key, row.data_enc);
-    const payload = JSON.parse(json) as { text?: string };
-    text = payload.text ?? "";
+    payload = JSON.parse(json) as ThreadPayload;
   } catch {}
   return {
     _id: row.id,
     type: "thread",
-    text,
+    text: payload.text ?? "",
     done: row.done !== 0,
     createdAt: row.created_at,
-    ...(row.due_date ? { dueDate: row.due_date } : {}),
-    ...(row.color    ? { color:   row.color    } : {}),
+    ...(row.due_date    ? { dueDate: row.due_date } : {}),
+    ...(row.color       ? { color:   row.color    } : {}),
+    ...(payload.notes   ? { notes:   payload.notes } : {}),
   };
 }

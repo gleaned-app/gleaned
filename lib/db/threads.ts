@@ -63,6 +63,16 @@ export async function updateThreadText(thread: Thread, text: string): Promise<Th
   return updated;
 }
 
+export async function updateThreadNotes(thread: Thread, notes: string | undefined): Promise<Thread> {
+  requireAuth();
+  const updated = { ...thread };
+  if (notes) updated.notes = notes;
+  else delete updated.notes;
+  const body = await encryptThreadToApi(updated as Omit<Thread, "_rev" | "encrypted" | "textEnc">);
+  await apiFetch(`/api/threads/${thread._id}`, { method: "PUT", body: JSON.stringify(body) });
+  return updated;
+}
+
 export async function deleteThread(id: string): Promise<void> {
   requireAuth();
   await apiFetch(`/api/threads/${id}`, { method: "DELETE" });

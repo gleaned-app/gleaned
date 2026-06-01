@@ -3,6 +3,7 @@ export interface Thread {
   _rev?: string;
   type: "thread";
   text: string;
+  notes?: string;     // markdown, stored encrypted alongside text
   done: boolean;
   createdAt: string;
   dueDate?: string;   // "YYYY-MM-DD"
