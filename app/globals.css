@@ -483,3 +483,12 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Bottom nav — mobile-only glass override (< md = 768px) */
+@media (max-width: 767px) {
+  .bottom-nav-glass {
+    background: color-mix(in oklch, var(--bg-glass) 35%, transparent) !important;
+    backdrop-filter: blur(28px) saturate(2) brightness(1.04) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(2) brightness(1.04) !important;
+  }
+}
