@@ -11,6 +11,7 @@ import ThreadsView from "./ThreadsView";
 import ReviewView from "./ReviewView";
 import BottomNav, { type View } from "./BottomNav";
 import { getReviewCount } from "@/lib/db";
+import { UnauthorizedError } from "@/lib/api-client";
 import LockScreen from "./LockScreen";
 import ProfileButton from "./ProfileButton";
 import SettingsModal from "./SettingsModal";
@@ -83,6 +84,17 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
   const t = useT();
 
   useIdleTimeout(settings.autoLockAfter, () => { void logout(); onLock(); });
+
+  // UnauthorizedError is handled globally via gleaned:unauthorized event (shows LockScreen).
+  // Suppress it here so it doesn't appear as an unhandled rejection in the console.
+  useEffect(() => {
+    function onUnhandledRejection(e: PromiseRejectionEvent) {
+      if (e.reason instanceof UnauthorizedError) e.preventDefault();
+    }
+    window.addEventListener("unhandledrejection", onUnhandledRejection);
+    return () => window.removeEventListener("unhandledrejection", onUnhandledRejection);
+  }, []);
+
   const mainRef = useRef<HTMLElement>(null);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
