@@ -49,6 +49,17 @@ export function aaguidToName(aaguid: string): string | null {
 
 const PRF_SALT = new TextEncoder().encode("gleaned-key-wrap-v1");
 
+// Exported for unit tests — not part of the public API.
+export async function _prfToWrappingKey(prfOutput: ArrayBuffer): Promise<CryptoKey> {
+  return prfToWrappingKey(prfOutput);
+}
+export async function _wrapKey(encKey: CryptoKey, wrappingKey: CryptoKey): Promise<string> {
+  return wrapKey(encKey, wrappingKey);
+}
+export async function _unwrapKey(blob: string, wrappingKey: CryptoKey): Promise<CryptoKey> {
+  return unwrapKey(blob, wrappingKey);
+}
+
 // Derive a 256-bit AES-GCM wrapping key from the 32-byte PRF output via HKDF.
 async function prfToWrappingKey(prfOutput: ArrayBuffer): Promise<CryptoKey> {
   const baseKey = await crypto.subtle.importKey("raw", prfOutput, "HKDF", false, ["deriveKey"]);
