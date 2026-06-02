@@ -50,12 +50,12 @@ export function renderMarkdown(content: string): string {
   return DOMPurify.sanitize(raw, { ADD_ATTR: ["target"] });
 }
 
-// Renders notes markdown to HTML. Skips DOMPurify because notes are
-// personal E2E-encrypted content — only the authenticated user can write them.
+// Renders notes markdown to sanitized HTML.
 // Checkboxes have `disabled` removed so click handlers can toggle them.
 export function renderNotesMarkdown(content: string): string {
   if (!content) return "";
   const html = marked.parse(content, { async: false }) as string;
-  // marked outputs <input disabled="" type="checkbox"> — strip the disabled attribute fully.
-  return html.replace(/(<input\b[^>]*?)\s+disabled=""/g, "$1");
+  // marked outputs <input disabled="" type="checkbox"> — strip disabled before sanitizing.
+  const stripped = html.replace(/(<input\b[^>]*?)\s+disabled=""/g, "$1");
+  return DOMPurify.sanitize(stripped, { ADD_ATTR: ["target"] });
 }
