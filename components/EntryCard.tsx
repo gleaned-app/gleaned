@@ -431,12 +431,28 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
         </div>
       )}
 
-      {/* Context meta — source / stake / gap */}
+      {/* Context meta — context / source / stake / gap */}
       {hasContextData && (
         <div
           className="mt-3 flex flex-col gap-1"
           style={{ borderTop: "1px solid var(--border)", paddingTop: "0.6rem" }}
         >
+          {entry.context && (
+            <div className="flex items-baseline gap-2 min-w-0">
+              <span
+                className="flex-shrink-0 font-sans text-[10px] uppercase tracking-wide"
+                style={{ color: "var(--fg-muted)", opacity: 0.6, minWidth: "3rem" }}
+              >
+                {t.contextLabel}
+              </span>
+              <span className="flex items-center gap-1 font-sans text-xs" style={{ color: "var(--fg-muted)" }}>
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" aria-hidden style={{ flexShrink: 0, opacity: 0.7 }}>
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                </svg>
+                {entry.context}
+              </span>
+            </div>
+          )}
           {entry.source && (
             <div className="flex items-baseline gap-2 min-w-0">
               <span
@@ -532,16 +548,7 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
           </button>
         ))}
         {!flat && (
-          <span className="ml-auto flex items-center gap-1 font-sans text-[11px]" style={{ color: "var(--fg-muted)" }}>
-            {entry.context && (
-              <>
-                <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" aria-hidden style={{ flexShrink: 0, opacity: 0.7 }}>
-                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                </svg>
-                <span>{entry.context}</span>
-                <span aria-hidden style={{ opacity: 0.35 }}>·</span>
-              </>
-            )}
+          <span className="ml-auto font-sans text-[11px]" style={{ color: "var(--fg-muted)" }}>
             {time}
           </span>
         )}
