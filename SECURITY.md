@@ -41,12 +41,13 @@ The login verification token stored in the server database is an AES-GCM ciphert
 
 The following fields are stored in plaintext in SQLite to allow server-side scheduling and filtering:
 
-| Field | Why unencrypted |
-|---|---|
-| `date`, `created_at` | Required for calendar view and entry ordering |
-| `next_review`, `review_interval` | Scheduling without full table scan |
+| Table | Field | Why unencrypted |
+|---|---|---|
+| entries | `date`, `created_at` | Required for calendar view and entry ordering |
+| entries | `next_review`, `review_interval` | Scheduling without full table scan |
+| threads | `done`, `due_date`, `color` | Sorting and filtering without decrypting every row |
 
-Someone with access to the SQLite file can see *when* entries were made and when they are due for review — without knowing your password. The actual content, tags, and all personal fields remain encrypted.
+Someone with access to the SQLite file can see *when* entries were made, when they are due for review, and — for todos — whether they are completed, when they are due, and which colour label was assigned. The actual content of entries and todos remains encrypted.
 
 ### Brute-force protection
 

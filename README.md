@@ -147,12 +147,13 @@ Encrypted fields per thread: text.
 
 The following fields are stored in plaintext in SQLite to allow scheduling and filtering on the server:
 
-| Field | Why unencrypted |
-|---|---|
-| `date`, `created_at` | Required for calendar view and entry ordering |
-| `next_review`, `review_interval` | Scheduling without full table scan |
+| Table | Field | Why unencrypted |
+|---|---|---|
+| entries | `date`, `created_at` | Required for calendar view and entry ordering |
+| entries | `next_review`, `review_interval` | Scheduling without full table scan |
+| threads | `done`, `due_date`, `color` | Sorting and filtering without decrypting every row |
 
-**Implication:** someone with access to the server database (the SQLite file) can see *when* you made entries and when they are due for review — without knowing your password. The actual content, tags, and all personal fields remain encrypted.
+**Implication:** someone with access to the server database (the SQLite file) can see *when* you made entries, when they are due for review, and — for todos — whether they are completed, when they are due, and which colour label was assigned. The actual content of entries and todos remains encrypted.
 
 ### Threat model
 

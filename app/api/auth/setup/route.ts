@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import * as argon2 from "argon2";
-import { randomBytes } from "crypto";
+import { randomBytes, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db/server";
 import { settings } from "@/lib/db/schema/server/settings";
@@ -35,7 +35,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   const token = getSetupToken();
-  if (!token || body.setupToken !== token) {
+  const tokenMatch =
+    token !== null &&
+    typeof body.setupToken === "string" &&
+    body.setupToken.length === token.length &&
+    timingSafeEqual(Buffer.from(body.setupToken), Buffer.from(token));
+  if (!tokenMatch) {
     recordLoginFailure(ip);
     return NextResponse.json({ error: "Invalid setup token" }, { status: 403 });
   }
