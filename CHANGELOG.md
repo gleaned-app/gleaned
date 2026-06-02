@@ -11,7 +11,7 @@ All notable changes to gleaned are documented here.
 
 ### Security
 
-- **`timingSafeEqual` for setup token** — Setup token comparison now uses a constant-time comparison to prevent timing side-channels.
+- **timingSafeEqual for setup token** — Setup token comparison now uses a constant-time comparison to prevent timing side-channels.
 - **Stricter input validation across all write endpoints** — Body size limits, allowlisted fields on settings, and validated IDs on DELETE requests.
 - **Rate-limit bypass fix** — The login rate limiter now ignores `X-Forwarded-For` headers unless `TRUST_PROXY=true` is set, preventing IP spoofing to bypass brute-force protection.
 - **CSP hardened** — Nonce-based Content-Security-Policy via middleware; `upgrade-insecure-requests` omitted in dev; `ws:` added to `connect-src` for Turbopack HMR.
