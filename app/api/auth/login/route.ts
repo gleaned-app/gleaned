@@ -28,6 +28,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { status: 429, headers: { "Retry-After": String(retryAfterSecs) } },
     );
   }
+  if (limit.penaltyDelayMs) {
+    await new Promise<void>((r) => setTimeout(r, limit.penaltyDelayMs));
+  }
 
   const db = getDb();
   const row = db.select().from(settings).get();

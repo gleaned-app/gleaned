@@ -3,10 +3,18 @@ import type { NextRequest } from "next/server";
 import { getDb } from "@/lib/db/server";
 import { login_attempts } from "@/lib/db/schema/server/login_attempts";
 
-// 5 failed attempts within a 15-minute window triggers a 15-minute lockout.
+// 5 failed attempts within a 15-minute window triggers rate-limit action.
 // The window resets after 15 minutes regardless of outcome.
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
+
+// When the client IP is unknown (TRUST_PROXY=false, direct-access mode), all
+// requests share a single "unknown" bucket. A hard block would let any attacker
+// DoS the real user by firing 5 bad requests. Instead we respond with a
+// progressive delay: the request is still processed, just slowly. This keeps
+// brute-force attempts expensive (≈ 1 attempt / MAX_PENALTY_DELAY_MS) while
+// never permanently locking out the legitimate user.
+const MAX_PENALTY_DELAY_MS = 30_000;
 
 // Returns the client IP to use as the rate-limit key.
 //
@@ -41,7 +49,9 @@ export function getClientIp(request: NextRequest): string {
   return "unknown";
 }
 
-export function checkLoginRateLimit(ip: string): { limited: boolean; retryAfterMs?: number } {
+export function checkLoginRateLimit(
+  ip: string,
+): { limited: boolean; retryAfterMs?: number; penaltyDelayMs?: number } {
   const record = getDb()
     .select()
     .from(login_attempts)
@@ -54,7 +64,12 @@ export function checkLoginRateLimit(ip: string): { limited: boolean; retryAfterM
   if (Date.now() - windowStart >= WINDOW_MS) return { limited: false };
 
   if (record.attempts >= MAX_ATTEMPTS) {
-    return { limited: true, retryAfterMs: windowStart + WINDOW_MS - Date.now() };
+    const remaining = windowStart + WINDOW_MS - Date.now();
+    if (ip === "unknown") {
+      // Shared bucket (TRUST_PROXY=false): delay instead of block to avoid DoS.
+      return { limited: false, penaltyDelayMs: Math.min(remaining, MAX_PENALTY_DELAY_MS) };
+    }
+    return { limited: true, retryAfterMs: remaining };
   }
 
   return { limited: false };

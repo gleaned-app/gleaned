@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 vi.mock("@/lib/db/server", () => ({ getDb: vi.fn() }));
 vi.mock("argon2", () => ({ verify: vi.fn(), hash: vi.fn(), argon2id: 2 }));
@@ -14,11 +14,11 @@ import { POST } from "./route";
 const mockGetDb = vi.mocked(getDb);
 const mockVerify = vi.mocked(argon2.verify);
 
-function loginReq(body: Record<string, unknown>) {
+function loginReq(body: Record<string, unknown>, extraHeaders?: Record<string, string>) {
   return new NextRequest("http://localhost/api/auth/login", {
     method: "POST",
     body: JSON.stringify(body),
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...extraHeaders },
   });
 }
 
@@ -143,23 +143,33 @@ describe("POST /api/auth/login — correct password", () => {
 
 // ─── Brute-force protection ────────────────────────────────────────────────────
 
+// Rate-limit tests run with TRUST_PROXY=true + a fixed client IP so the route
+// uses the per-IP hard-block path (429). Without TRUST_PROXY the IP is "unknown"
+// and the route uses the progressive-delay path instead to avoid DoS lockout.
 describe("POST /api/auth/login — rate limiting", () => {
+  const IP_HEADERS = { "x-forwarded-for": "203.0.113.42" };
+
   beforeEach(() => {
     insertSettings();
     mockVerify.mockResolvedValue(false);
+    vi.stubEnv("TRUST_PROXY", "true");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("returns 429 after 5 consecutive failed attempts", async () => {
     for (let i = 0; i < 5; i++) {
-      await POST(loginReq({ password: "wrong" }));
+      await POST(loginReq({ password: "wrong" }, IP_HEADERS));
     }
-    const res = await POST(loginReq({ password: "wrong" }));
+    const res = await POST(loginReq({ password: "wrong" }, IP_HEADERS));
     expect(res.status).toBe(429);
   });
 
   it("includes Retry-After header on 429 response", async () => {
-    for (let i = 0; i < 5; i++) await POST(loginReq({ password: "wrong" }));
-    const res = await POST(loginReq({ password: "wrong" }));
+    for (let i = 0; i < 5; i++) await POST(loginReq({ password: "wrong" }, IP_HEADERS));
+    const res = await POST(loginReq({ password: "wrong" }, IP_HEADERS));
     const retryAfter = res.headers.get("Retry-After");
     expect(retryAfter).toBeTruthy();
     expect(Number(retryAfter)).toBeGreaterThan(0);
@@ -167,13 +177,13 @@ describe("POST /api/auth/login — rate limiting", () => {
 
   it("allows login again after successful login clears the rate limit", async () => {
     // 1 failed attempt
-    await POST(loginReq({ password: "wrong" }));
+    await POST(loginReq({ password: "wrong" }, IP_HEADERS));
     // Successful login clears the bucket
     mockVerify.mockResolvedValueOnce(true);
-    await POST(loginReq({ password: "correct" }));
+    await POST(loginReq({ password: "correct" }, IP_HEADERS));
     // Should now be allowed (fresh bucket)
     mockVerify.mockResolvedValue(false);
-    const res = await POST(loginReq({ password: "wrong" }));
+    const res = await POST(loginReq({ password: "wrong" }, IP_HEADERS));
     expect(res.status).toBe(401); // 401, not 429
   });
 });

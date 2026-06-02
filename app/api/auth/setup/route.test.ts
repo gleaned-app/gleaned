@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 vi.mock("@/lib/db/server",            () => ({ getDb: vi.fn() }));
 vi.mock("argon2",                     () => ({ verify: vi.fn(), hash: vi.fn(), argon2id: 2 }));
@@ -20,11 +20,11 @@ const mockConsumeToken = vi.mocked(consumeSetupToken);
 
 const VALID_TOKEN = "setup_token_1234567890abcdef";
 
-function setupReq(body: Record<string, unknown>) {
+function setupReq(body: Record<string, unknown>, extraHeaders?: Record<string, string>) {
   return new NextRequest("http://localhost/api/auth/setup", {
     method: "POST",
     body: JSON.stringify(body),
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...extraHeaders },
   });
 }
 
@@ -149,13 +149,26 @@ describe("POST /api/auth/setup — success", () => {
 
 // ─── Rate limiting ─────────────────────────────────────────────────────────────
 
+// Run with TRUST_PROXY=true + fixed IP to hit the per-IP hard-block (429) path.
+// Without TRUST_PROXY the bucket is "unknown" and the route uses progressive
+// delay instead, which avoids DoS lockout of the real user.
 describe("POST /api/auth/setup — rate limiting", () => {
+  const IP_HEADERS = { "x-forwarded-for": "203.0.113.42" };
+
+  beforeEach(() => {
+    vi.stubEnv("TRUST_PROXY", "true");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("returns 429 after 5 failed token attempts", async () => {
     mockGetToken.mockReturnValue("correct_token");
     for (let i = 0; i < 5; i++) {
-      await POST(setupReq({ ...VALID_BODY, setupToken: "wrong_token" }));
+      await POST(setupReq({ ...VALID_BODY, setupToken: "wrong_token" }, IP_HEADERS));
     }
-    const res = await POST(setupReq({ ...VALID_BODY, setupToken: "wrong_token" }));
+    const res = await POST(setupReq({ ...VALID_BODY, setupToken: "wrong_token" }, IP_HEADERS));
     expect(res.status).toBe(429);
   });
 });
