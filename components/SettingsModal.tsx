@@ -6,12 +6,17 @@ import type { AppSettings, Theme, BodyFont, AppView } from "@/lib/settings-conte
 import { useT } from "@/lib/i18n";
 import { exportData, importData, getAllTags, deleteTag } from "@/lib/db";
 import { getPushStatus, subscribeToPush, unsubscribeFromPush } from "@/lib/notifications";
+import {
+  browserSupportsWebAuthn, listWebAuthnCredentials, deleteWebAuthnCredential,
+  detectDeviceName, type WebAuthnCredentialInfo,
+} from "@/lib/webauthn-client";
+import { registerWebAuthn } from "@/lib/auth";
 
 interface Props {
   onClose: () => void;
 }
 
-type CategoryId = "appearance" | "general" | "data" | "notifications";
+type CategoryId = "appearance" | "general" | "data" | "notifications" | "security";
 
 function SegmentedControl<T extends string>({
   value, options, onChange,
@@ -76,8 +81,19 @@ export default function SettingsModal({ onClose }: Props) {
   const [pushLoading, setPushLoading] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
 
+  // WebAuthn state
+  const [webauthnCredentials, setWebauthnCredentials] = useState<WebAuthnCredentialInfo[]>([]);
+  const [webauthnSupported] = useState(() => browserSupportsWebAuthn());
+  const [webauthnDeviceName, setWebauthnDeviceName] = useState(() => detectDeviceName());
+  const [webauthnLoading, setWebauthnLoading] = useState(false);
+  const [webauthnMsg, setWebauthnMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [revokeConfirm, setRevokeConfirm] = useState<string | null>(null);
+
   useEffect(() => { if (showTags) getAllTags().then(setTagMap); }, [showTags]);
   useEffect(() => { getPushStatus().then(setPushStatus); }, []);
+  useEffect(() => {
+    if (webauthnSupported) listWebAuthnCredentials().then(setWebauthnCredentials);
+  }, [webauthnSupported]);
 
   async function handlePushToggle() {
     setPushLoading(true);
@@ -89,6 +105,34 @@ export default function SettingsModal({ onClose }: Props) {
         setPushStatus(ok ? "subscribed" : await getPushStatus());
       }
     } finally { setPushLoading(false); }
+  }
+
+  async function handleWebAuthnRegister() {
+    setWebauthnLoading(true);
+    setWebauthnMsg(null);
+    try {
+      const result = await registerWebAuthn(webauthnDeviceName.trim());
+      if (result.ok) {
+        setWebauthnMsg({ ok: true, text: t.biometricRegistered });
+        setWebauthnDeviceName(detectDeviceName());
+        listWebAuthnCredentials().then(setWebauthnCredentials);
+      } else if (result.error === "prf_unsupported") {
+        setWebauthnMsg({ ok: false, text: t.biometricPrfUnsupported });
+      } else if (result.error === "cancelled") {
+        setWebauthnMsg(null);
+      } else {
+        setWebauthnMsg({ ok: false, text: t.biometricError });
+      }
+    } finally {
+      setWebauthnLoading(false);
+    }
+    setTimeout(() => setWebauthnMsg(null), 5000);
+  }
+
+  async function handleWebAuthnRevoke(id: string) {
+    await deleteWebAuthnCredential(id);
+    setWebauthnCredentials((prev) => prev.filter((c) => c.id !== id));
+    setRevokeConfirm(null);
   }
 
   function handleAddCustomType() {
@@ -174,6 +218,7 @@ export default function SettingsModal({ onClose }: Props) {
     { id: "general",       label: t.catGeneral },
     { id: "data",          label: t.catData },
     ...(pushStatus !== "unsupported" ? [{ id: "notifications" as CategoryId, label: t.catAlerts }] : []),
+    ...(webauthnSupported ? [{ id: "security" as CategoryId, label: t.catSecurity }] : []),
   ];
 
   function renderContent() {
@@ -378,6 +423,100 @@ export default function SettingsModal({ onClose }: Props) {
           <button onClick={handlePushToggle} disabled={pushLoading || pushStatus === "denied"} className="btn-3d w-full rounded-xl py-2.5 font-sans text-sm font-medium transition-opacity" style={{ color: pushStatus === "subscribed" ? "var(--accent)" : "var(--fg-muted)", opacity: pushLoading ? 0.6 : 1 }}>
             {pushLoading ? "…" : pushStatus === "subscribed" ? t.reminderOn : pushStatus === "denied" ? t.reminderBlocked : t.reminderEnable}
           </button>
+        </div>
+      );
+
+      case "security": return (
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-2">
+            <p className="font-sans text-sm font-medium" style={{ color: "var(--fg)" }}>
+              {t.biometricSetup}
+            </p>
+            <p className="font-sans text-xs leading-relaxed" style={{ color: "var(--fg-muted)" }}>
+              {t.biometricSetupDesc}
+            </p>
+          </div>
+
+          {/* Registered credentials */}
+          {webauthnCredentials.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {webauthnCredentials.map((cred) => (
+                <div
+                  key={cred.id}
+                  className="flex items-center justify-between rounded-xl px-3 py-2.5"
+                  style={{ background: "var(--accent-soft)" }}
+                >
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-sans text-sm font-medium" style={{ color: "var(--fg)" }}>
+                      {cred.device_name || "—"}
+                    </span>
+                    <span className="font-sans text-[10px]" style={{ color: "var(--fg-muted)" }}>
+                      {t.biometricAddedOn} {new Date(cred.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  {revokeConfirm === cred.id ? (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleWebAuthnRevoke(cred.id)}
+                        className="rounded-lg px-2.5 py-1 font-sans text-xs font-medium transition-opacity hover:opacity-80"
+                        style={{ background: "oklch(55% 0.18 25 / 0.12)", color: "oklch(55% 0.18 25)" }}
+                      >
+                        {t.biometricRevoke}
+                      </button>
+                      <button
+                        onClick={() => setRevokeConfirm(null)}
+                        className="rounded-lg px-2 py-1 font-sans text-xs transition-opacity hover:opacity-60"
+                        style={{ color: "var(--fg-muted)" }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setRevokeConfirm(cred.id)}
+                      className="rounded-lg px-2.5 py-1 font-sans text-xs transition-opacity hover:opacity-70"
+                      style={{ color: "var(--fg-muted)" }}
+                    >
+                      {t.biometricRemove}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="font-sans text-xs italic" style={{ color: "var(--fg-muted)", opacity: 0.6 }}>
+              {t.biometricNoCredentials}
+            </p>
+          )}
+
+          {/* Register new credential */}
+          <div className="flex flex-col gap-2">
+            <label className="font-sans text-[10px] uppercase tracking-[0.18em]" style={{ color: "var(--fg-muted)" }}>
+              {t.biometricDeviceNameLabel}
+            </label>
+            <input
+              type="text"
+              value={webauthnDeviceName}
+              onChange={(e) => setWebauthnDeviceName(e.target.value)}
+              placeholder={t.biometricDeviceNamePlaceholder}
+              maxLength={64}
+              className="journal-input w-full rounded-xl px-3 py-2 font-sans text-sm outline-none"
+              style={{ background: "var(--bg)", color: "var(--fg)", border: "1px solid var(--border-focus)" }}
+            />
+            <button
+              onClick={handleWebAuthnRegister}
+              disabled={webauthnLoading}
+              className="btn-3d rounded-xl py-2.5 font-sans text-sm font-medium transition-opacity"
+              style={{ color: "var(--accent)", opacity: webauthnLoading ? 0.6 : 1 }}
+            >
+              {webauthnLoading ? "…" : t.biometricRegisterButton}
+            </button>
+            {webauthnMsg && (
+              <p className="font-sans text-xs" style={{ color: webauthnMsg.ok ? "var(--accent)" : "oklch(55% 0.18 25)" }}>
+                {webauthnMsg.text}
+              </p>
+            )}
+          </div>
         </div>
       );
     }

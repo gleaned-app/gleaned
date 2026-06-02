@@ -2,8 +2,15 @@ import { apiFetch, UnauthorizedError } from "./api-client";
 import { setDbAuthenticated } from "./db";
 import {
   deriveKey, generateSalt, saltToBase64, base64ToSalt,
-  storeKey, clearKey, PBKDF2_ITERATIONS,
+  storeKey, loadKey, clearKey, PBKDF2_ITERATIONS,
 } from "./crypto";
+import {
+  loginWithBiometrics,
+  registerWebAuthn as _registerWebAuthn,
+  type RegisterWebAuthnResult,
+  type BiometricLoginResult,
+} from "./webauthn-client";
+export type { RegisterWebAuthnResult, BiometricLoginResult };
 
 // In-memory auth state. Lost on page reload — intentional.
 // The server session (HttpOnly cookie) survives the reload, but the AES
@@ -82,4 +89,24 @@ export async function logout(): Promise<void> {
 
 export function isAuthenticated(): boolean {
   return _authenticated;
+}
+
+// Attempt biometric (Touch ID / Face ID) login via WebAuthn PRF.
+// On success the unwrapped AES key is stored and the session is active.
+export async function loginBiometric(): Promise<BiometricLoginResult> {
+  const result = await loginWithBiometrics();
+  if (result.ok) {
+    await storeKey(result.key);
+    _authenticated = true;
+    setDbAuthenticated(true);
+  }
+  return result;
+}
+
+// Register a WebAuthn credential using the current session key.
+// Must be called after a successful password login.
+export async function registerWebAuthn(deviceName: string): Promise<RegisterWebAuthnResult> {
+  const key = await loadKey();
+  if (!key) return { ok: false, error: "unknown", message: "no active session key" };
+  return _registerWebAuthn(key, deviceName);
 }

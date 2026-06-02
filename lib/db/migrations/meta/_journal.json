@@ -29,6 +29,13 @@
       "when": 1780085583567,
       "tag": "0003_eminent_firelord",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1780410039462,
+      "tag": "0004_webauthn",
+      "breakpoints": true
     }
   ]
 }

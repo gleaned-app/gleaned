@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { hasPassword, setupPassword, login } from "@/lib/auth";
+import { hasPassword, setupPassword, login, loginBiometric } from "@/lib/auth";
+import { hasWebAuthnCredential, browserSupportsWebAuthn } from "@/lib/webauthn-client";
 import { useT } from "@/lib/i18n";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -220,6 +221,8 @@ export default function LockScreen({ onAuth }: Props) {
   const [acceptShortPw, setAcceptShortPw] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [setupToken, setSetupToken] = useState("");
+  const [hasBiometric, setHasBiometric] = useState(false);
+  const [biometricBusy, setBiometricBusy] = useState(false);
 
   const t = useT();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -245,6 +248,9 @@ export default function LockScreen({ onAuth }: Props) {
       setHasLocalAccount(has);
       setMode(has ? "login" : "choose");
     });
+    if (browserSupportsWebAuthn()) {
+      hasWebAuthnCredential().then(setHasBiometric);
+    }
   }, []);
 
   useEffect(() => {
@@ -309,6 +315,26 @@ export default function LockScreen({ onAuth }: Props) {
       } finally {
         setSubmitting(false);
       }
+    }
+  }
+
+  async function handleBiometric() {
+    if (biometricBusy) return;
+    setError("");
+    setBiometricBusy(true);
+    try {
+      const result = await loginBiometric();
+      if (result.ok) {
+        onAuth();
+      } else if (result.error === "prf_unsupported") {
+        setError(t.biometricPrfUnsupported);
+      } else if (result.error === "cancelled") {
+        // silent — user cancelled the dialog
+      } else {
+        setError(t.biometricError);
+      }
+    } finally {
+      setBiometricBusy(false);
     }
   }
 
@@ -640,6 +666,31 @@ export default function LockScreen({ onAuth }: Props) {
             <p className="font-sans text-sm" style={{ color: "oklch(55% 0.18 25)" }}>
               {error}
             </p>
+          )}
+
+          {mode === "login" && hasBiometric && (
+            <button
+              type="button"
+              onClick={handleBiometric}
+              disabled={biometricBusy}
+              className="flex w-full items-center justify-center gap-2 rounded-full py-2.5 font-sans text-sm font-medium tracking-wide transition-all"
+              style={{
+                background: "var(--accent-soft)",
+                color: "var(--accent)",
+                border: "1.5px solid color-mix(in oklch, var(--accent), transparent 60%)",
+                opacity: biometricBusy ? 0.6 : 1,
+              }}
+            >
+              {biometricBusy ? "…" : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+                    <path d="M12 6a3 3 0 0 1 3 3c0 2-3 5.5-3 5.5S9 11 9 9a3 3 0 0 1 3-3z"/>
+                  </svg>
+                  {t.biometricLogin}
+                </>
+              )}
+            </button>
           )}
 
           {(() => {

@@ -126,6 +126,7 @@ export interface Translations {
   catGeneral: string;
   catData: string;
   catAlerts: string;
+  catSecurity: string;
   colorScheme: string;
   font: string;
   fontModern: string;
@@ -190,6 +191,23 @@ export interface Translations {
   searchPlaceholder: string;
   searchNoResults: string;
   searchEmpty: string;
+
+  // WebAuthn / biometrics
+  biometricLogin: string;
+  biometricSetup: string;
+  biometricSetupDesc: string;
+  biometricRegisterButton: string;
+  biometricDeviceNameLabel: string;
+  biometricDeviceNamePlaceholder: string;
+  biometricUnsupported: string;
+  biometricPrfUnsupported: string;
+  biometricCancelled: string;
+  biometricError: string;
+  biometricRegistered: string;
+  biometricRemove: string;
+  biometricRevoke: string;
+  biometricNoCredentials: string;
+  biometricAddedOn: string;
 
 }
 
@@ -309,6 +327,7 @@ const de: Translations = {
   catGeneral: "Allgemein",
   catData: "Daten",
   catAlerts: "Hinweise",
+  catSecurity: "Sicherheit",
   colorScheme: "Farbschema",
   font: "Schriftart",
   fontModern: "Modern",
@@ -370,6 +389,22 @@ const de: Translations = {
   sourceLabel: "Quelle",
   stakeLabel: "Einsatz",
   gapLabel: "Lücke",
+
+  biometricLogin: "Touch ID / Face ID",
+  biometricSetup: "Biometrische Anmeldung",
+  biometricSetupDesc: "Melde dich künftig mit Touch ID oder Face ID an — kein Passwort nötig.",
+  biometricRegisterButton: "Jetzt einrichten",
+  biometricDeviceNameLabel: "Gerätename (optional)",
+  biometricDeviceNamePlaceholder: "z. B. MacBook Pro",
+  biometricUnsupported: "Dieses Gerät unterstützt keine biometrische Anmeldung.",
+  biometricPrfUnsupported: "Dein Browser unterstützt die benötigte WebAuthn-PRF-Erweiterung nicht. Bitte nutze Safari 17+, Chrome 116+ oder Edge 116+.",
+  biometricCancelled: "Abgebrochen.",
+  biometricError: "Biometrische Anmeldung fehlgeschlagen.",
+  biometricRegistered: "Erfolgreich eingerichtet.",
+  biometricRemove: "Widerrufen",
+  biometricRevoke: "Wirklich widerrufen",
+  biometricNoCredentials: "Noch kein Gerät eingerichtet.",
+  biometricAddedOn: "Hinzugefügt am",
 
 };
 
@@ -489,6 +524,7 @@ const en: Translations = {
   catGeneral: "General",
   catData: "Data",
   catAlerts: "Alerts",
+  catSecurity: "Security",
   colorScheme: "Color scheme",
   font: "Font",
   fontModern: "Modern",
@@ -550,6 +586,22 @@ const en: Translations = {
   sourceLabel: "Source",
   stakeLabel: "Stake",
   gapLabel: "Gap",
+
+  biometricLogin: "Touch ID / Face ID",
+  biometricSetup: "Biometric login",
+  biometricSetupDesc: "Sign in with Touch ID or Face ID — no password needed.",
+  biometricRegisterButton: "Set up now",
+  biometricDeviceNameLabel: "Device name (optional)",
+  biometricDeviceNamePlaceholder: "e.g. MacBook Pro",
+  biometricUnsupported: "This device does not support biometric login.",
+  biometricPrfUnsupported: "Your browser does not support the required WebAuthn PRF extension. Please use Safari 17+, Chrome 116+, or Edge 116+.",
+  biometricCancelled: "Cancelled.",
+  biometricError: "Biometric login failed.",
+  biometricRegistered: "Successfully set up.",
+  biometricRemove: "Revoke",
+  biometricRevoke: "Confirm revoke",
+  biometricNoCredentials: "No device set up yet.",
+  biometricAddedOn: "Added on",
 
 };
 
