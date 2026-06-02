@@ -165,7 +165,7 @@ function AppContentWithLock({ onLock }: { onLock: () => void }) {
     }
     mount(v);
     setCalendarJumpDate(undefined);
-    if (view === "review" && v !== "review") getReviewCount().then(setReviewCount);
+    if (v === "review" || view === "review") getReviewCount().then(setReviewCount);
     mainRef.current?.scrollTo({ top: 0 });
     setView(v);
   }

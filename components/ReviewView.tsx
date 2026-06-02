@@ -107,10 +107,17 @@ export default function ReviewView({
   const [loadingMonth, setLoadingMonth] = useState(false);
 
   useEffect(() => {
-    getReviewDue().then((e) => { setQueue(e); setTotal(e.length); setLoadingQueue(false); });
+    getReviewDue().then((e) => {
+      setQueue(e);
+      setTotal(e.length);
+      setLoadingQueue(false);
+      onCountChange?.(e.length);
+    });
     getRecentEntries(60).then((e) => { setHistory(e); setLoadingHistory(false); });
     getEntryMonths().then(setAllMonths);
     getCalibrationData().then((data) => setCalibration(computeCalibration(data)));
+  // onCountChange is stable (setState from parent) — safe to omit from deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load entries when month filter changes
