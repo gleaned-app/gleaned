@@ -2,6 +2,48 @@
 
 All notable changes to gleaned are documented here.
 
+## [0.5.0] — 2026-06-02
+
+### Added
+
+- **Biometric login (WebAuthn / Passkeys)** — Touch ID, Face ID, Windows Hello, and any FIDO2 authenticator can now unlock gleaned instead of typing the password. The encryption key is wrapped with the authenticator's PRF output via HKDF + AES-GCM so the plaintext key never leaves the device. Multiple devices can be registered simultaneously; each shows its name (auto-detected from AAGUID or user agent) and can be individually revoked from Settings with a two-step confirmation.
+- **Thread notes** — Threads now have an optional encrypted notes field with a full Markdown editor. Notes support headings, bold/italic, code blocks, and interactive checkboxes (tap to toggle). The field expands on demand and collapses when empty, keeping the thread list compact.
+
+### Security
+
+- **`timingSafeEqual` for setup token** — Setup token comparison now uses a constant-time comparison to prevent timing side-channels.
+- **Stricter input validation across all write endpoints** — Body size limits, allowlisted fields on settings, and validated IDs on DELETE requests.
+- **Rate-limit bypass fix** — The login rate limiter now ignores `X-Forwarded-For` headers unless `TRUST_PROXY=true` is set, preventing IP spoofing to bypass brute-force protection.
+- **CSP hardened** — Nonce-based Content-Security-Policy via middleware; `upgrade-insecure-requests` omitted in dev; `ws:` added to `connect-src` for Turbopack HMR.
+- **Import validation** — `/api/import` now rejects malformed records before writing to the database.
+- **Session validation** — `/api/auth/status` now re-validates the session against the database instead of trusting the cookie value.
+- **Markdown XSS** — Link renderer escapes `href` and `title` attributes and enforces a URI scheme allowlist.
+- **Secure cookies** — Extracted `secureCookie` helper; HTTPS can be forced via `FORCE_HTTPS=true` env var.
+- **Cron env validation** — `PUSH_HOUR`, `PUSH_MINUTE`, `DUE_HOUR`, `DUE_MINUTE` are validated at startup; out-of-range values fall back to defaults with a warning.
+- **UUID-based IDs** — Entry and thread IDs now use `crypto.randomUUID()` instead of sequential values.
+- **Broadcast endpoint restricted** — Manual push broadcast is restricted to same-origin requests only.
+- **Session deletion on logout** — Server-side session record is now asserted deleted on logout.
+- **DOMPurify** bumped from 3.4.5 → 3.4.7.
+- **GitHub Actions** pinned to commit SHAs.
+
+### Fixed
+
+- Entry context (Lernort/Quelle) now appears in the entry card meta section on all screen sizes, not only on mobile.
+- Review badge count now updates immediately when the Review tab loads and when switching away from it, so the badge clears to zero after completing all due reviews.
+- Bottom nav icons enlarged (19 → 22 px) and labels made consistently visible with a wider tap area on mobile.
+- Edge Runtime warnings caused by Node.js-only instrumentation imports resolved by moving startup code to `instrumentation.node.ts`.
+- Drizzle migration for WebAuthn tables fixed to use `--> statement-breakpoint` separator required by `better-sqlite3`.
+- Nonce hydration mismatch on inline scripts suppressed correctly.
+- Dev database moved to XDG cache path to avoid cluttering the project root.
+
+### Tests
+
+- 30 new unit tests for WebAuthn: PRF crypto roundtrip, key wrap/unwrap tamper detection, `detectDeviceName`, `aaguidToName`, `registerWebAuthn`, `loginWithBiometrics`, and all credential-management helpers.
+- API route integration tests against a real in-memory SQLite database.
+- Overall unit test coverage expanded from 46 % to 80 %.
+
+---
+
 ## [0.4.1] — 2026-05-29
 
 ### Security
