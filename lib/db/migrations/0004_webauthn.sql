@@ -5,8 +5,7 @@ CREATE TABLE IF NOT EXISTS `webauthn_credentials` (
   `device_name` text NOT NULL DEFAULT '',
   `key_blob`    text NOT NULL,
   `created_at`  text NOT NULL
-);
-
+);--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS `webauthn_challenges` (
   `id`         text PRIMARY KEY NOT NULL,
   `type`       text NOT NULL,
