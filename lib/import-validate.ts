@@ -21,6 +21,10 @@ const DATE_RE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// CSS hex color: #rrggbb only. Stricter than accepting arbitrary color names or
+// short-form #rgb — prevents any edge-case CSS injection in style template strings.
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
 export function isValidId(s: unknown): s is string {
   return typeof s === "string" && UUID_RE.test(s);
 }
@@ -100,7 +104,7 @@ export function isValidThread(t: unknown): t is Record<string, unknown> {
     (r.done == null || r.done === 0 || r.done === 1) &&
     // Optional string fields
     (r.due_date == null || isIsoDate(r.due_date)) &&
-    (r.color == null || (typeof r.color === "string" && r.color.length <= 50))
+    (r.color == null || (typeof r.color === "string" && HEX_COLOR_RE.test(r.color)))
   );
 }
 
@@ -135,6 +139,6 @@ export function isValidThreadUpdate(b: unknown): b is Record<string, unknown> {
     isValidDataEnc(r.data_enc) &&
     (r.done     == null || r.done === 0 || r.done === 1) &&
     (r.due_date == null || isIsoDate(r.due_date)) &&
-    (r.color    == null || (typeof r.color === "string" && r.color.length <= 50))
+    (r.color    == null || (typeof r.color === "string" && HEX_COLOR_RE.test(r.color)))
   );
 }

@@ -349,8 +349,9 @@ describe("isValidThread — valid cases", () => {
     expect(isValidThread(validThread({ due_date: null }))).toBe(true);
   });
 
-  it("accepts thread with a color string", () => {
-    expect(isValidThread(validThread({ color: "red" }))).toBe(true);
+  it("accepts thread with a valid hex color", () => {
+    expect(isValidThread(validThread({ color: "#ef4444" }))).toBe(true);
+    expect(isValidThread(validThread({ color: "#22C55E" }))).toBe(true);
   });
 
   it("accepts thread with null color", () => {
@@ -414,8 +415,16 @@ describe("isValidThread — optional field failures", () => {
     expect(isValidThread(validThread({ due_date: "2024-02-30" }))).toBe(false);
   });
 
-  it("rejects color longer than 50 chars", () => {
-    expect(isValidThread(validThread({ color: "x".repeat(51) }))).toBe(false);
+  it("rejects non-hex color (named color)", () => {
+    expect(isValidThread(validThread({ color: "red" }))).toBe(false);
+  });
+
+  it("rejects non-hex color (oklch)", () => {
+    expect(isValidThread(validThread({ color: "oklch(70% 0.15 140)" }))).toBe(false);
+  });
+
+  it("rejects short-form hex color (#rgb)", () => {
+    expect(isValidThread(validThread({ color: "#f00" }))).toBe(false);
   });
 
   it("rejects non-string color", () => {
@@ -527,7 +536,7 @@ describe("isValidThreadUpdate", () => {
     expect(isValidThreadUpdate(validUpdate({
       done: 1,
       due_date: VALID_DATE,
-      color: "oklch(70% 0.15 140)",
+      color: "#3b82f6",
     }))).toBe(true);
   });
 
@@ -556,7 +565,9 @@ describe("isValidThreadUpdate", () => {
     expect(isValidThreadUpdate(validUpdate({ due_date: "2024-13-01" }))).toBe(false);
   });
 
-  it("rejects color string over 50 chars", () => {
-    expect(isValidThreadUpdate(validUpdate({ color: "x".repeat(51) }))).toBe(false);
+  it("rejects non-hex color string", () => {
+    expect(isValidThreadUpdate(validUpdate({ color: "red" }))).toBe(false);
+    expect(isValidThreadUpdate(validUpdate({ color: "oklch(70% 0.15 140)" }))).toBe(false);
+    expect(isValidThreadUpdate(validUpdate({ color: "#f00" }))).toBe(false);
   });
 });
