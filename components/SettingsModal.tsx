@@ -474,8 +474,7 @@ export default function SettingsModal({ onClose }: Props) {
                     ) : (
                       <button
                         onClick={() => setRevokeConfirm(cred.id)}
-                        className="rounded-lg px-2.5 py-1 font-sans text-xs transition-opacity hover:opacity-70"
-                        style={{ color: "var(--fg-muted)" }}
+                        className="btn-revoke-ghost rounded-lg px-2.5 py-1 font-sans text-xs"
                       >
                         {t.biometricRemove}
                       </button>

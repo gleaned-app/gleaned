@@ -277,20 +277,32 @@ body {
   background: var(--btn-active-face);
 }
 
-/* ── Danger / revoke button ──────────────────────────────────────────────────── */
+/* ── Danger / revoke buttons ─────────────────────────────────────────────────── */
+
+/* Ghost variant: muted text, turns red on hover — used for the first "Widerrufen" click */
+.btn-revoke-ghost {
+  color: var(--fg-muted);
+  transition: color 140ms ease, background 140ms ease;
+  cursor: pointer;
+}
+.btn-revoke-ghost:hover {
+  color: oklch(52% 0.20 25);
+}
+
+/* Solid variant: already red, glows deeper on hover — used for the confirm step */
 .btn-revoke {
   background: oklch(55% 0.18 25 / 0.12);
-  color: oklch(55% 0.18 25);
+  color: oklch(52% 0.20 25);
   transition: background 140ms ease, color 140ms ease, box-shadow 140ms ease;
   cursor: pointer;
 }
 .btn-revoke:hover {
-  background: oklch(55% 0.18 25 / 0.22);
-  color: oklch(44% 0.18 25);
-  box-shadow: 0 0 0 2px oklch(55% 0.18 25 / 0.30);
+  background: oklch(52% 0.20 25 / 0.18);
+  color: oklch(42% 0.22 25);
+  box-shadow: 0 0 0 2px oklch(52% 0.20 25 / 0.35);
 }
 .btn-revoke:active {
-  background: oklch(55% 0.18 25 / 0.32);
+  background: oklch(52% 0.20 25 / 0.28);
 }
 
 /* ── Markdown rendering ──────────────────────────────────────────────────────── */
