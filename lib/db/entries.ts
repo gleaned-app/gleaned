@@ -91,9 +91,8 @@ export async function getEntriesForMonth(year: number, month: number): Promise<E
   requireAuth();
   const pad = (n: number) => String(n).padStart(2, "0");
   const prefix = `${year}-${pad(month + 1)}`;
-  const res = await apiFetch(`/api/entries?from=${prefix}-01&to=${prefix}-31`);
-  const rows = await res.json() as ApiEntryRow[];
-  return Promise.all(rows.map(decryptEntryFromRow));
+  const all = cache.entries ?? await buildSearchCache();
+  return all.filter(e => e.date?.startsWith(prefix));
 }
 
 export async function getEntryCountsByDate(): Promise<Map<string, number>> {

@@ -471,23 +471,43 @@ describe("getEntryMonths", () => {
 // ── getEntriesForMonth ────────────────────────────────────────────────────────
 
 describe("getEntriesForMonth", () => {
-  it("calls GET with correct from/to range (month is 0-based)", async () => {
-    mockApiFetch.mockResolvedValue(makeResponse([]) as unknown as Response);
-    await getEntriesForMonth(2026, 0); // January
-    expect(mockApiFetch).toHaveBeenCalledWith("/api/entries?from=2026-01-01&to=2026-01-31");
+  it("returns only entries whose date falls within the requested month", async () => {
+    await populateCache([
+      makeEntry({ _id: "jan", date: "2026-01-15" }),
+      makeEntry({ _id: "feb", date: "2026-02-03" }),
+      makeEntry({ _id: "mar", date: "2026-03-01" }),
+    ]);
+    mockApiFetch.mockClear();
+    const result = await getEntriesForMonth(2026, 1); // February (0-based)
+    expect(result.map(e => e._id)).toEqual(["feb"]);
+    expect(mockApiFetch).not.toHaveBeenCalled(); // served from cache
   });
 
-  it("pads single-digit months", async () => {
-    mockApiFetch.mockResolvedValue(makeResponse([]) as unknown as Response);
-    await getEntriesForMonth(2026, 2); // March (month index 2)
-    expect(mockApiFetch).toHaveBeenCalledWith("/api/entries?from=2026-03-01&to=2026-03-31");
+  it("pads single-digit months correctly", async () => {
+    await populateCache([
+      makeEntry({ _id: "sep", date: "2026-09-14" }),
+      makeEntry({ _id: "oct", date: "2026-10-01" }),
+    ]);
+    const result = await getEntriesForMonth(2026, 8); // September (0-based)
+    expect(result.map(e => e._id)).toEqual(["sep"]);
   });
 
-  it("decrypts and returns rows", async () => {
-    mockApiFetch.mockResolvedValue(makeResponse([makeRow({ id: "e1" }), makeRow({ id: "e2" })]) as unknown as Response);
-    const entries = await getEntriesForMonth(2026, 0);
-    expect(entries).toHaveLength(2);
-    expect(mockDecrypt).toHaveBeenCalledTimes(2);
+  it("works for February without crashing (was broken with to=PREFIX-31)", async () => {
+    await populateCache([
+      makeEntry({ _id: "feb28", date: "2026-02-28" }),
+      makeEntry({ _id: "mar1",  date: "2026-03-01" }),
+    ]);
+    const result = await getEntriesForMonth(2026, 1);
+    expect(result.map(e => e._id)).toEqual(["feb28"]);
+  });
+
+  it("works for 30-day months (April, June, September, November)", async () => {
+    await populateCache([
+      makeEntry({ _id: "apr30", date: "2026-04-30" }),
+      makeEntry({ _id: "may1",  date: "2026-05-01" }),
+    ]);
+    const result = await getEntriesForMonth(2026, 3); // April (0-based)
+    expect(result.map(e => e._id)).toEqual(["apr30"]);
   });
 });
 
