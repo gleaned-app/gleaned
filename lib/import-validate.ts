@@ -25,6 +25,13 @@ const UUID_RE =
 // short-form #rgb — prevents any edge-case CSS injection in style template strings.
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 
+// Maximum review interval in days. FSRS stability grows as S^0.88 per recall
+// cycle — reaching 3 650 days through normal use would take many years of
+// perfect recall. The hard cap prevents values like 1e308 from overflowing
+// Date arithmetic (Date.now() + 1e308 * ms_per_day = Infinity →
+// toISOString() throws RangeError when markReviewed is called).
+export const MAX_REVIEW_INTERVAL = 3_650;
+
 export function isValidId(s: unknown): s is string {
   return typeof s === "string" && UUID_RE.test(s);
 }
@@ -86,7 +93,8 @@ export function isValidEntry(e: unknown): e is Record<string, unknown> {
     (r.review_interval == null ||
       (typeof r.review_interval === "number" &&
         isFinite(r.review_interval) &&
-        r.review_interval > 0))
+        r.review_interval > 0 &&
+        r.review_interval <= MAX_REVIEW_INTERVAL))
   );
 }
 
@@ -125,7 +133,8 @@ export function isValidEntryUpdate(b: unknown): b is Record<string, unknown> {
     (r.review_interval == null ||
       (typeof r.review_interval === "number" &&
         isFinite(r.review_interval) &&
-        r.review_interval > 0))
+        r.review_interval > 0 &&
+        r.review_interval <= MAX_REVIEW_INTERVAL))
   );
 }
 

@@ -8,6 +8,7 @@ import {
   isValidId,
   isValidEntryUpdate,
   isValidThreadUpdate,
+  MAX_REVIEW_INTERVAL,
 } from "./import-validate";
 
 // Minimum valid AES-GCM base64: 30 zero bytes → 40 base64 chars (all 'A's)
@@ -310,6 +311,18 @@ describe("isValidEntry — optional field failures", () => {
   it("rejects non-numeric review_interval", () => {
     expect(isValidEntry(validEntry({ review_interval: "1" }))).toBe(false);
   });
+
+  it("rejects review_interval above MAX_REVIEW_INTERVAL (would overflow Date arithmetic → RangeError)", () => {
+    expect(isValidEntry(validEntry({ review_interval: MAX_REVIEW_INTERVAL + 1 }))).toBe(false);
+  });
+
+  it("rejects review_interval of 1e308 (isFinite but causes Date overflow)", () => {
+    expect(isValidEntry(validEntry({ review_interval: 1e308 }))).toBe(false);
+  });
+
+  it("accepts review_interval exactly at MAX_REVIEW_INTERVAL", () => {
+    expect(isValidEntry(validEntry({ review_interval: MAX_REVIEW_INTERVAL }))).toBe(true);
+  });
 });
 
 // ─── isValidThread ────────────────────────────────────────────────────────────
@@ -513,6 +526,18 @@ describe("isValidEntryUpdate", () => {
 
   it("rejects zero review_interval", () => {
     expect(isValidEntryUpdate(validUpdate({ review_interval: 0 }))).toBe(false);
+  });
+
+  it("rejects review_interval above MAX_REVIEW_INTERVAL", () => {
+    expect(isValidEntryUpdate(validUpdate({ review_interval: MAX_REVIEW_INTERVAL + 1 }))).toBe(false);
+  });
+
+  it("rejects review_interval of 1e308 (isFinite but causes Date overflow)", () => {
+    expect(isValidEntryUpdate(validUpdate({ review_interval: 1e308 }))).toBe(false);
+  });
+
+  it("accepts review_interval exactly at MAX_REVIEW_INTERVAL", () => {
+    expect(isValidEntryUpdate(validUpdate({ review_interval: MAX_REVIEW_INTERVAL }))).toBe(true);
   });
 
   it("rejects non-object", () => {
