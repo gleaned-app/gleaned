@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/app/api/_auth";
+import { readJsonWithLimit, SMALL_BODY_LIMIT } from "@/app/api/_body";
 import { getDb } from "@/lib/db/server";
 import { settings } from "@/lib/db/schema/server/settings";
 
@@ -75,7 +76,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
   const auth = requireAuth(request);
   if (auth instanceof NextResponse) return auth;
 
-  const body = await request.json().catch(() => null);
+  const body = await readJsonWithLimit(request, SMALL_BODY_LIMIT);
   if (!body || typeof body !== "object") {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }

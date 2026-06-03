@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyRegistrationResponse } from "@simplewebauthn/server";
 import { eq, lt } from "drizzle-orm";
 import { requireAuth } from "@/app/api/_auth";
+import { readJsonWithLimit, WEBAUTHN_BODY_LIMIT } from "@/app/api/_body";
 import { getDb } from "@/lib/db/server";
 import { webauthnChallenges, webauthnCredentials } from "@/lib/db/schema/server/webauthn";
 
@@ -24,8 +25,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const authResult = requireAuth(request);
   if (authResult instanceof NextResponse) return authResult;
 
-  const body = await request.json().catch(() => null);
-  if (!body?.credential || !body?.keyBlob || typeof body.keyBlob !== "string") {
+  const raw = await readJsonWithLimit(request, WEBAUTHN_BODY_LIMIT);
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return NextResponse.json({ error: "invalid body" }, { status: 400 });
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const body = raw as Record<string, any>;
+  if (!body.credential || typeof body.keyBlob !== "string") {
+    return NextResponse.json({ error: "invalid body" }, { status: 400 });
+  }
+  // keyBlob is an encrypted key stored in the DB — cap to prevent unbounded writes.
+  // A real PRF-wrapped AES-GCM key is under 200 chars as base64; 4096 is generous.
+  if (body.keyBlob.length > 4096) {
     return NextResponse.json({ error: "invalid body" }, { status: 400 });
   }
 

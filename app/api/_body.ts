@@ -3,6 +3,14 @@ const MAX_IMPORT_BYTES =
 
 export const IMPORT_SIZE_LIMIT = MAX_IMPORT_BYTES;
 
+// 4 KB — auth credentials, push subscriptions, settings, credential management.
+// Generous for JSON payloads that are a handful of short string fields.
+export const SMALL_BODY_LIMIT = 4 * 1024;
+
+// 64 KB — WebAuthn attestation and assertion responses.
+// Registration responses can include full certificate chains from the authenticator.
+export const WEBAUTHN_BODY_LIMIT = 64 * 1024;
+
 // Reads the request body up to limitBytes, then parses as JSON.
 // Returns null if the body exceeds the limit or is not valid JSON.
 export async function readJsonWithLimit(

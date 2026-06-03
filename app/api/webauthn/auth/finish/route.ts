@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
 import { eq, lt } from "drizzle-orm";
 import { randomBytes } from "crypto";
+import { readJsonWithLimit, WEBAUTHN_BODY_LIMIT } from "@/app/api/_body";
 import { getDb } from "@/lib/db/server";
 import { webauthnChallenges, webauthnCredentials } from "@/lib/db/schema/server/webauthn";
 import { sessions } from "@/lib/db/schema/server/sessions";
@@ -25,8 +26,13 @@ function getOrigin(request: NextRequest): string {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const body = await request.json().catch(() => null);
-  if (!body?.credential) {
+  const raw = await readJsonWithLimit(request, WEBAUTHN_BODY_LIMIT);
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return NextResponse.json({ error: "invalid body" }, { status: 400 });
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const body = raw as Record<string, any>;
+  if (!body.credential) {
     return NextResponse.json({ error: "invalid body" }, { status: 400 });
   }
 

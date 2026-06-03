@@ -4,6 +4,7 @@ import { timingSafeEqual } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
 import { broadcast } from "@/lib/push/send";
 import { parsePushOverride } from "@/lib/push/parse-override";
+import { readJsonWithLimit, SMALL_BODY_LIMIT } from "@/app/api/_body";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const secret = process.env.SEND_SECRET ?? "";
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   if (!authorized) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const raw      = await request.json().catch(() => ({}));
+  const raw      = await readJsonWithLimit(request, SMALL_BODY_LIMIT) ?? {};
   const override = parsePushOverride(raw);
   const result   = await broadcast((lang) => ({
     title: lang === "en" ? "gleaned" : "gleaned",

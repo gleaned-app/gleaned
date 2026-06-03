@@ -8,14 +8,19 @@ import { getDb } from "@/lib/db/server";
 import { settings } from "@/lib/db/schema/server/settings";
 import { sessions } from "@/lib/db/schema/server/sessions";
 import { getClientIp, checkLoginRateLimit, recordLoginFailure, clearLoginAttempts } from "@/app/api/_rate-limit";
+import { readJsonWithLimit, SMALL_BODY_LIMIT } from "@/app/api/_body";
 import { secureCookie } from "@/app/api/_cookie";
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 const WINDOW_FALLBACK_MS = 15 * 60 * 1000;
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const body = await request.json().catch(() => null);
-  if (!body?.password) {
+  const raw = await readJsonWithLimit(request, SMALL_BODY_LIMIT);
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return NextResponse.json({ error: "password required" }, { status: 400 });
+  }
+  const body = raw as Record<string, unknown>;
+  if (typeof body.password !== "string" || body.password.length === 0) {
     return NextResponse.json({ error: "password required" }, { status: 400 });
   }
 
@@ -38,7 +43,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Not set up" }, { status: 404 });
   }
 
-  const valid = await argon2.verify(row.password_verifier, body.password);
+  const valid = await argon2.verify(row.password_verifier, body.password as string);
   if (!valid) {
     recordLoginFailure(ip);
     return NextResponse.json({ error: "Invalid password" }, { status: 401 });
