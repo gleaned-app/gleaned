@@ -277,6 +277,22 @@ body {
   background: var(--btn-active-face);
 }
 
+/* ── Danger / revoke button ──────────────────────────────────────────────────── */
+.btn-revoke {
+  background: oklch(55% 0.18 25 / 0.12);
+  color: oklch(55% 0.18 25);
+  transition: background 140ms ease, color 140ms ease, box-shadow 140ms ease;
+  cursor: pointer;
+}
+.btn-revoke:hover {
+  background: oklch(55% 0.18 25 / 0.22);
+  color: oklch(44% 0.18 25);
+  box-shadow: 0 0 0 2px oklch(55% 0.18 25 / 0.30);
+}
+.btn-revoke:active {
+  background: oklch(55% 0.18 25 / 0.32);
+}
+
 /* ── Markdown rendering ──────────────────────────────────────────────────────── */
 .md { line-height: 1.65; }
 .md > *:last-child { margin-bottom: 0; }

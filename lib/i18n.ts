@@ -208,6 +208,8 @@ export interface Translations {
   biometricRevoke: string;
   biometricNoCredentials: string;
   biometricAddedOn: string;
+  biometricSavedDevices: string;
+  biometricAddDevice: string;
 
 }
 
@@ -405,6 +407,8 @@ const de: Translations = {
   biometricRevoke: "Wirklich widerrufen",
   biometricNoCredentials: "Noch kein Gerät eingerichtet.",
   biometricAddedOn: "Hinzugefügt am",
+  biometricSavedDevices: "Gespeicherte Geräte",
+  biometricAddDevice: "Neues Gerät hinzufügen",
 
 };
 
@@ -602,6 +606,8 @@ const en: Translations = {
   biometricRevoke: "Confirm revoke",
   biometricNoCredentials: "No device set up yet.",
   biometricAddedOn: "Added on",
+  biometricSavedDevices: "Saved devices",
+  biometricAddDevice: "Add new device",
 
 };
 

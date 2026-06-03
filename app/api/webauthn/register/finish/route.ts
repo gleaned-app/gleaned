@@ -7,6 +7,7 @@ import { requireAuth } from "@/app/api/_auth";
 import { readJsonWithLimit, WEBAUTHN_BODY_LIMIT } from "@/app/api/_body";
 import { getDb } from "@/lib/db/server";
 import { webauthnChallenges, webauthnCredentials } from "@/lib/db/schema/server/webauthn";
+import { writeAudit } from "@/lib/db/audit";
 
 function getRpId(request: NextRequest): string {
   const host = request.headers.get("host") ?? "localhost";
@@ -89,6 +90,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const deviceName: string = typeof body.deviceName === "string" ? body.deviceName.slice(0, 64) : "";
 
+  const now = new Date().toISOString();
+
   db.insert(webauthnCredentials)
     .values({
       id:          credential.id,
@@ -96,9 +99,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       sign_count:  credential.counter,
       device_name: deviceName,
       key_blob:    body.keyBlob,
-      created_at:  new Date().toISOString(),
+      created_at:  now,
     })
     .run();
+
+  writeAudit("webauthn.credential.registered", {
+    credential_id: credential.id,
+    device_name:   deviceName,
+    aaguid:        aaguid ?? null,
+    session_id:    authResult.sessionId,
+  });
 
   return NextResponse.json({ ok: true, aaguid: aaguid ?? null });
 }

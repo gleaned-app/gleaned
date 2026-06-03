@@ -6,6 +6,7 @@ import { requireAuth } from "@/app/api/_auth";
 import { readJsonWithLimit, SMALL_BODY_LIMIT } from "@/app/api/_body";
 import { getDb } from "@/lib/db/server";
 import { webauthnCredentials } from "@/lib/db/schema/server/webauthn";
+import { writeAudit } from "@/lib/db/audit";
 
 // GET — list credentials (id, device_name, created_at; no key_blob)
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -63,7 +64,24 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
   }
 
   const db = getDb();
+  const existing = db
+    .select({ id: webauthnCredentials.id, device_name: webauthnCredentials.device_name, created_at: webauthnCredentials.created_at })
+    .from(webauthnCredentials)
+    .where(eq(webauthnCredentials.id, body2.id))
+    .get();
+
+  if (!existing) {
+    return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+
   db.delete(webauthnCredentials).where(eq(webauthnCredentials.id, body2.id)).run();
+
+  writeAudit("webauthn.credential.revoked", {
+    credential_id:  existing.id,
+    device_name:    existing.device_name ?? "",
+    registered_at:  existing.created_at,
+    session_id:     authResult.sessionId,
+  });
 
   return NextResponse.json({ ok: true });
 }

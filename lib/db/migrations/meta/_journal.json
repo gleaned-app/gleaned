@@ -36,6 +36,13 @@
       "when": 1780410039462,
       "tag": "0004_webauthn",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1748908800000,
+      "tag": "0005_audit_log",
+      "breakpoints": true
     }
   ]
 }

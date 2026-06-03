@@ -83,6 +83,7 @@ export default function SettingsModal({ onClose }: Props) {
 
   // WebAuthn state
   const [webauthnCredentials, setWebauthnCredentials] = useState<WebAuthnCredentialInfo[]>([]);
+  const [webauthnCredentialsLoading, setWebauthnCredentialsLoading] = useState(false);
   const [webauthnSupported] = useState(() => browserSupportsWebAuthn());
   const [webauthnDeviceName, setWebauthnDeviceName] = useState(() => detectDeviceName());
   const [webauthnLoading, setWebauthnLoading] = useState(false);
@@ -92,7 +93,9 @@ export default function SettingsModal({ onClose }: Props) {
   useEffect(() => { if (showTags) getAllTags().then(setTagMap); }, [showTags]);
   useEffect(() => { getPushStatus().then(setPushStatus); }, []);
   useEffect(() => {
-    if (webauthnSupported) listWebAuthnCredentials().then(setWebauthnCredentials);
+    if (!webauthnSupported) return;
+    setWebauthnCredentialsLoading(true);
+    listWebAuthnCredentials().then(setWebauthnCredentials).finally(() => setWebauthnCredentialsLoading(false));
   }, [webauthnSupported]);
 
   async function handlePushToggle() {
@@ -115,7 +118,8 @@ export default function SettingsModal({ onClose }: Props) {
       if (result.ok) {
         setWebauthnMsg({ ok: true, text: t.biometricRegistered });
         setWebauthnDeviceName(detectDeviceName());
-        listWebAuthnCredentials().then(setWebauthnCredentials);
+        setWebauthnCredentialsLoading(true);
+        listWebAuthnCredentials().then(setWebauthnCredentials).finally(() => setWebauthnCredentialsLoading(false));
       } else if (result.error === "prf_unsupported") {
         setWebauthnMsg({ ok: false, text: t.biometricPrfUnsupported });
       } else if (result.error === "cancelled") {
@@ -428,71 +432,70 @@ export default function SettingsModal({ onClose }: Props) {
 
       case "security": return (
         <div className="flex flex-col gap-6">
+          {/* Registered credentials — management section */}
           <div className="flex flex-col gap-2">
-            <p className="font-sans text-sm font-medium" style={{ color: "var(--fg)" }}>
-              {t.biometricSetup}
-            </p>
-            <p className="font-sans text-xs leading-relaxed" style={{ color: "var(--fg-muted)" }}>
-              {t.biometricSetupDesc}
-            </p>
-          </div>
-
-          {/* Registered credentials */}
-          {webauthnCredentials.length > 0 ? (
-            <div className="flex flex-col gap-2">
-              {webauthnCredentials.map((cred) => (
-                <div
-                  key={cred.id}
-                  className="flex items-center justify-between rounded-xl px-3 py-2.5"
-                  style={{ background: "var(--accent-soft)" }}
-                >
-                  <div className="flex flex-col gap-0.5">
-                    <span className="font-sans text-sm font-medium" style={{ color: "var(--fg)" }}>
-                      {cred.device_name || "—"}
-                    </span>
-                    <span className="font-sans text-[10px]" style={{ color: "var(--fg-muted)" }}>
-                      {t.biometricAddedOn} {new Date(cred.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                  {revokeConfirm === cred.id ? (
-                    <div className="flex items-center gap-1.5">
+            <label className="font-sans text-[10px] uppercase tracking-[0.18em]" style={{ color: "var(--fg-muted)" }}>
+              {t.biometricSavedDevices}
+            </label>
+            {webauthnCredentialsLoading ? (
+              <p className="font-sans text-xs italic" style={{ color: "var(--fg-muted)", opacity: 0.5 }}>…</p>
+            ) : webauthnCredentials.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {webauthnCredentials.map((cred) => (
+                  <div
+                    key={cred.id}
+                    className="flex items-center justify-between rounded-xl px-3 py-2.5"
+                    style={{ background: "var(--accent-soft)" }}
+                  >
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-sans text-sm font-medium" style={{ color: "var(--fg)" }}>
+                        {cred.device_name || "—"}
+                      </span>
+                      <span className="font-sans text-[10px]" style={{ color: "var(--fg-muted)" }}>
+                        {t.biometricAddedOn} {new Date(cred.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    {revokeConfirm === cred.id ? (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleWebAuthnRevoke(cred.id)}
+                          className="btn-revoke rounded-lg px-2.5 py-1 font-sans text-xs font-medium"
+                        >
+                          {t.biometricRevoke}
+                        </button>
+                        <button
+                          onClick={() => setRevokeConfirm(null)}
+                          className="rounded-lg px-2 py-1 font-sans text-xs transition-opacity hover:opacity-60"
+                          style={{ color: "var(--fg-muted)" }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
                       <button
-                        onClick={() => handleWebAuthnRevoke(cred.id)}
-                        className="rounded-lg px-2.5 py-1 font-sans text-xs font-medium transition-opacity hover:opacity-80"
-                        style={{ background: "oklch(55% 0.18 25 / 0.12)", color: "oklch(55% 0.18 25)" }}
-                      >
-                        {t.biometricRevoke}
-                      </button>
-                      <button
-                        onClick={() => setRevokeConfirm(null)}
-                        className="rounded-lg px-2 py-1 font-sans text-xs transition-opacity hover:opacity-60"
+                        onClick={() => setRevokeConfirm(cred.id)}
+                        className="rounded-lg px-2.5 py-1 font-sans text-xs transition-opacity hover:opacity-70"
                         style={{ color: "var(--fg-muted)" }}
                       >
-                        ✕
+                        {t.biometricRemove}
                       </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setRevokeConfirm(cred.id)}
-                      className="rounded-lg px-2.5 py-1 font-sans text-xs transition-opacity hover:opacity-70"
-                      style={{ color: "var(--fg-muted)" }}
-                    >
-                      {t.biometricRemove}
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="font-sans text-xs italic" style={{ color: "var(--fg-muted)", opacity: 0.6 }}>
-              {t.biometricNoCredentials}
-            </p>
-          )}
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="font-sans text-xs italic" style={{ color: "var(--fg-muted)", opacity: 0.6 }}>
+                {t.biometricNoCredentials}
+              </p>
+            )}
+          </div>
+
+          <div style={{ height: 1, background: "var(--border)" }} />
 
           {/* Register new credential */}
           <div className="flex flex-col gap-2">
             <label className="font-sans text-[10px] uppercase tracking-[0.18em]" style={{ color: "var(--fg-muted)" }}>
-              {t.biometricDeviceNameLabel}
+              {t.biometricAddDevice}
             </label>
             <input
               type="text"
