@@ -57,6 +57,7 @@ export default function EntryForm({ onSaved }: Props) {
   const [tags, setTags] = useState<string[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
   const [focused, setFocused] = useState(false);
   const [existingTags, setExistingTags] = useState<string[]>([]);
   // Context panel state
@@ -129,6 +130,7 @@ export default function EntryForm({ onSaved }: Props) {
     if (!content.trim() && attachments.length === 0) return;
     if (saving) return;
     setSaving(true);
+    setSaveError(false);
     try {
       const finalTags = tagInput.trim()
         ? [...tags, tagInput.trim().toLowerCase().replace(/^#/, "")]
@@ -157,6 +159,8 @@ export default function EntryForm({ onSaved }: Props) {
       // Keep context panel open if user had data — feels less jarring.
       if (!hasContextData) setContextOpen(false);
       textareaRef.current?.focus();
+    } catch {
+      setSaveError(true);
     } finally {
       setSaving(false);
     }
@@ -469,6 +473,11 @@ export default function EntryForm({ onSaved }: Props) {
         </div>
 
         <div className="ml-auto flex items-center gap-3">
+          {saveError && (
+            <span className="font-sans text-[11px]" style={{ color: "var(--due-overdue)" }}>
+              {t.genericError}
+            </span>
+          )}
           <span
             className="hidden font-sans text-[11px] sm:block"
             style={{ color: "var(--fg-muted)", opacity: 0.5 }}

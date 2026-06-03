@@ -5,6 +5,17 @@ export class UnauthorizedError extends Error {
   }
 }
 
+export class ApiError extends Error {
+  constructor(public readonly status: number) {
+    super(`HTTP ${status}`);
+    this.name = "ApiError";
+  }
+}
+
+export function assertOk(res: Response): void {
+  if (!res.ok) throw new ApiError(res.status);
+}
+
 export async function apiFetch(
   path: string,
   init: RequestInit = {},

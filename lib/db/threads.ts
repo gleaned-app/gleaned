@@ -1,7 +1,7 @@
 import type { Thread } from "@/types/thread";
 import { requireAuth } from "./client";
 import { encryptThreadToApi, decryptThreadFromRow, type ThreadApiRow } from "./thread-crypto";
-import { apiFetch } from "../api-client";
+import { apiFetch, assertOk } from "../api-client";
 
 export async function saveThread(text: string, dueDate?: string, color?: string): Promise<Thread> {
   requireAuth();
@@ -16,7 +16,7 @@ export async function saveThread(text: string, dueDate?: string, color?: string)
     ...(color  ? { color  } : {}),
   };
   const body = await encryptThreadToApi(thread);
-  await apiFetch("/api/threads", { method: "POST", body: JSON.stringify(body) });
+  assertOk(await apiFetch("/api/threads", { method: "POST", body: JSON.stringify(body) }));
   return { ...thread };
 }
 
@@ -31,7 +31,7 @@ export async function updateThreadDoc(thread: Thread): Promise<Thread> {
   requireAuth();
   const updated = { ...thread, done: !thread.done };
   const body = await encryptThreadToApi(updated as Omit<Thread, "_rev" | "encrypted" | "textEnc">);
-  await apiFetch(`/api/threads/${thread._id}`, { method: "PUT", body: JSON.stringify(body) });
+  assertOk(await apiFetch(`/api/threads/${thread._id}`, { method: "PUT", body: JSON.stringify(body) }));
   return updated;
 }
 
@@ -41,7 +41,7 @@ export async function updateThreadDueDate(thread: Thread, dueDate: string | unde
   if (dueDate) updated.dueDate = dueDate;
   else delete updated.dueDate;
   const body = await encryptThreadToApi(updated as Omit<Thread, "_rev" | "encrypted" | "textEnc">);
-  await apiFetch(`/api/threads/${thread._id}`, { method: "PUT", body: JSON.stringify(body) });
+  assertOk(await apiFetch(`/api/threads/${thread._id}`, { method: "PUT", body: JSON.stringify(body) }));
   return updated;
 }
 
@@ -51,7 +51,7 @@ export async function updateThreadColor(thread: Thread, color: string | undefine
   if (color) updated.color = color;
   else delete updated.color;
   const body = await encryptThreadToApi(updated as Omit<Thread, "_rev" | "encrypted" | "textEnc">);
-  await apiFetch(`/api/threads/${thread._id}`, { method: "PUT", body: JSON.stringify(body) });
+  assertOk(await apiFetch(`/api/threads/${thread._id}`, { method: "PUT", body: JSON.stringify(body) }));
   return updated;
 }
 
@@ -59,7 +59,7 @@ export async function updateThreadText(thread: Thread, text: string): Promise<Th
   requireAuth();
   const updated = { ...thread, text };
   const body = await encryptThreadToApi(updated as Omit<Thread, "_rev" | "encrypted" | "textEnc">);
-  await apiFetch(`/api/threads/${thread._id}`, { method: "PUT", body: JSON.stringify(body) });
+  assertOk(await apiFetch(`/api/threads/${thread._id}`, { method: "PUT", body: JSON.stringify(body) }));
   return updated;
 }
 
@@ -69,13 +69,13 @@ export async function updateThreadNotes(thread: Thread, notes: string | undefine
   if (notes) updated.notes = notes;
   else delete updated.notes;
   const body = await encryptThreadToApi(updated as Omit<Thread, "_rev" | "encrypted" | "textEnc">);
-  await apiFetch(`/api/threads/${thread._id}`, { method: "PUT", body: JSON.stringify(body) });
+  assertOk(await apiFetch(`/api/threads/${thread._id}`, { method: "PUT", body: JSON.stringify(body) }));
   return updated;
 }
 
 export async function deleteThread(id: string): Promise<void> {
   requireAuth();
-  await apiFetch(`/api/threads/${id}`, { method: "DELETE" });
+  assertOk(await apiFetch(`/api/threads/${id}`, { method: "DELETE" }));
 }
 
 // No-op: encryption migration is handled at import time in Phase 5.

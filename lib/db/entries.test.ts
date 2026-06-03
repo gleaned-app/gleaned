@@ -4,7 +4,10 @@ import type { Entry, EntryDraft, EntryUpdate } from "@/types/entry";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
-vi.mock("../api-client", () => ({ apiFetch: vi.fn() }));
+vi.mock("../api-client", () => ({
+  apiFetch: vi.fn(),
+  assertOk: (res: Response) => { if (!res.ok) throw Object.assign(new Error(`HTTP ${res.status}`), { name: "ApiError", status: (res as unknown as { status: number }).status }); },
+}));
 vi.mock("./entry-crypto", () => ({
   encryptEntryToApi: vi.fn(),
   decryptEntryFromRow: vi.fn(),

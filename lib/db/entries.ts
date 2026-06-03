@@ -1,7 +1,7 @@
 import type { Entry, EntryDraft, EntryUpdate } from "@/types/entry";
 import { requireAuth, toLocalDateStr, REVIEW_BACKFILL_CAP } from "./client";
 import { encryptEntryToApi, decryptEntryFromRow, type ApiEntryRow } from "./entry-crypto";
-import { apiFetch } from "../api-client";
+import { apiFetch, assertOk } from "../api-client";
 
 // ─── Search cache ─────────────────────────────────────────────────────────────
 // All decrypted entries are held in memory so searchEntries never re-decrypts
@@ -66,7 +66,7 @@ export async function saveEntry(draft: EntryDraft): Promise<Entry> {
     ...(gapStatus  !== undefined ? { gapStatus  } : {}),
   };
   const body = await encryptEntryToApi(entry);
-  await apiFetch("/api/entries", { method: "POST", body: JSON.stringify(body) });
+  assertOk(await apiFetch("/api/entries", { method: "POST", body: JSON.stringify(body) }));
   const saved = entry as Entry;
   cache.add(saved);
   return saved;
@@ -148,7 +148,7 @@ export async function updateEntry(entry: Entry, update: EntryUpdate): Promise<En
   };
 
   const body = await encryptEntryToApi(merged);
-  await apiFetch(`/api/entries/${entry._id}`, { method: "PUT", body: JSON.stringify(body) });
+  assertOk(await apiFetch(`/api/entries/${entry._id}`, { method: "PUT", body: JSON.stringify(body) }));
   const result = merged as Entry;
   cache.update(result);
   return result;
@@ -165,7 +165,7 @@ function mergeField<K extends string, V>(
 
 export async function deleteEntry(id: string): Promise<void> {
   requireAuth();
-  await apiFetch(`/api/entries/${id}`, { method: "DELETE" });
+  assertOk(await apiFetch(`/api/entries/${id}`, { method: "DELETE" }));
   cache.remove(id);
 }
 
@@ -195,7 +195,7 @@ export async function deleteTag(tag: string): Promise<void> {
     affected.map(async (entry) => {
       const updated = { ...entry, tags: entry.tags.filter((t) => t !== tag) };
       const body = await encryptEntryToApi(updated as Omit<Entry, "_rev" | "encrypted" | "enc">);
-      await apiFetch(`/api/entries/${entry._id}`, { method: "PUT", body: JSON.stringify(body) });
+      assertOk(await apiFetch(`/api/entries/${entry._id}`, { method: "PUT", body: JSON.stringify(body) }));
     }),
   );
   invalidateSearchCache();

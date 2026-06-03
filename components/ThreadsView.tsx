@@ -110,33 +110,49 @@ export default function ThreadsView() {
     e.preventDefault();
     const text = input.trim();
     if (!text) return;
+    const savedDue = dueDate;
+    const savedColor = color;
     setInput("");
     setDueDate("");
     setColor("");
     setShowPanel(false);
     inputRef.current?.focus();
-    const thread = await saveThread(text, dueDate || undefined, color || undefined);
-    setThreads((prev) => [thread, ...prev]);
+    try {
+      const thread = await saveThread(text, savedDue || undefined, savedColor || undefined);
+      setThreads((prev) => [thread, ...prev]);
+    } catch {
+      setInput(text);
+      setDueDate(savedDue);
+      setColor(savedColor);
+    }
   }
 
   const handleToggle = useCallback(async (thread: Thread) => {
     setThreads((prev) =>
       prev.map((t) => (t._id === thread._id ? { ...t, done: !t.done } : t))
     );
-    const updated = await updateThreadDoc(thread);
-    setThreads((prev) =>
-      prev.map((t) => (t._id === updated._id ? updated : t))
-    );
+    try {
+      const updated = await updateThreadDoc(thread);
+      setThreads((prev) =>
+        prev.map((t) => (t._id === updated._id ? updated : t))
+      );
+    } catch {
+      getThreads().then(setThreads);
+    }
   }, []);
 
   const handleUpdateText = useCallback(async (thread: Thread, text: string) => {
     setThreads((prev) =>
       prev.map((t) => (t._id === thread._id ? { ...t, text } : t))
     );
-    const updated = await updateThreadText(thread, text);
-    setThreads((prev) =>
-      prev.map((t) => (t._id === updated._id ? updated : t))
-    );
+    try {
+      const updated = await updateThreadText(thread, text);
+      setThreads((prev) =>
+        prev.map((t) => (t._id === updated._id ? updated : t))
+      );
+    } catch {
+      getThreads().then(setThreads);
+    }
   }, []);
 
   const handleUpdateDueDate = useCallback(
@@ -146,10 +162,14 @@ export default function ThreadsView() {
           t._id === thread._id ? { ...t, dueDate: dueDate ?? undefined } : t
         )
       );
-      const updated = await updateThreadDueDate(thread, dueDate);
-      setThreads((prev) =>
-        prev.map((t) => (t._id === updated._id ? updated : t))
-      );
+      try {
+        const updated = await updateThreadDueDate(thread, dueDate);
+        setThreads((prev) =>
+          prev.map((t) => (t._id === updated._id ? updated : t))
+        );
+      } catch {
+        getThreads().then(setThreads);
+      }
     },
     []
   );
@@ -161,10 +181,14 @@ export default function ThreadsView() {
           t._id === thread._id ? { ...t, color: color ?? undefined } : t
         )
       );
-      const updated = await updateThreadColor(thread, color);
-      setThreads((prev) =>
-        prev.map((t) => (t._id === updated._id ? updated : t))
-      );
+      try {
+        const updated = await updateThreadColor(thread, color);
+        setThreads((prev) =>
+          prev.map((t) => (t._id === updated._id ? updated : t))
+        );
+      } catch {
+        getThreads().then(setThreads);
+      }
     },
     []
   );
@@ -176,10 +200,14 @@ export default function ThreadsView() {
           t._id === thread._id ? { ...t, notes: notes ?? undefined } : t
         )
       );
-      const updated = await updateThreadNotes(thread, notes);
-      setThreads((prev) =>
-        prev.map((t) => (t._id === updated._id ? updated : t))
-      );
+      try {
+        const updated = await updateThreadNotes(thread, notes);
+        setThreads((prev) =>
+          prev.map((t) => (t._id === updated._id ? updated : t))
+        );
+      } catch {
+        getThreads().then(setThreads);
+      }
     },
     []
   );

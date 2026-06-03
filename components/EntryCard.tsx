@@ -149,14 +149,21 @@ export default function EntryCard({ entry, onDelete, onUpdate, onTagClick, flat 
       });
       onUpdate?.(updated);
       setEditing(false);
+    } catch {
+      // Edit mode stays open — user can retry without losing their changes.
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete() {
-    await deleteEntry(entry._id);
-    onDelete?.(entry._id);
+    try {
+      await deleteEntry(entry._id);
+      onDelete?.(entry._id);
+    } catch {
+      // Entry stays visible — correct behaviour on server error.
+      setPendingDelete(false);
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
