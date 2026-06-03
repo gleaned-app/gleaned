@@ -45,6 +45,15 @@ const VALID_BODY = {
 // ─── Input validation ──────────────────────────────────────────────────────────
 
 describe("POST /api/auth/setup — input validation", () => {
+  it("returns 400 when body exceeds the 4 KB limit", async () => {
+    const req = new NextRequest("http://localhost/api/auth/setup", {
+      method: "POST",
+      body: "x".repeat(5 * 1024),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+  });
+
   it("returns 400 when password is missing", async () => {
     const res = await POST(setupReq({ encryptionSalt: "s", setupToken: VALID_TOKEN }));
     expect(res.status).toBe(400);

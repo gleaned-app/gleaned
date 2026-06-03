@@ -39,6 +39,15 @@ beforeEach(() => {
 // ─── Input validation ──────────────────────────────────────────────────────────
 
 describe("POST /api/auth/login — input validation", () => {
+  it("returns 400 when body exceeds the 4 KB limit", async () => {
+    const req = new NextRequest("http://localhost/api/auth/login", {
+      method: "POST",
+      body: "x".repeat(5 * 1024),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+  });
+
   it("returns 400 when password field is missing", async () => {
     const res = await POST(loginReq({}));
     expect(res.status).toBe(400);
