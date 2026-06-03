@@ -152,8 +152,26 @@ The following fields are stored in plaintext in SQLite to allow scheduling and f
 | entries | `date`, `created_at` | Required for calendar view and entry ordering |
 | entries | `next_review`, `review_interval` | Scheduling without full table scan |
 | threads | `done`, `due_date`, `color` | Sorting and filtering without decrypting every row |
+| audit_log | `ts`, `action`, `detail` | Security audit trail (see below) |
 
 **Implication:** someone with access to the server database (the SQLite file) can see *when* you made entries, when they are due for review, and — for todos — whether they are completed, when they are due, and which colour label was assigned. The actual content of entries and todos remains encrypted.
+
+### Audit log
+
+Security-relevant events are written to the `audit_log` table in SQLite. This provides a persistent, tamper-evident record that survives container restarts (stored in the same named volume as the main database).
+
+Logged events:
+
+| Action | When | Captured fields |
+|---|---|---|
+| `webauthn.credential.registered` | A new Touch ID / Face ID device is enrolled | `credential_id`, `device_name`, `aaguid`, `session_id` |
+| `webauthn.credential.revoked` | A credential is deleted from the Security settings | `credential_id`, `device_name`, `registered_at`, `session_id` |
+
+You can query the log directly:
+
+```bash
+sqlite3 /path/to/gleaned.db "SELECT ts, action, detail FROM audit_log ORDER BY id DESC LIMIT 20;"
+```
 
 ### Threat model
 
