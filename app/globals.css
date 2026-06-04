@@ -1,12 +1,22 @@
+@import "@fontsource-variable/lora";
+@import "@fontsource-variable/lora/wght-italic.css";
+@import "@fontsource-variable/dm-sans";
+@import "@fontsource-variable/playfair-display";
+@import "@fontsource-variable/playfair-display/wght-italic.css";
+@import "@fontsource-variable/caveat";
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-lora), Georgia, "Times New Roman", serif;
+  --font-sans: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Lora Variable", Georgia, "Times New Roman", serif;
 }
 
 :root {
-  --font-body: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-lora:     "Lora Variable", Georgia, serif;
+  --font-dm-sans:  "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-playfair: "Playfair Display Variable", Georgia, serif;
+  --font-caveat:   "Caveat Variable", cursive;
+  --font-body:     "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
 }
 
 /* ── Theme tokens ────────────────────────────────────────────────────────────── */

@@ -1,37 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Lora, DM_Sans, Playfair_Display, Caveat } from "next/font/google";
 import { connection } from "next/server";
 import { headers } from "next/headers";
 import "./globals.css";
-
-const lora = Lora({
-  variable: "--font-lora",
-  subsets: ["latin"],
-  style: ["normal", "italic"],
-  display: "swap",
-});
-
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
-  subsets: ["latin"],
-  weight: ["300", "400", "500"],
-  display: "swap",
-});
-
-const playfair = Playfair_Display({
-  variable: "--font-playfair",
-  subsets: ["latin"],
-  style: ["normal", "italic"],
-  weight: ["400", "500", "600"],
-  display: "swap",
-});
-
-const caveat = Caveat({
-  variable: "--font-caveat",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "gleaned",
@@ -63,7 +33,7 @@ export default async function RootLayout({
   const nonce = (await headers()).get("x-nonce") ?? "";
 
   return (
-    <html lang="de" className={`${lora.variable} ${dmSans.variable} ${playfair.variable} ${caveat.variable}`} suppressHydrationWarning>
+    <html lang="de" suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#F3EDE3" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#15100C" media="(prefers-color-scheme: dark)" />

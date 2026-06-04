@@ -18,6 +18,10 @@
     "prepare": "[ -d .git ] && git config core.hooksPath .githooks && chmod +x .githooks/pre-commit || true"
   },
   "dependencies": {
+    "@fontsource-variable/caveat": "^5.2.8",
+    "@fontsource-variable/dm-sans": "^5.2.8",
+    "@fontsource-variable/lora": "^5.2.8",
+    "@fontsource-variable/playfair-display": "^5.2.8",
     "@simplewebauthn/browser": "^13.3.0",
     "@simplewebauthn/server": "^13.3.1",
     "argon2": "^0.44.0",
