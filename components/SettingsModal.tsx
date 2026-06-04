@@ -581,7 +581,17 @@ export default function SettingsModal({ onClose }: Props) {
           </div>
         </div>
 
-        <div className="flex-shrink-0 pb-[max(12px,env(safe-area-inset-bottom))] sm:pb-2" />
+        <div className="flex-shrink-0 flex items-center justify-center pb-[max(12px,env(safe-area-inset-bottom))] pt-2 sm:pb-3">
+          <a
+            href="https://github.com/gleaned-app/gleaned/releases"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-sans text-[11px] transition-opacity hover:opacity-80"
+            style={{ color: "var(--fg-placeholder)" }}
+          >
+            gleaned v{process.env.NEXT_PUBLIC_APP_VERSION}
+          </a>
+        </div>
       </div>
     </>
   );
