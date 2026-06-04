@@ -2,6 +2,41 @@
 
 All notable changes to gleaned are documented here.
 
+## [0.6.0] — 2026-06-04
+
+### Added
+
+- **App version in Settings** — The current gleaned version is now shown at the bottom of the Settings modal as a link that opens the corresponding GitHub Release. The version is injected at build time from `package.json` via `NEXT_PUBLIC_APP_VERSION` — no manual updates needed on release.
+- **Self-hosted fonts** — Lora, DM Sans, Playfair Display, and Caveat are now bundled via `@fontsource-variable` and served from `node_modules`. No network call to `fonts.gstatic.com` at build or runtime, improving privacy and offline reliability.
+
+---
+
+## [0.5.1] — 2026-06-04
+
+### Security
+
+- **Review interval cap** — `review_interval` is now capped at 3 650 days to prevent `Date` overflow.
+- **Request body size limit** — All API routes enforce a configurable body size limit (default 1 MB) to prevent large-payload attacks.
+- **Thread colour validation** — Thread colour is restricted to strict `#rrggbb` hex format; arbitrary CSS values are rejected.
+- **Notes XSS hardening** — `renderNotesMarkdown` output is sanitised with DOMPurify before rendering.
+- **Progressive rate-limiting for unknown IPs** — Unknown-IP login attempts now receive a progressive delay instead of a hard lock, preventing account-enumeration via lockout timing.
+- **Security headers** — `X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin` added to all responses.
+
+### Added
+
+- **Audit log for WebAuthn events** — Passkey registrations, logins, and revocations are written to an encrypted audit log, visible in Settings. Includes improved credential management UI with per-device revocation.
+
+### Fixed
+
+- Setup token initialisation now runs correctly on startup; `instrumentation.node` is imported dynamically so `initSetupToken` executes as expected.
+- `UnauthorizedError` unhandled rejections are suppressed cleanly.
+- API routes now throw on non-2xx responses, preventing silent data loss when the server returns an error.
+- `Math.random()` in attachment ID generation replaced with `crypto.randomUUID()`.
+- `getEntriesForMonth` is now cached, reducing redundant database queries.
+- Hover state applied consistently to both ghost and solid revoke button variants.
+
+---
+
 ## [0.5.0] — 2026-06-02
 
 ### Added
