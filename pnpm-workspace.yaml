@@ -1,0 +1,23 @@
+# `pnpm audit` advisories that are accepted as not applicable to this project.
+#
+# esbuild (transitive via drizzle-kit, 0.25.x, and vite/vitest, 0.28.0):
+# the only fix is esbuild >=0.28.1, which is outside the range drizzle-kit
+# accepts (^0.25.4), so it cannot be resolved by a normal dependency bump.
+# - GHSA-gv7w-rqvm-qjhr (high): RCE in esbuild's Deno module via
+#   NPM_CONFIG_REGISTRY. This project is Node.js only; esbuild's Deno entry
+#   point (lib/deno/mod.ts) is never imported or executed.
+# - GHSA-g7r4-m6w7-qqqr (low): path traversal in esbuild's dev server,
+#   triggered via --servedir, Windows only. The production image runs
+#   `next start` (no esbuild dev server) on Alpine Linux, and the dev server
+#   is never run with --servedir on Windows.
+#
+# vite (transitive via vitest, dev-only):
+# - GHSA-fx2h-pf6j-xcff (high): `server.fs.deny` bypass via Windows alternate
+#   paths in vite's dev server, Windows only. The production image never runs
+#   the vite dev server (it runs `next start` on Alpine Linux), and the dev
+#   server is never run on Windows in this project.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-gv7w-rqvm-qjhr
+    - GHSA-g7r4-m6w7-qqqr
+    - GHSA-fx2h-pf6j-xcff

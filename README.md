@@ -181,3 +181,13 @@ sqlite3 /path/to/gleaned.db "SELECT ts, action, detail FROM audit_log ORDER BY i
 - **Physical access to an unlocked device** — not protected; the key is live in memory. Lock before stepping away.
 - **Physical access to a locked device** — protected; the key is wiped from memory on lock, and a wrong password cannot decrypt the data.
 - **Brute force** — server-side Argon2id makes each verification attempt slow. The UI adds exponential backoff (1 s, 2 s, 4 s … 30 s cap) persisted across page reloads.
+
+### Accepted dependency advisories
+
+`pnpm audit` advisories that are intentionally ignored (see `pnpm-workspace.yaml`) because the vulnerable code path is never reached in this project:
+
+| Advisory | Package | Why it doesn't apply |
+|---|---|---|
+| [GHSA-gv7w-rqvm-qjhr](https://github.com/advisories/GHSA-gv7w-rqvm-qjhr) | esbuild (high) | RCE in esbuild's Deno module via `NPM_CONFIG_REGISTRY` — this project is Node.js only, the Deno entry point is never imported. Fix requires esbuild ≥0.28.1, outside the range drizzle-kit accepts. |
+| [GHSA-g7r4-m6w7-qqqr](https://github.com/advisories/GHSA-g7r4-m6w7-qqqr) | esbuild (low) | Path traversal in esbuild's dev server via `--servedir`, Windows only. Production runs `next start` on Alpine Linux; the dev server is never run on Windows. |
+| [GHSA-fx2h-pf6j-xcff](https://github.com/advisories/GHSA-fx2h-pf6j-xcff) | vite (high) | `server.fs.deny` bypass via Windows alternate paths in vite's dev server, Windows only. Production never runs the vite dev server, and it's never run on Windows in this project. |
