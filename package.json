@@ -27,7 +27,7 @@
     "@simplewebauthn/server": "^13.3.1",
     "argon2": "^0.44.0",
     "better-sqlite3": "^12.10.1",
-    "dompurify": "^3.4.10",
+    "dompurify": "^3.4.11",
     "drizzle-orm": "^0.45.2",
     "highlight.js": "^11.11.1",
     "marked": "^18.0.5",
